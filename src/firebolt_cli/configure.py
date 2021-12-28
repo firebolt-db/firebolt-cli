@@ -1,7 +1,7 @@
 from configparser import ConfigParser
 from os import path
 
-from click import command, echo, prompt
+from click import UsageError, command, echo, option, prompt
 
 from firebolt_cli.common_options import config_file, config_section
 
@@ -31,33 +31,47 @@ def update_config_file(**kwargs):
 
 
 @command()
-def configure(**kwargs):
-    echo("Config file: " + config_file)
+@option("-u", "--username")
+@option("--account_name")
+@option("--database_name")
+@option("--engine_name")
+@option("--engine_url")
+def configure(**raw_config_options):
+    config = {k: v for k, v in raw_config_options.items() if v}
+
+    if "engine_name" in config and "engine_url" in config:
+        raise UsageError(
+            "engine_name and engine_url are mutually exclusive options. "
+            "Provide only one"
+        )
 
     keys = ("username", "password", "account_name", "database_name")
-    config = {}
     skip_message = " (press Enter to skip)"
 
     for k in keys:
-        value = prompt(
-            k.capitalize().replace("_", " ") + skip_message,
-            hide_input=k == "password",
+        if k not in config:
+            value = prompt(
+                k.capitalize().replace("_", " ") + skip_message,
+                hide_input=k == "password",
+                default="",
+                show_default=False,
+            )
+            if value:
+                config[k] = value
+
+    if "engine_name" not in config and "engine_url" not in config:
+        engine_name = prompt(
+            "Engine name(press Enter if you want to enter engine url instead)",
             default="",
             show_default=False,
         )
-        if value:
-            config[k] = value
-
-    engine_name = prompt(
-        "Engine name(press Enter if you want to enter engine url instead)",
-        default="",
-        show_default=False,
-    )
-    if engine_name:
-        config["engine_name"] = engine_name
-    else:
-        engine_url = prompt("Engine URL" + skip_message, default="", show_default=False)
-        if engine_url:
-            config["engine_url"] = engine_url
+        if engine_name:
+            config["engine_name"] = engine_name
+        else:
+            engine_url = prompt(
+                "Engine URL" + skip_message, default="", show_default=False
+            )
+            if engine_url:
+                config["engine_url"] = engine_url
 
     update_config_file(**config)
