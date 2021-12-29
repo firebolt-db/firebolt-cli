@@ -22,7 +22,7 @@ def read_config_key(key: str) -> Optional[str]:
         _config = ConfigParser()
         _config.read(config_file)
 
-    return _config.get(config_section, key)
+    return _config.get(config_section, key, fallback=None)
 
 
 def default_from_config_file(default: Optional[str] = None) -> Callable:

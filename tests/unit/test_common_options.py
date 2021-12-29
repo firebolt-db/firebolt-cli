@@ -169,9 +169,7 @@ def test_password_priority(fs: FakeFilesystem):
 
 
 def test_parameters_missing(fs: FakeFilesystem):
-    for opt, option_name in zip(
-        _common_options[:-1], ("username", "password", "account_name")
-    ):
+    def check_empty_option(opt: Callable, option_name: str):
         # helper command, dumps all options it received
         @command()
         @opt
@@ -186,19 +184,35 @@ def test_parameters_missing(fs: FakeFilesystem):
             f"Missing option {option_name}" in result.stdout
         ), "invalid missing parameter message"
 
+    for opt, option_name in zip(
+        _common_options[:-1], ("username", "password", "account_name")
+    ):
+        check_empty_option(opt, option_name)
+
+        # create config file without current option
+        with create_config_file(fs, {}):
+            check_empty_option(opt, option_name)
+
 
 def test_api_endpoint_missing(fs: FakeFilesystem):
-    opt = _common_options[-1]  # api-endpoint
+    def check_empty_option():
+        opt = _common_options[-1]  # api-endpoint
 
-    @command()
-    @opt
-    def test(**kwargs):
-        echo(dumps(kwargs))
+        @command()
+        @opt
+        def test(**kwargs):
+            echo(dumps(kwargs))
 
-    result = CliRunner().invoke(test)
-    assert result.exit_code == 0, "non-zero exit code for missing api-endpoint"
-    config = loads(result.stdout)
-    assert "api_endpoint" in config, "missing api-endpoint parameter"
-    assert (
-        config["api_endpoint"] == DEFAULT_API_URL
-    ), "invalid api-endpoint default value"
+        result = CliRunner().invoke(test)
+        assert result.exit_code == 0, "non-zero exit code for missing api-endpoint"
+        config = loads(result.stdout)
+        assert "api_endpoint" in config, "missing api-endpoint parameter"
+        assert (
+            config["api_endpoint"] == DEFAULT_API_URL
+        ), "invalid api-endpoint default value"
+
+    check_empty_option()
+
+    # create config file without current option
+    with create_config_file(fs, {}):
+        check_empty_option()
