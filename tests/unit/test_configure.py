@@ -13,7 +13,6 @@ def validate_file_config(config):
     cp.read(config_file)
 
     cli_config = cp[config_section]
-    print(f"Config: {list(cli_config.items())}")
     assert set(list(cli_config.keys())) == set(config.keys()) and [
         cli_config[k] == config[k] for k in config.keys()
     ], "Invalid config written with configure command"
