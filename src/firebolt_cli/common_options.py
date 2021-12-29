@@ -6,7 +6,7 @@ from appdirs import user_config_dir
 from click import Context, MissingParameter, Parameter, option, prompt
 from firebolt.client import DEFAULT_API_URL
 
-config_file = path.join(user_config_dir(), "firebolt.config")
+config_file = path.join(user_config_dir(), "firebolt.ini")
 config_section = "firebolt-cli"
 
 _config: Optional[ConfigParser] = None
