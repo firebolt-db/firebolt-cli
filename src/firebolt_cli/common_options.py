@@ -1,5 +1,5 @@
 from configparser import ConfigParser
-from os import path
+from os import environ, path
 from typing import Callable, Optional
 
 from appdirs import user_config_dir
@@ -27,7 +27,7 @@ def read_config_key(key: str) -> Optional[str]:
 def default_from_config_file(ctx: Context, param: Parameter, value: str):
     value = value or read_config_key(param.name)
     if not value:
-        raise MissingParameter(ctx=ctx, param=param)
+        raise MissingParameter(ctx=ctx, param=param, param_hint=param.name)
     return value
 
 
@@ -35,9 +35,9 @@ def password_from_config_file(ctx: Context, param: Parameter, value: bool):
     # user asked to prompt for password
     if value:
         return prompt("Password", type=str, hide_input=True)
-    value = read_config_key(param.name)
+    value = environ.get("FIREBOLT_PASSWORD") or read_config_key(param.name)
     if not value:
-        raise MissingParameter(ctx=ctx, param=param)
+        raise MissingParameter(ctx=ctx, param=param, param_hint=param.name)
     return value
 
 
@@ -51,7 +51,6 @@ _common_options = [
     option(
         "-p",
         "--password",
-        envvar="FIREBOLT_PASSWORD",
         is_flag=True,
         callback=password_from_config_file,
     ),
