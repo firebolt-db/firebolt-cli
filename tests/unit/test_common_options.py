@@ -3,11 +3,12 @@ from contextlib import contextmanager
 from io import StringIO
 from json import dumps, loads
 from os import environ
-from typing import Optional, Tuple
+from typing import Callable, List, Optional, Tuple
 from unittest import mock
 
 from click import command, echo
 from click.testing import CliRunner
+from firebolt.client import DEFAULT_API_URL
 from pyfakefs.fake_filesystem import FakeFilesystem
 
 from firebolt_cli.common_options import (
@@ -33,10 +34,9 @@ def create_config_file(fs: FakeFilesystem, config: dict) -> None:
         fs.remove(config_file)
 
 
-def test_username_priority(fs: FakeFilesystem):
-    """username is processed correctly, in correct proirity from different sources"""
-    opt = _common_options[0]  # username option
-
+def generic_test_parameter_priority(
+    fs: FakeFilesystem, name: str, cli_names: List[str], opt: Callable
+):
     # helper command, dumps all options it received
     @command()
     @opt
@@ -44,45 +44,64 @@ def test_username_priority(fs: FakeFilesystem):
         echo(dumps(kwargs))
 
     def validate_command(command: Tuple, expected_value: str, err_msg: str):
-        result = runner.invoke(*command)
-        assert result.exit_code == 0, "non-zero exit code for "
+        result = CliRunner().invoke(*command)
+        assert result.exit_code == 0, "non-zero exit code"
         config = loads(result.output)
-        assert "username" in config, "missing username command option"
-        assert config["username"] == expected_value, err_msg
+        assert name in config, f"missing {name} command option"
+        assert config[name] == expected_value, err_msg
 
-    with create_config_file(fs, {"username": "un_file"}):
-        runner = CliRunner()
+    with create_config_file(fs, {name: "file"}):
 
-        with mock.patch.dict(environ, {"FIREBOLT_USERNAME": "un_env"}):
-            # username is provided as option, env variable and in config file,
-            # option should be chosen
-            validate_command(
-                (test, ["--username", "un_option"]),
-                "un_option",
-                "invalid username from option",
-            )
+        with mock.patch.dict(environ, {f"FIREBOLT_{name.upper()}": "env"}):
+            for cli_name in cli_names:
+                # parameter is provided as option, env variable and in config file,
+                # option should be chosen
+                validate_command(
+                    (test, [f"{cli_name}", "option"]),
+                    "option",
+                    f"invalid {name} from option",
+                )
 
-            validate_command(
-                (test, ["-u", "un_option"]),
-                "un_option",
-                "invalid username from option",
-            )
-
-            # username is provided as env variable and in config file,
+            # parameter is provided as env variable and in config file,
             # env variable should be chosen
             validate_command(
                 (test,),
-                "un_env",
-                "invalid username from env",
+                "env",
+                f"invalid {name} from env",
             )
 
-        # username is provided in config file,
+        # parameter is provided in config file,
         # it should be read correctly
         validate_command(
             (test,),
-            "un_file",
-            "invalid username from file",
+            "file",
+            f"invalid {name} from file",
         )
+
+
+def test_username_priority(fs: FakeFilesystem):
+    """username is processed correctly, in correct proirity from different sources"""
+    generic_test_parameter_priority(
+        fs, "username", ["-u", "--username"], _common_options[0]
+    )
+
+
+def test_account_name_priority(fs: FakeFilesystem):
+    """
+    account_name is processed correctly, in correct proirity from different sources
+    """
+    generic_test_parameter_priority(
+        fs, "account_name", ["--account-name"], _common_options[2]
+    )
+
+
+def test_api_endpoint_priority(fs: FakeFilesystem):
+    """
+    account_name is processed correctly, in correct proirity from different sources
+    """
+    generic_test_parameter_priority(
+        fs, "api_endpoint", ["--api-endpoint"], _common_options[3]
+    )
 
 
 def test_password_priority(fs: FakeFilesystem):
@@ -149,55 +168,9 @@ def test_password_priority(fs: FakeFilesystem):
         )
 
 
-def test_account_name_priority(fs: FakeFilesystem):
-    """username is processed correctly, in correct proirity from different sources"""
-    opt = _common_options[2]  # account-name option
-
-    # helper command, dumps all options it received
-    @command()
-    @opt
-    def test(**kwargs):
-        echo(dumps(kwargs))
-
-    def validate_command(command: Tuple, expected_value: str, err_msg: str):
-        result = runner.invoke(*command)
-        assert result.exit_code == 0, "non-zero exit code for "
-        config = loads(result.output)
-        assert "account_name" in config, "missing account-name command option"
-        assert config["account_name"] == expected_value, err_msg
-
-    with create_config_file(fs, {"account_name": "an_file"}):
-        runner = CliRunner()
-
-        with mock.patch.dict(environ, {"FIREBOLT_ACCOUNT_NAME": "an_env"}):
-            # username is provided as option, env variable and in config file,
-            # option should be chosen
-            validate_command(
-                (test, ["--account-name", "an_option"]),
-                "an_option",
-                "invalid account name from option",
-            )
-
-            # username is provided as env variable and in config file,
-            # env variable should be chosen
-            validate_command(
-                (test,),
-                "an_env",
-                "invalid account name from env",
-            )
-
-        # username is provided in config file,
-        # it should be read correctly
-        validate_command(
-            (test,),
-            "an_file",
-            "invalid account name from file",
-        )
-
-
 def test_parameters_missing(fs: FakeFilesystem):
     for opt, option_name in zip(
-        _common_options, ("username", "password", "account_name")
+        _common_options[:-1], ("username", "password", "account_name")
     ):
         # helper command, dumps all options it received
         @command()
@@ -206,7 +179,26 @@ def test_parameters_missing(fs: FakeFilesystem):
             echo(dumps(kwargs))
 
         result = CliRunner().invoke(test)
-        assert result.exit_code == 2, f"Invalid return code for missing {option_name}"
+        if result.exit_code != 2:
+            print(result.__dict__)
+        assert result.exit_code == 2, f"invalid return code for missing {option_name}"
         assert (
             f"Missing option {option_name}" in result.stdout
-        ), "Invalid missing parameter message"
+        ), "invalid missing parameter message"
+
+
+def test_api_endpoint_missing(fs: FakeFilesystem):
+    opt = _common_options[-1]  # api-endpoint
+
+    @command()
+    @opt
+    def test(**kwargs):
+        echo(dumps(kwargs))
+
+    result = CliRunner().invoke(test)
+    assert result.exit_code == 0, "non-zero exit code for missing api-endpoint"
+    config = loads(result.stdout)
+    assert "api_endpoint" in config, "missing api-endpoint parameter"
+    assert (
+        config["api_endpoint"] == DEFAULT_API_URL
+    ), "invalid api-endpoint default value"

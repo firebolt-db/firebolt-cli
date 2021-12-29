@@ -25,15 +25,16 @@ def read_config_key(key: str) -> Optional[str]:
     return _config.get(config_section, key)
 
 
-def default_from_config_file(
-    ctx: Context, param: Parameter, value: Optional[str]
-) -> str:
-    # type check
-    assert param.name
-    value = value or read_config_key(param.name) or param.default
-    if not value:
-        raise MissingParameter(ctx=ctx, param=param, param_hint=param.name)
-    return value
+def default_from_config_file(default: Optional[str] = None) -> Callable:
+    def inner(ctx: Context, param: Parameter, value: Optional[str]) -> str:
+        # type check
+        assert param.name
+        value = value or read_config_key(param.name) or default
+        if not value:
+            raise MissingParameter(ctx=ctx, param=param, param_hint=param.name)
+        return value
+
+    return inner
 
 
 def password_from_config_file(ctx: Context, param: Parameter, value: bool) -> str:
@@ -53,7 +54,7 @@ _common_options = [
         "-u",
         "--username",
         envvar="FIREBOLT_USERNAME",
-        callback=default_from_config_file,
+        callback=default_from_config_file(),
         help="Firebolt username",
     ),
     option(
@@ -66,14 +67,13 @@ _common_options = [
     option(
         "--account-name",
         envvar="FIREBOLT_ACCOUNT_NAME",
-        callback=default_from_config_file,
+        callback=default_from_config_file(),
         help="Name of Firebolt account",
     ),
     option(
         "--api-endpoint",
         envvar="FIREBOLT_API_ENDPOINT",
-        callback=default_from_config_file,
-        default=DEFAULT_API_URL,
+        callback=default_from_config_file(DEFAULT_API_URL),
         hidden=True,
     ),
 ]
