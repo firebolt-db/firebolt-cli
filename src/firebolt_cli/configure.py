@@ -31,12 +31,21 @@ def update_config_file(**kwargs):
 
 
 @command()
-@option("-u", "--username")
-@option("--account-name")
-@option("--database-name")
-@option("--engine-name")
-@option("--engine-url")
+@option("-u", "--username", help="Firebolt username")
+@option("--account-name", help="Name of Firebolt account")
+@option("--database-name", help="Database to use for SQL queries")
+@option(
+    "--engine-name",
+    help="Name of engine to use for SQL queries. Incompatible with --engine-url",
+)
+@option(
+    "--engine-url",
+    help="Url of engine to use for SQL queries. Incompatible with --engine-name",
+)
 def configure(**raw_config_options):
+    """
+    Store firebolt configuration parameters in config file
+    """
     config = {k: v for k, v in raw_config_options.items() if v}
 
     if "engine_name" in config and "engine_url" in config:

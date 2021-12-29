@@ -7,7 +7,9 @@ from firebolt_cli.configure import configure
 @group()
 @version_option(__version__, "-V", "--version")
 def main():
-    pass
+    """
+    Firebolt command line utility.
+    """
 
 
 main.add_command(configure)
