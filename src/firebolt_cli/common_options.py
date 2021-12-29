@@ -24,21 +24,27 @@ def read_config_key(key: str) -> Optional[str]:
     return _config.get(config_section, key)
 
 
-def default_from_config_file(ctx: Context, param: Parameter, value: str):
+def default_from_config_file(
+    ctx: Context, param: Parameter, value: Optional[str]
+) -> str:
+    # type check
+    assert param.name
     value = value or read_config_key(param.name)
     if not value:
         raise MissingParameter(ctx=ctx, param=param, param_hint=param.name)
     return value
 
 
-def password_from_config_file(ctx: Context, param: Parameter, value: bool):
+def password_from_config_file(ctx: Context, param: Parameter, value: bool) -> str:
+    # type check
+    assert param.name
     # user asked to prompt for password
     if value:
         return prompt("Password", type=str, hide_input=True)
-    value = environ.get("FIREBOLT_PASSWORD") or read_config_key(param.name)
-    if not value:
+    pw_value = environ.get("FIREBOLT_PASSWORD") or read_config_key(param.name)
+    if not pw_value:
         raise MissingParameter(ctx=ctx, param=param, param_hint=param.name)
-    return value
+    return pw_value
 
 
 _common_options = [
@@ -63,7 +69,7 @@ _common_options = [
 ]
 
 
-def common_options(command: Callable):
+def common_options(command: Callable) -> Callable:
     for add_option in reversed(_common_options):
         command = add_option(command)
     return command

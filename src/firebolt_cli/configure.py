@@ -6,7 +6,7 @@ from click import UsageError, command, echo, option, prompt
 from firebolt_cli.common_options import config_file, config_section
 
 
-def update_config_file(**kwargs):
+def update_config_file(**kwargs: str) -> None:
     config = ConfigParser()
     if path.exists(config_file):
         config.read(config_file)
@@ -42,7 +42,7 @@ def update_config_file(**kwargs):
     "--engine-url",
     help="Url of engine to use for SQL queries. Incompatible with --engine-name",
 )
-def configure(**raw_config_options):
+def configure(**raw_config_options: str) -> None:
     """
     Store firebolt configuration parameters in config file
     """
