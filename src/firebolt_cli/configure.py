@@ -34,6 +34,7 @@ def update_config_file(**kwargs: str) -> None:
 @option("-u", "--username", help="Firebolt username")
 @option("--account-name", help="Name of Firebolt account")
 @option("--database-name", help="Database to use for SQL queries")
+@option("--api-endpoint", hidden=True)
 @option(
     "--engine-name",
     help="Name of engine to use for SQL queries. Incompatible with --engine-url",

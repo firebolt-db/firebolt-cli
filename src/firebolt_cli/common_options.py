@@ -4,6 +4,7 @@ from typing import Callable, Optional
 
 from appdirs import user_config_dir
 from click import Context, MissingParameter, Parameter, option, prompt
+from firebolt.client import DEFAULT_API_URL
 
 config_file = path.join(user_config_dir(), "firebolt.config")
 config_section = "firebolt-cli"
@@ -29,7 +30,7 @@ def default_from_config_file(
 ) -> str:
     # type check
     assert param.name
-    value = value or read_config_key(param.name)
+    value = value or read_config_key(param.name) or param.default
     if not value:
         raise MissingParameter(ctx=ctx, param=param, param_hint=param.name)
     return value
@@ -60,11 +61,20 @@ _common_options = [
         "--password",
         is_flag=True,
         callback=password_from_config_file,
+        help="Firebolt password",
     ),
     option(
         "--account-name",
         envvar="FIREBOLT_ACCOUNT_NAME",
         callback=default_from_config_file,
+        help="Name of Firebolt account",
+    ),
+    option(
+        "--api-endpoint",
+        envvar="FIREBOLT_API_ENDPOINT",
+        callback=default_from_config_file,
+        default=DEFAULT_API_URL,
+        hidden=True,
     ),
 ]
 
