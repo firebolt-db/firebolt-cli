@@ -151,7 +151,7 @@ def test_password_priority(fs: FakeFilesystem):
 
 def test_account_name_priority(fs: FakeFilesystem):
     """username is processed correctly, in correct proirity from different sources"""
-    opt = _common_options[0]  # account_name option
+    opt = _common_options[2]  # account-name option
 
     # helper command, dumps all options it received
     @command()
@@ -163,41 +163,35 @@ def test_account_name_priority(fs: FakeFilesystem):
         result = runner.invoke(*command)
         assert result.exit_code == 0, "non-zero exit code for "
         config = loads(result.output)
-        assert "username" in config, "missing username command option"
-        assert config["username"] == expected_value, err_msg
+        assert "account_name" in config, "missing account-name command option"
+        assert config["account_name"] == expected_value, err_msg
 
-    with create_config_file(fs, {"username": "un_file"}):
+    with create_config_file(fs, {"account_name": "an_file"}):
         runner = CliRunner()
 
-        with mock.patch.dict(environ, {"FIREBOLT_USERNAME": "un_env"}):
+        with mock.patch.dict(environ, {"FIREBOLT_ACCOUNT_NAME": "an_env"}):
             # username is provided as option, env variable and in config file,
             # option should be chosen
             validate_command(
-                (test, ["--username", "un_option"]),
-                "un_option",
-                "invalid username from option",
-            )
-
-            validate_command(
-                (test, ["-u", "un_option"]),
-                "un_option",
-                "invalid username from option",
+                (test, ["--account-name", "an_option"]),
+                "an_option",
+                "invalid account name from option",
             )
 
             # username is provided as env variable and in config file,
             # env variable should be chosen
             validate_command(
                 (test,),
-                "un_env",
-                "invalid username from env",
+                "an_env",
+                "invalid account name from env",
             )
 
         # username is provided in config file,
         # it should be read correctly
         validate_command(
             (test,),
-            "un_file",
-            "invalid username from file",
+            "an_file",
+            "invalid account name from file",
         )
 
 
