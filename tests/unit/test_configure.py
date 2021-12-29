@@ -33,6 +33,8 @@ def test_configure_happy_path(fs: FakeFilesystem) -> None:
             "database_name",
             "--engine-name",
             "engine_name",
+            "--api-endpoint",
+            "api_endpoint",
         ],
         input="password",
     )
@@ -46,6 +48,7 @@ def test_configure_happy_path(fs: FakeFilesystem) -> None:
             "account_name": "account_name",
             "database_name": "database_name",
             "engine_name": "engine_name",
+            "api_endpoint": "api_endpoint",
         }
     )
 
