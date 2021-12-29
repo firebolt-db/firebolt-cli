@@ -27,11 +27,11 @@ def test_configure_happy_path(fs: FakeFilesystem) -> None:
         [
             "--username",
             "username",
-            "--account_name",
+            "--account-name",
             "account_name",
-            "--database_name",
+            "--database-name",
             "database_name",
-            "--engine_name",
+            "--engine-name",
             "engine_name",
         ],
         input="password",
@@ -51,13 +51,13 @@ def test_configure_happy_path(fs: FakeFilesystem) -> None:
 
     fs.remove(config_file)
 
-    # test some parameters missing, only -u and --engine_url
+    # test some parameters missing, only -u and --engine-url
     result = runner.invoke(
         configure,
         [
             "-u",
             "username",
-            "--engine_url",
+            "--engine-url",
             "engine_url",
         ],
     )
@@ -124,7 +124,7 @@ def test_configure_overrides(fs: FakeFilesystem) -> None:
         [
             "--username",
             "username",
-            "--database_name",
+            "--database-name",
             "database_name",
         ],
     )
@@ -143,7 +143,7 @@ def test_configure_overrides(fs: FakeFilesystem) -> None:
         [
             "--username",
             "username2",
-            "--account_name",
+            "--account-name",
             "account_name",
         ],
     )
@@ -165,15 +165,15 @@ def test_engine_name_url_together(fs: FakeFilesystem) -> None:
     result = runner.invoke(
         configure,
         [
-            "--engine_name",
+            "--engine-name",
             "engine_name",
-            "--engine_url",
+            "--engine-url",
             "engine_url",
         ],
     )
     assert result.exit_code == 2, "invalid exit code for configure usage error"
     assert (
-        "engine_name and engine_url are mutually exclusive options" in result.stdout
+        "engine-name and engine-url are mutually exclusive options" in result.stdout
     ), "Invalid result message"
 
     # no config file created on error
@@ -186,7 +186,7 @@ def test_engine_name_url_overrides(fs: FakeFilesystem) -> None:
     result = runner.invoke(
         configure,
         [
-            "--engine_name",
+            "--engine-name",
             "engine_name",
         ],
     )
@@ -199,7 +199,7 @@ def test_engine_name_url_overrides(fs: FakeFilesystem) -> None:
     result = runner.invoke(
         configure,
         [
-            "--engine_url",
+            "--engine-url",
             "engine_url",
         ],
     )

@@ -32,16 +32,16 @@ def update_config_file(**kwargs):
 
 @command()
 @option("-u", "--username")
-@option("--account_name")
-@option("--database_name")
-@option("--engine_name")
-@option("--engine_url")
+@option("--account-name")
+@option("--database-name")
+@option("--engine-name")
+@option("--engine-url")
 def configure(**raw_config_options):
     config = {k: v for k, v in raw_config_options.items() if v}
 
     if "engine_name" in config and "engine_url" in config:
         raise UsageError(
-            "engine_name and engine_url are mutually exclusive options. "
+            "engine-name and engine-url are mutually exclusive options. "
             "Provide only one"
         )
 
@@ -61,7 +61,7 @@ def configure(**raw_config_options):
 
     if "engine_name" not in config and "engine_url" not in config:
         engine_name = prompt(
-            "Engine name(press Enter if you want to enter engine url instead)",
+            "Engine name (press Enter if you want to enter engine url instead)",
             default="",
             show_default=False,
         )

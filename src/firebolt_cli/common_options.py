@@ -47,6 +47,7 @@ _common_options = [
         "--username",
         envvar="FIREBOLT_USERNAME",
         callback=default_from_config_file,
+        help="Firebolt username",
     ),
     option(
         "-p",
@@ -55,7 +56,7 @@ _common_options = [
         callback=password_from_config_file,
     ),
     option(
-        "--account_name",
+        "--account-name",
         envvar="FIREBOLT_ACCOUNT_NAME",
         callback=default_from_config_file,
     ),
