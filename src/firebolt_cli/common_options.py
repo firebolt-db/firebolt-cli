@@ -1,9 +1,18 @@
 from configparser import ConfigParser
+from functools import update_wrapper
 from os import environ, path
-from typing import Callable, Optional
+from typing import Any, Callable, Optional, TypeVar, cast
 
 from appdirs import user_config_dir
-from click import Context, MissingParameter, Parameter, option, prompt
+from click import (
+    BadOptionUsage,
+    Context,
+    MissingParameter,
+    Parameter,
+    get_current_context,
+    option,
+    prompt,
+)
 from firebolt.client import DEFAULT_API_URL
 
 config_file = path.join(user_config_dir(), "firebolt.ini")
@@ -49,6 +58,20 @@ def password_from_config_file(ctx: Context, param: Parameter, value: bool) -> st
     return pw_value
 
 
+F = TypeVar("F", bound=Callable[..., Any])
+
+
+def validate_json_option(f: F) -> bool:
+    def inner(*args, **kwargs):
+        if kwargs.get("json", False) and not kwargs.get("yes", False):
+            raise BadOptionUsage(
+                "json", "--json should be used with -y", get_current_context()
+            )
+        return f(*args, **kwargs)
+
+    return update_wrapper(cast(F, inner), f)
+
+
 _common_options = [
     option(
         "-u",
@@ -76,6 +99,19 @@ _common_options = [
         callback=default_from_config_file(DEFAULT_API_URL),
         hidden=True,
     ),
+    option(
+        "-y",
+        "--yes",
+        is_flag=True,
+        help="Automatically confirm every prompt",
+        default=False,
+    ),
+    option(
+        "--json",
+        is_flag=True,
+        help="Provide output in json format",
+    ),
+    validate_json_option,
 ]
 
 
