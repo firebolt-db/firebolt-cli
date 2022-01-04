@@ -1,7 +1,7 @@
 from configparser import ConfigParser
 from functools import update_wrapper
 from os import environ, path
-from typing import Any, Callable, Optional, TypeVar, cast
+from typing import Any, Callable, List, Optional, TypeVar, cast
 
 from appdirs import user_config_dir
 from click import (
@@ -61,8 +61,8 @@ def password_from_config_file(ctx: Context, param: Parameter, value: bool) -> st
 F = TypeVar("F", bound=Callable[..., Any])
 
 
-def validate_json_option(f: F) -> bool:
-    def inner(*args, **kwargs):
+def validate_json_option(f: F) -> F:
+    def inner(*args: Any, **kwargs: Any) -> Any:
         if kwargs.get("json", False) and not kwargs.get("yes", False):
             raise BadOptionUsage(
                 "json", "--json should be used with -y", get_current_context()
@@ -72,7 +72,7 @@ def validate_json_option(f: F) -> bool:
     return update_wrapper(cast(F, inner), f)
 
 
-_common_options = [
+_common_options: List[Callable] = [
     option(
         "-u",
         "--username",
