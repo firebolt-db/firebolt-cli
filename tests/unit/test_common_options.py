@@ -108,7 +108,7 @@ def test_password_priority(fs: FakeFilesystem):
     """username is processed correctly, in correct proirity from different sources"""
     opt = _common_options[1]  # password option
 
-    SPECIAL_CHARACTERS = " !\"#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~"
+    SPECIAL_CHARACTERS = " !\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~"
     # helper command, dumps all options it received
     @command()
     @opt
@@ -133,7 +133,9 @@ def test_password_priority(fs: FakeFilesystem):
     with create_config_file(fs, {"password": "pw_file" + SPECIAL_CHARACTERS}):
         runner = CliRunner()
 
-        with mock.patch.dict(environ, {"FIREBOLT_PASSWORD": "pw_env" + SPECIAL_CHARACTERS}):
+        with mock.patch.dict(
+            environ, {"FIREBOLT_PASSWORD": "pw_env" + SPECIAL_CHARACTERS}
+        ):
             # username is provided as option, env variable and in config file,
             # option should be chosen
             validate_command(
