@@ -1,4 +1,4 @@
-from configparser import ConfigParser
+from configparser import RawConfigParser
 from os import path
 
 from click import UsageError, command, echo, option, prompt
@@ -7,7 +7,7 @@ from firebolt_cli.common_options import config_file, config_section
 
 
 def update_config_file(**kwargs: str) -> None:
-    config = ConfigParser()
+    config = RawConfigParser()
     if path.exists(config_file):
         config.read(config_file)
         message = "Updated existing config file"
