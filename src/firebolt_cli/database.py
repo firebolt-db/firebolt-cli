@@ -12,9 +12,9 @@ def database() -> None:
 
 @command()
 @common_options
-@option("--database-name", help="New database name")
-@option("--region", help="Region for the new database", default="us-east-1")
-def create(**raw_config_options: dict) -> None:
+@option("--database-name", help="New database name", type=str)
+@option("--region", help="Region for the new database", default="us-east-1", type=str)
+def create(**raw_config_options: str) -> None:
     settings = Settings(
         server=raw_config_options["api_endpoint"],
         user=raw_config_options["username"],
