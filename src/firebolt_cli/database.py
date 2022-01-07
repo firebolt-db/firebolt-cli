@@ -1,10 +1,9 @@
-from click import UsageError, command, echo, option, prompt, group
+from click import command, echo, option, group
+
+from firebolt.common import Settings
+from firebolt.service.manager import ResourceManager
 
 from firebolt_cli.common_options import common_options
-from firebolt.common import Settings
-from devtools import debug
-
-from firebolt.service.manager import ResourceManager
 
 
 @group()
