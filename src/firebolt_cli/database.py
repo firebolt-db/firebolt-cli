@@ -1,5 +1,4 @@
-from click import command, echo, option, group
-
+from click import command, echo, group, option
 from firebolt.common import Settings
 from firebolt.service.manager import ResourceManager
 

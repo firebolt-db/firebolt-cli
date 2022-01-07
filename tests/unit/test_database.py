@@ -1,9 +1,10 @@
-from click.testing import CliRunner
-from click import echo
-from firebolt_cli.database import create
-from pytest_mock import MockerFixture
 from unittest import mock
+
+from click.testing import CliRunner
 from firebolt.service.manager import ResourceManager
+from pytest_mock import MockerFixture
+
+from firebolt_cli.database import create
 
 
 def test_database_create(mocker: MockerFixture) -> None:
