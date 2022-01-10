@@ -1,4 +1,4 @@
-from configparser import RawConfigParser
+from configparser import ConfigParser
 from functools import update_wrapper
 from os import environ, path
 from typing import Any, Callable, List, Optional, TypeVar, cast
@@ -18,7 +18,7 @@ from firebolt.client import DEFAULT_API_URL
 config_file = path.join(user_config_dir(), "firebolt.ini")
 config_section = "firebolt-cli"
 
-_config: Optional[RawConfigParser] = None
+_config: Optional[ConfigParser] = None
 
 
 def read_config_key(key: str) -> Optional[str]:
@@ -28,7 +28,7 @@ def read_config_key(key: str) -> Optional[str]:
         # return None if there is no config file
         if not path.exists(config_file):
             return None
-        _config = RawConfigParser()
+        _config = ConfigParser(interpolation=None)
         _config.read(config_file)
 
     return _config.get(config_section, key, fallback=None)

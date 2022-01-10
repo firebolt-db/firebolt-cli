@@ -1,4 +1,4 @@
-from configparser import RawConfigParser
+from configparser import ConfigParser
 from os import path
 
 from appdirs import user_config_dir
@@ -9,7 +9,7 @@ from firebolt_cli.configure import config_file, config_section, configure
 
 
 def validate_file_config(config):
-    cp = RawConfigParser()
+    cp = ConfigParser(interpolation=None)
     cp.read(config_file)
 
     cli_config = cp[config_section]

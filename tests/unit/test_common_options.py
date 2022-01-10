@@ -1,4 +1,4 @@
-from configparser import RawConfigParser
+from configparser import ConfigParser
 from contextlib import contextmanager
 from io import StringIO
 from json import dumps, loads
@@ -22,7 +22,7 @@ from firebolt_cli.common_options import (
 def create_config_file(fs: FakeFilesystem, config: dict) -> None:
     # make sure config will be flushed not to be reused in other tests
     with mock.patch("firebolt_cli.common_options._config", None):
-        cp = RawConfigParser()
+        cp = ConfigParser(interpolation=None)
         cp[config_section] = config
         content = StringIO()
         cp.write(content)
