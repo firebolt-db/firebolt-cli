@@ -9,7 +9,7 @@ from firebolt_cli.configure import config_file, config_section, configure
 
 
 def validate_file_config(config):
-    cp = ConfigParser()
+    cp = ConfigParser(interpolation=None)
     cp.read(config_file)
 
     cli_config = cp[config_section]
