@@ -110,8 +110,8 @@ _common_options: List[Callable] = [
         "--json",
         is_flag=True,
         help="Provide output in json format",
+        type=bool,
     ),
-    validate_json_option,
 ]
 
 
