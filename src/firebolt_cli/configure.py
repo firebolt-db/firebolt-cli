@@ -16,9 +16,9 @@ def update_config_file(**kwargs: str) -> None:
 
     if config.has_section(config_section):
         # override engine_name with engine_url and vice versa
-        if "engine_name" in kwargs:
+        if "engine_name" in kwargs and "engine_url" in config[config_section]:
             config[config_section].pop("engine_url")
-        if "engine_url" in kwargs:
+        if "engine_url" in kwargs and "engine_name" in config[config_section]:
             config[config_section].pop("engine_name")
 
         config[config_section].update(kwargs)
