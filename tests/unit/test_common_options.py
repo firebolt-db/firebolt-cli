@@ -268,6 +268,6 @@ def test_json_option():
     assert config["json"] is True, "Invalid json option value"
 
     result = CliRunner().invoke(test, ["--json"])
-    print(result.stdout)
+
     assert result.exit_code == BadOptionUsage.exit_code, "invalid exit code"
     assert "--json should be used with -y" in result.stdout, "Invalid error message"
