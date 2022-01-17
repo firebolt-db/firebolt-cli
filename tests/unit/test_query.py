@@ -4,39 +4,17 @@ from typing import Callable, Optional
 from unittest import mock
 
 import pytest
-from appdirs import user_config_dir
 from click.testing import CliRunner
 from firebolt.common.exception import FireboltError
 from pyfakefs.fake_filesystem import FakeFilesystem
 from pytest_mock import MockerFixture
 
-from firebolt_cli.configure import configure
 from firebolt_cli.query import query
 
 
 @pytest.fixture(autouse=True)
-def configure_cli(fs: FakeFilesystem) -> None:
-
-    fs.create_dir(user_config_dir())
-    runner = CliRunner()
-    result = runner.invoke(
-        configure,
-        [
-            "--username",
-            "username",
-            "--account-name",
-            "account_name",
-            "--engine-name",
-            "engine_name",
-            "--api-endpoint",
-            "api_endpoint",
-            "--database-name",
-            "default",
-        ],
-        input="password",
-    )
-
-    assert result.exit_code == 0, "configuration of cli failed"
+def configure_cli_auto(configure_cli):
+    return configure_cli()
 
 
 def test_query_stdin_file_ambiguity(mocker: MockerFixture, fs: FakeFilesystem) -> None:
@@ -49,7 +27,7 @@ def test_query_stdin_file_ambiguity(mocker: MockerFixture, fs: FakeFilesystem) -
     result = CliRunner(mix_stderr=False).invoke(
         query,
         [
-            "--sql",
+            "--file",
             "path_to_file.sql",
         ],
         input="query from stdin",
@@ -68,7 +46,7 @@ def test_query_file_missing(mocker: MockerFixture) -> None:
     result = CliRunner(mix_stderr=False).invoke(
         query,
         [
-            "--sql",
+            "--file",
             "path_to_file.sql",
         ],
         input=None,
@@ -95,6 +73,8 @@ def query_generic_test(
 
     connect_function_mock = mocker.patch("firebolt_cli.query.connect")
     connect_function_mock.return_value = connection_mock
+    connection_mock.__enter__.return_value = connection_mock
+
     connection_mock.cursor.return_value = cursor_mock
     cursor_mock.fetchall.return_value = [
         ["test", "test1"],
@@ -125,7 +105,7 @@ def query_generic_test(
     check_output_callback(result.stdout)
 
     cursor_mock.execute.assert_called_once_with(expected_sql)
-    connection_mock.close.assert_called_once_with()
+    connection_mock.__exit__.assert_called_once()
 
     assert result.exit_code == 0
 
@@ -175,7 +155,7 @@ def test_query_file(mocker: MockerFixture, fs: FakeFilesystem) -> None:
 
     query_generic_test(
         mocker,
-        ["--sql", "path_to_file.sql"],
+        ["--file", "path_to_file.sql"],
         lambda x: None,
         expected_sql="query from file\nsecond line",
         input=None,
@@ -216,6 +196,7 @@ def test_sql_execution_error(mocker: MockerFixture) -> None:
 
     cursor_mock = unittest.mock.MagicMock()
     connection_mock.cursor.return_value = cursor_mock
+    connection_mock.__enter__.return_value = connection_mock
     cursor_mock.attach_mock(
         unittest.mock.Mock(side_effect=FireboltError("sql execution failed")), "execute"
     )
@@ -234,7 +215,7 @@ def test_sql_execution_error(mocker: MockerFixture) -> None:
     connect_function_mock.assert_called_once()
     cursor_mock.execute.assert_called_once_with("wrong sql;")
 
-    connection_mock.close.assert_called_once_with()
+    connection_mock.__exit__.assert_called_once()
 
     assert result.stderr != "", "error message is missing"
     assert (

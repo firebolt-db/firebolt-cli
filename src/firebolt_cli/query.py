@@ -15,25 +15,25 @@ from firebolt_cli.common_options import (
 )
 
 
-def read_from_file(fpath: Optional[str]) -> str:
+def read_from_file(fpath: Optional[str]) -> Optional[str]:
     """
     read from file, if fpath is not None, otherwise return empty string
     """
     if fpath is None:
-        return ""
-    else:
-        with open(fpath, "r") as f:
-            return f.read()
+        return None
+
+    with open(fpath, "r") as f:
+        return f.read() or None
 
 
-def read_from_stdin_buffer() -> str:
+def read_from_stdin_buffer() -> Optional[str]:
     """
     read from buffer if stdin file descriptor is open, otherwise return empty string
     """
-    if not sys.stdin.isatty():
-        return sys.stdin.buffer.read().decode("utf-8")
-    else:
-        return ""
+    if sys.stdin.isatty():
+        return None
+
+    return sys.stdin.buffer.read().decode("utf-8") or None
 
 
 @command()
@@ -43,7 +43,7 @@ def read_from_stdin_buffer() -> str:
 @option("--csv", is_flag=True)
 @option("--database-name", callback=default_from_config_file())
 @option(
-    "--sql",
+    "--file",
     help="path to the file with the sql query to be executed",
     type=click.Path(exists=True),
 )
@@ -52,9 +52,9 @@ def query(**raw_config_options: str) -> None:
     Execute sql queries
     """
     stdin_query = read_from_stdin_buffer()
-    file_query = read_from_file(raw_config_options["sql"])
+    file_query = read_from_file(raw_config_options["file"])
 
-    if stdin_query == "" and file_query == "":
+    if not (stdin_query or file_query):
         echo(
             "SQL Query should be provided either from file or from stdin;"
             "The interactive SQL is not implemented yet",
@@ -62,44 +62,38 @@ def query(**raw_config_options: str) -> None:
         )
         sys.exit(os.EX_SOFTWARE)
 
-    if stdin_query != "" and file_query != "":
+    if stdin_query and file_query:
         echo(
             "SQL request should be either read from stdin or file, both are specified",
             err=True,
         )
         sys.exit(os.EX_USAGE)
 
-    sql_query = stdin_query if stdin_query != "" else file_query
+    sql_query = stdin_query or file_query
 
     try:
-        connection = connect(
+        with connect(
             engine_url=raw_config_options["engine_url"],
             engine_name=raw_config_options["engine_name"],
             database=raw_config_options["database_name"],
             username=raw_config_options["username"],
             password=raw_config_options["password"],
             api_endpoint=raw_config_options["api_endpoint"],
-        )
-    except FireboltError as err:
-        echo(err, err=True)
-        sys.exit(os.EX_UNAVAILABLE)
+        ) as connection:
 
-    try:
-        cursor = connection.cursor()
+            cursor = connection.cursor()
 
-        cursor.execute(sql_query)
-        data = cursor.fetchall()
+            cursor.execute(sql_query)
+            data = cursor.fetchall()
 
-        headers = [i.name for i in cursor.description]
-        if raw_config_options["csv"]:
-            writer = csv.writer(sys.stdout)
-            writer.writerow(headers)
-            writer.writerows(data)
-        else:
-            echo(tabulate(data, headers=headers, tablefmt="grid"))
+            headers = [i.name for i in cursor.description]
+            if raw_config_options["csv"]:
+                writer = csv.writer(sys.stdout)
+                writer.writerow(headers)
+                writer.writerows(data)
+            else:
+                echo(tabulate(data, headers=headers, tablefmt="grid"))
 
     except FireboltError as err:
         echo(err, err=True)
         sys.exit(os.EX_UNAVAILABLE)
-    finally:
-        connection.close()

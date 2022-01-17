@@ -99,19 +99,6 @@ _common_options: List[Callable] = [
         callback=default_from_config_file(DEFAULT_API_URL),
         hidden=True,
     ),
-    option(
-        "-y",
-        "--yes",
-        is_flag=True,
-        help="Automatically confirm every prompt",
-        default=False,
-    ),
-    option(
-        "--json",
-        is_flag=True,
-        help="Provide output in json format",
-    ),
-    validate_json_option,
 ]
 
 

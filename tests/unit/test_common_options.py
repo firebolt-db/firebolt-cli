@@ -6,7 +6,7 @@ from os import environ
 from typing import Callable, List, Optional, Tuple
 from unittest import mock
 
-from click import BadOptionUsage, MissingParameter, command, echo
+from click import MissingParameter, command, echo
 from click.testing import CliRunner
 from firebolt.client import DEFAULT_API_URL
 from pyfakefs.fake_filesystem import FakeFilesystem
@@ -216,58 +216,3 @@ def test_api_endpoint_missing(fs: FakeFilesystem):
     # create config file without current option
     with create_config_file(fs, {}):
         check_empty_option()
-
-
-def test_yes_option():
-    # helper command, dumps all options it received
-    opt = _common_options[4]
-
-    @command()
-    @opt
-    def test(**kwargs):
-        echo(dumps(kwargs))
-
-    result = CliRunner().invoke(test)
-    assert result.exit_code == 0, "non-zero exit code"
-    config = loads(result.stdout)
-    assert config["yes"] is False, "Invalid yes option value"
-
-    for param in ("-y", "--yes"):
-        result = CliRunner().invoke(test, [param])
-        assert result.exit_code == 0, "non-zero exit code"
-        config = loads(result.stdout)
-        assert config["yes"] is True, "Invalid yes option value"
-
-
-def test_json_option():
-    # helper command, dumps all options it received
-    yes_opt = _common_options[4]
-    json_opt = _common_options[5]
-    validate_opt = _common_options[6]
-
-    @command()
-    @yes_opt
-    @json_opt
-    @validate_opt
-    def test(**kwargs):
-        echo(dumps(kwargs))
-
-    result = CliRunner().invoke(test)
-    assert result.exit_code == 0, "non-zero exit code"
-    config = loads(result.stdout)
-    assert config["json"] is False, "Invalid json option value"
-
-    result = CliRunner().invoke(test, ["--yes", "--json"])
-    assert result.exit_code == 0, "non-zero exit code"
-    config = loads(result.stdout)
-    assert config["json"] is True, "Invalid json option value"
-
-    result = CliRunner().invoke(test, ["--json", "-y"])
-    assert result.exit_code == 0, "non-zero exit code"
-    config = loads(result.stdout)
-    assert config["json"] is True, "Invalid json option value"
-
-    result = CliRunner().invoke(test, ["--json"])
-
-    assert result.exit_code == BadOptionUsage.exit_code, "invalid exit code"
-    assert "--json should be used with -y" in result.stdout, "Invalid error message"
