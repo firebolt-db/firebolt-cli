@@ -6,7 +6,7 @@ from os import environ
 from typing import Callable, List, Optional, Tuple
 from unittest import mock
 
-from click import BadOptionUsage, MissingParameter, command, echo
+from click import MissingParameter, command, echo
 from click.testing import CliRunner
 from firebolt.client import DEFAULT_API_URL
 from pyfakefs.fake_filesystem import FakeFilesystem
