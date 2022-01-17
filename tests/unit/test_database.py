@@ -1,21 +1,22 @@
+import json
 from unittest import mock
 
+import pytest
+from appdirs import user_config_dir
 from click.testing import CliRunner
 from firebolt.service.manager import ResourceManager
+from pyfakefs.fake_filesystem import FakeFilesystem
 from pytest_mock import MockerFixture
 
-from firebolt_cli.database import create
-from pyfakefs.fake_filesystem import FakeFilesystem
-from appdirs import user_config_dir
 from firebolt_cli.configure import configure
-import pytest
-import json
+from firebolt_cli.database import create
+
 
 @pytest.fixture(autouse=True)
-def configure_cli(fs : FakeFilesystem) -> None:
+def configure_cli(fs: FakeFilesystem) -> None:
     fs.create_dir(user_config_dir())
     runner = CliRunner()
-    result = runner.invoke(
+    runner.invoke(
         configure,
         [
             "--username",
@@ -33,7 +34,7 @@ def configure_cli(fs : FakeFilesystem) -> None:
     )
 
 
-def test_database_create(mocker: MockerFixture, fs : FakeFilesystem) -> None:
+def test_database_create(mocker: MockerFixture, fs: FakeFilesystem) -> None:
     rm = mocker.patch.object(ResourceManager, "__init__", return_value=None)
     databases_mock = mocker.patch.object(ResourceManager, "databases", create=True)
 
@@ -42,32 +43,38 @@ def test_database_create(mocker: MockerFixture, fs : FakeFilesystem) -> None:
         [
             "--name",
             "test_database",
-        ]
+        ],
     )
 
     rm.assert_called()
-    databases_mock.create.assert_called_once_with(name="test_database", description="", region=mock.ANY)
+    databases_mock.create.assert_called_once_with(
+        name="test_database", description="", region=mock.ANY
+    )
     assert result.exit_code == 0, "non-zero exit code"
+
 
 def test_database_create_wrong_name(mocker: MockerFixture) -> None:
     rm = mocker.patch.object(ResourceManager, "__init__", return_value=None)
     databases_mock = mocker.patch.object(ResourceManager, "databases", create=True)
-    databases_mock.create.side_effect = RuntimeError('database already exists')
+    databases_mock.create.side_effect = RuntimeError("database already exists")
 
     result = CliRunner(mix_stderr=False).invoke(
         create,
         [
             "--name",
             "test_database",
-        ]
+        ],
     )
 
     rm.assert_called()
-    databases_mock.create.assert_called_once_with(name="test_database", description="", region=mock.ANY)
+    databases_mock.create.assert_called_once_with(
+        name="test_database", description="", region=mock.ANY
+    )
 
     assert result.stdout == "", "something unexpected is printed"
     assert result.stderr != "", "the error message is not provided"
     assert result.exit_code != 0, "non-zero exit code"
+
 
 def test_database_create_json_output(mocker: MockerFixture) -> None:
     rm = mocker.patch.object(ResourceManager, "__init__", return_value=None)
@@ -87,11 +94,13 @@ def test_database_create_json_output(mocker: MockerFixture) -> None:
             "--description",
             database_mock.description,
             "--json",
-        ]
+        ],
     )
 
     rm.assert_called()
-    databases_mock.create.assert_called_once_with(name="test_database", description="test_description", region=mock.ANY)
+    databases_mock.create.assert_called_once_with(
+        name="test_database", description="test_description", region=mock.ANY
+    )
     assert result.exit_code == 0, "non-zero exit code"
 
     try:
