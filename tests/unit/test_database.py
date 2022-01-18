@@ -1,4 +1,5 @@
 import json
+from typing import Optional, Sequence
 from unittest import mock
 
 import pytest
@@ -9,7 +10,7 @@ from pyfakefs.fake_filesystem import FakeFilesystem
 from pytest_mock import MockerFixture
 
 from firebolt_cli.configure import configure
-from firebolt_cli.database import create
+from firebolt_cli.database import create, delete
 
 
 @pytest.fixture(autouse=True)
@@ -107,3 +108,76 @@ def test_database_create_json_output(mocker: MockerFixture) -> None:
         json.loads(result.stdout)
     except json.decoder.JSONDecodeError:
         assert False, "not a valid json was in the output"
+
+
+def database_delete_generic_workflow(
+    mocker: MockerFixture,
+    additional_parameters: Sequence[str],
+    input: Optional[str],
+    delete_should_be_called: bool,
+) -> None:
+
+    rm = mocker.patch.object(ResourceManager, "__init__", return_value=None)
+    databases_mock = mocker.patch.object(ResourceManager, "databases", create=True)
+
+    database_mock = mocker.MagicMock()
+    databases_mock.get_by_name.return_value = database_mock
+
+    result = CliRunner(mix_stderr=False).invoke(
+        delete,
+        [
+            "--name",
+            "to_delete_database_name",
+        ]
+        + additional_parameters,
+        input=input,
+    )
+
+    rm.assert_called_once()
+    databases_mock.get_by_name.assert_called_once_with(name="to_delete_database_name")
+    if delete_should_be_called:
+        database_mock.delete.assert_called_once_with()
+
+    assert result.exit_code == 0, "non-zero exit code"
+
+
+def test_database_delete(mocker: MockerFixture) -> None:
+    """
+    Happy path, deletion of existing database without confirmation prompt
+    """
+    database_delete_generic_workflow(
+        mocker,
+        additional_parameters=["--yes"],
+        input=None,
+        delete_should_be_called=True,
+    )
+
+
+def test_database_delete_prompt_yes(mocker: MockerFixture) -> None:
+    """
+    Happy path, deletion of existing database with confirmation prompt
+    """
+    database_delete_generic_workflow(
+        mocker, additional_parameters=[], input="yes", delete_should_be_called=True
+    )
+
+
+def test_database_delete_prompt_no(mocker: MockerFixture) -> None:
+    """
+    Happy path, deletion of existing database with confirmation prompt, and user rejects
+    """
+    database_delete_generic_workflow(
+        mocker, additional_parameters=[], input="no", delete_should_be_called=False
+    )
+
+
+def test_database_delete_not_found(mocker: MockerFixture) -> None:
+    """
+    Trying to delete the database, if the database is not found by name
+    """
+
+
+def test_database_delete_wrong_state(mocker: MockerFixture) -> None:
+    """
+    Trying to delete the database, if an attached engine is running
+    """
