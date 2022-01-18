@@ -80,15 +80,15 @@ def create(**raw_config_options: str) -> None:
 
 @command()
 @common_options
-@option("--name", help="Database name, that should be deleted", type=str, required=True)
+@option("--name", help="Database name, that should be dropped", type=str, required=True)
 @option(
     "--yes",
     help="Automatic yes on confirmation prompt",
     is_flag=True,
 )
-def delete(**raw_config_options: str) -> None:
+def drop(**raw_config_options: str) -> None:
     """
-    Delete an existing database
+    Drop an existing database
     """
     settings = Settings(
         server=raw_config_options["api_endpoint"],
@@ -102,18 +102,18 @@ def delete(**raw_config_options: str) -> None:
         database = rm.databases.get_by_name(name=raw_config_options["name"])
 
         if raw_config_options["yes"] or confirm(
-            "Do you really want to delete the database {name}?".format(
+            "Do you really want to drop the database {name}?".format(
                 name=raw_config_options["name"]
             )
         ):
             database.delete()
             echo(
-                "Deletion request for database {name} is successfully sent".format(
+                "Drop request for database {name} is successfully sent".format(
                     name=raw_config_options["name"]
                 )
             )
         else:
-            echo("Deletion request is aborted")
+            echo("Drop request is aborted")
 
     except FireboltError as err:
         echo(err, err=True)
@@ -124,4 +124,4 @@ def delete(**raw_config_options: str) -> None:
 
 
 database.add_command(create)
-database.add_command(delete)
+database.add_command(drop)
