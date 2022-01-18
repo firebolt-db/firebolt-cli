@@ -2,6 +2,7 @@ from click import group, version_option
 
 from firebolt_cli import __version__
 from firebolt_cli.configure import configure
+from firebolt_cli.engine import engine
 
 
 @group()
@@ -13,3 +14,4 @@ def main() -> None:
 
 
 main.add_command(configure)
+main.add_command(engine)
