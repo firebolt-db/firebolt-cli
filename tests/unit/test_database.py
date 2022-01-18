@@ -5,6 +5,7 @@ from unittest import mock
 import pytest
 from appdirs import user_config_dir
 from click.testing import CliRunner
+from firebolt.common.exception import AttachedEngineInUseError
 from firebolt.service.manager import ResourceManager
 from pyfakefs.fake_filesystem import FakeFilesystem
 from pytest_mock import MockerFixture
@@ -175,9 +176,46 @@ def test_database_delete_not_found(mocker: MockerFixture) -> None:
     """
     Trying to delete the database, if the database is not found by name
     """
+    rm = mocker.patch.object(ResourceManager, "__init__", return_value=None)
+    databases_mock = mocker.patch.object(ResourceManager, "databases", create=True)
+    databases_mock.get_by_name.side_effect = RuntimeError("database not found")
+
+    result = CliRunner(mix_stderr=False).invoke(
+        delete,
+        [
+            "--name",
+            "to_delete_database_name",
+        ],
+    )
+
+    rm.assert_called_once()
+    databases_mock.get_by_name.assert_called_once_with(name="to_delete_database_name")
+
+    assert result.stderr != "", "cli should fail with an error message in stderr"
+    assert result.exit_code != 0, "non-zero exit code"
 
 
 def test_database_delete_wrong_state(mocker: MockerFixture) -> None:
     """
     Trying to delete the database, if an attached engine is running
     """
+
+    rm = mocker.patch.object(ResourceManager, "__init__", return_value=None)
+    databases_mock = mocker.patch.object(ResourceManager, "databases", create=True)
+
+    database_mock = mocker.MagicMock()
+    databases_mock.get_by_name.return_value = database_mock
+    database_mock.delete.side_effect = AttachedEngineInUseError(
+        "database has a running engine"
+    )
+
+    result = CliRunner(mix_stderr=False).invoke(
+        delete, ["--name", "to_delete_database_name", "--yes"]
+    )
+
+    rm.assert_called_once()
+    databases_mock.get_by_name.assert_called_once_with(name="to_delete_database_name")
+    database_mock.delete.assert_called_once_with()
+
+    assert result.stderr != "", "cli should fail with an error message in stderr"
+    assert result.exit_code != 0, "non-zero exit code"
