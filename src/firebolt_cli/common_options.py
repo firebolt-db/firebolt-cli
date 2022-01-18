@@ -28,7 +28,7 @@ def read_config_key(key: str) -> Optional[str]:
         # return None if there is no config file
         if not path.exists(config_file):
             return None
-        _config = ConfigParser()
+        _config = ConfigParser(interpolation=None)
         _config.read(config_file)
 
     return _config.get(config_section, key, fallback=None)
@@ -110,8 +110,8 @@ _common_options: List[Callable] = [
         "--json",
         is_flag=True,
         help="Provide output in json format",
+        type=bool,
     ),
-    validate_json_option,
 ]
 
 

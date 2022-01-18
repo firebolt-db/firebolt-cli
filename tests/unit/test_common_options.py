@@ -6,7 +6,7 @@ from os import environ
 from typing import Callable, List, Optional, Tuple
 from unittest import mock
 
-from click import BadOptionUsage, MissingParameter, command, echo
+from click import MissingParameter, command, echo
 from click.testing import CliRunner
 from firebolt.client import DEFAULT_API_URL
 from pyfakefs.fake_filesystem import FakeFilesystem
@@ -22,7 +22,7 @@ from firebolt_cli.common_options import (
 def create_config_file(fs: FakeFilesystem, config: dict) -> None:
     # make sure config will be flushed not to be reused in other tests
     with mock.patch("firebolt_cli.common_options._config", None):
-        cp = ConfigParser()
+        cp = ConfigParser(interpolation=None)
         cp[config_section] = config
         content = StringIO()
         cp.write(content)
@@ -108,6 +108,7 @@ def test_password_priority(fs: FakeFilesystem):
     """username is processed correctly, in correct proirity from different sources"""
     opt = _common_options[1]  # password option
 
+    SPECIAL_CHARACTERS = " !\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~"
     # helper command, dumps all options it received
     @command()
     @opt
@@ -129,23 +130,25 @@ def test_password_priority(fs: FakeFilesystem):
         assert "password" in config, "missing password command option"
         assert config["password"] == expected_value, err_msg
 
-    with create_config_file(fs, {"password": "pw_file"}):
+    with create_config_file(fs, {"password": "pw_file" + SPECIAL_CHARACTERS}):
         runner = CliRunner()
 
-        with mock.patch.dict(environ, {"FIREBOLT_PASSWORD": "pw_env"}):
+        with mock.patch.dict(
+            environ, {"FIREBOLT_PASSWORD": "pw_env" + SPECIAL_CHARACTERS}
+        ):
             # username is provided as option, env variable and in config file,
             # option should be chosen
             validate_command(
                 (test, ["--password"]),
-                "pw_option",
-                "pw_option",
+                "pw_option" + SPECIAL_CHARACTERS,
+                "pw_option" + SPECIAL_CHARACTERS,
                 "invalid password from option",
             )
 
             validate_command(
                 (test, ["-p"]),
-                "pw_option",
-                "pw_option",
+                "pw_option" + SPECIAL_CHARACTERS,
+                "pw_option" + SPECIAL_CHARACTERS,
                 "invalid password from option",
             )
 
@@ -154,7 +157,7 @@ def test_password_priority(fs: FakeFilesystem):
             validate_command(
                 (test,),
                 None,
-                "pw_env",
+                "pw_env" + SPECIAL_CHARACTERS,
                 "invalid password from env",
             )
 
@@ -163,7 +166,7 @@ def test_password_priority(fs: FakeFilesystem):
         validate_command(
             (test,),
             None,
-            "pw_file",
+            "pw_file" + SPECIAL_CHARACTERS,
             "invalid password from file",
         )
 
@@ -243,12 +246,10 @@ def test_json_option():
     # helper command, dumps all options it received
     yes_opt = _common_options[4]
     json_opt = _common_options[5]
-    validate_opt = _common_options[6]
 
     @command()
     @yes_opt
     @json_opt
-    @validate_opt
     def test(**kwargs):
         echo(dumps(kwargs))
 
@@ -268,6 +269,6 @@ def test_json_option():
     assert config["json"] is True, "Invalid json option value"
 
     result = CliRunner().invoke(test, ["--json"])
-    print(result.stdout)
-    assert result.exit_code == BadOptionUsage.exit_code, "invalid exit code"
-    assert "--json should be used with -y" in result.stdout, "Invalid error message"
+    assert result.exit_code == 0, "non-zero exit code"
+    config = loads(result.stdout)
+    assert config["json"] is True, "Invalid json option value"
