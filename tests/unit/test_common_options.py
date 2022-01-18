@@ -6,7 +6,7 @@ from os import environ
 from typing import Callable, List, Optional, Tuple
 from unittest import mock
 
-from click import BadOptionUsage, MissingParameter, command, echo
+from click import MissingParameter, command, echo
 from click.testing import CliRunner
 from firebolt.client import DEFAULT_API_URL
 from pyfakefs.fake_filesystem import FakeFilesystem
@@ -246,12 +246,10 @@ def test_json_option():
     # helper command, dumps all options it received
     yes_opt = _common_options[4]
     json_opt = _common_options[5]
-    validate_opt = _common_options[6]
 
     @command()
     @yes_opt
     @json_opt
-    @validate_opt
     def test(**kwargs):
         echo(dumps(kwargs))
 
@@ -271,6 +269,6 @@ def test_json_option():
     assert config["json"] is True, "Invalid json option value"
 
     result = CliRunner().invoke(test, ["--json"])
-    print(result.stdout)
-    assert result.exit_code == BadOptionUsage.exit_code, "invalid exit code"
-    assert "--json should be used with -y" in result.stdout, "Invalid error message"
+    assert result.exit_code == 0, "non-zero exit code"
+    config = loads(result.stdout)
+    assert config["json"] is True, "Invalid json option value"
