@@ -7,7 +7,7 @@ from firebolt_cli.common_options import config_file, config_section
 
 
 def update_config_file(**kwargs: str) -> None:
-    config = ConfigParser()
+    config = ConfigParser(interpolation=None)
     if path.exists(config_file):
         config.read(config_file)
         message = "Updated existing config file"

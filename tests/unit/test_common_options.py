@@ -22,7 +22,7 @@ from firebolt_cli.common_options import (
 def create_config_file(fs: FakeFilesystem, config: dict) -> None:
     # make sure config will be flushed not to be reused in other tests
     with mock.patch("firebolt_cli.common_options._config", None):
-        cp = ConfigParser()
+        cp = ConfigParser(interpolation=None)
         cp[config_section] = config
         content = StringIO()
         cp.write(content)
@@ -108,6 +108,7 @@ def test_password_priority(fs: FakeFilesystem):
     """username is processed correctly, in correct proirity from different sources"""
     opt = _common_options[1]  # password option
 
+    SPECIAL_CHARACTERS = " !\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~"
     # helper command, dumps all options it received
     @command()
     @opt
@@ -129,23 +130,25 @@ def test_password_priority(fs: FakeFilesystem):
         assert "password" in config, "missing password command option"
         assert config["password"] == expected_value, err_msg
 
-    with create_config_file(fs, {"password": "pw_file"}):
+    with create_config_file(fs, {"password": "pw_file" + SPECIAL_CHARACTERS}):
         runner = CliRunner()
 
-        with mock.patch.dict(environ, {"FIREBOLT_PASSWORD": "pw_env"}):
+        with mock.patch.dict(
+            environ, {"FIREBOLT_PASSWORD": "pw_env" + SPECIAL_CHARACTERS}
+        ):
             # username is provided as option, env variable and in config file,
             # option should be chosen
             validate_command(
                 (test, ["--password"]),
-                "pw_option",
-                "pw_option",
+                "pw_option" + SPECIAL_CHARACTERS,
+                "pw_option" + SPECIAL_CHARACTERS,
                 "invalid password from option",
             )
 
             validate_command(
                 (test, ["-p"]),
-                "pw_option",
-                "pw_option",
+                "pw_option" + SPECIAL_CHARACTERS,
+                "pw_option" + SPECIAL_CHARACTERS,
                 "invalid password from option",
             )
 
@@ -154,7 +157,7 @@ def test_password_priority(fs: FakeFilesystem):
             validate_command(
                 (test,),
                 None,
-                "pw_env",
+                "pw_env" + SPECIAL_CHARACTERS,
                 "invalid password from env",
             )
 
@@ -163,7 +166,7 @@ def test_password_priority(fs: FakeFilesystem):
         validate_command(
             (test,),
             None,
-            "pw_file",
+            "pw_file" + SPECIAL_CHARACTERS,
             "invalid password from file",
         )
 
