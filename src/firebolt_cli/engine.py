@@ -67,7 +67,11 @@ def start(**raw_config_options: str) -> None:
             == EngineStatusSummary.ENGINE_STATUS_SUMMARY_STARTING
             and raw_config_options["nowait"]
         ):
-            echo("Engine {name} is successfully started".format(name=engine.name))
+            echo(
+                "Start request for engine {name} is successfully sent".format(
+                    name=engine.name
+                )
+            )
         elif (
             engine.current_status_summary
             == EngineStatusSummary.ENGINE_STATUS_SUMMARY_RUNNING
