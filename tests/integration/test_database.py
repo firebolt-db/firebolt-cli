@@ -5,7 +5,7 @@ from click.testing import CliRunner
 from firebolt_cli.main import main
 
 
-def test_database_create_drop(configure_cli):
+def test_database_create_drop(configure_cli, database_name: str):
     """
     1. Create the database with json output
     2. Check the output is correct
@@ -20,7 +20,7 @@ def test_database_create_drop(configure_cli):
             "database",
             "create",
             "--name",
-            "test_database",
+            database_name + "_create_test",
             "--description",
             "database_description",
             "--json",
@@ -32,18 +32,18 @@ def test_database_create_drop(configure_cli):
     output = json.loads(result.stdout)
     assert "name" in output
     assert "description" in output
-    assert output["name"] == "test_database"
+    assert output["name"] == database_name + "_create_test"
     assert output["description"] == "database_description"
 
     # Trying to create a database with the same name
     result = CliRunner(mix_stderr=False).invoke(
-        main, ["database", "create", "--name", "test_database", "--json"]
+        main, ["database", "create", "--name", database_name + "_create_test", "--json"]
     )
     assert result.exit_code != 0
 
     # Dropping the created database
     result = CliRunner(mix_stderr=False).invoke(
-        main, ["database", "drop", "--name", "test_database", "--yes"]
+        main, ["database", "drop", "--name", database_name + "_create_test", "--yes"]
     )
     assert result.exit_code == 0
 
