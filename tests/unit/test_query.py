@@ -64,18 +64,11 @@ def query_generic_test(
     check_output_callback: Callable[[str], None],
     expected_sql: str,
     input: Optional[str],
+    cursor_mock,
 ) -> None:
     """
     test sql execution, either sql read from input or from parameters
     """
-    connection_mock = unittest.mock.MagicMock()
-    cursor_mock = unittest.mock.MagicMock()
-
-    connect_function_mock = mocker.patch("firebolt_cli.query.connect")
-    connect_function_mock.return_value = connection_mock
-    connection_mock.__enter__.return_value = connection_mock
-
-    connection_mock.cursor.return_value = cursor_mock
     cursor_mock.fetchall.return_value = [
         ["test", "test1"],
         ["test2", "test3"],
@@ -100,17 +93,14 @@ def query_generic_test(
         input=input,
     )
 
-    connect_function_mock.assert_called_once()
-    connection_mock.cursor.assert_called_once_with()
     check_output_callback(result.stdout)
 
     cursor_mock.execute.assert_called_once_with(expected_sql)
-    connection_mock.__exit__.assert_called_once()
 
     assert result.exit_code == 0
 
 
-def test_query_csv_output(mocker: MockerFixture) -> None:
+def test_query_csv_output(mocker: MockerFixture, cursor_mock) -> None:
     """
     test sql execution with --csv parameter, and check the csv correctness
     """
@@ -127,10 +117,11 @@ def test_query_csv_output(mocker: MockerFixture) -> None:
         check_csv_correctness,
         expected_sql="query from input;",
         input="query from input;",
+        cursor_mock=cursor_mock,
     )
 
 
-def test_query_tabular_output(mocker: MockerFixture) -> None:
+def test_query_tabular_output(mocker: MockerFixture, cursor_mock) -> None:
     """
     test sql execution and check the tabular output correctness
     """
@@ -144,10 +135,11 @@ def test_query_tabular_output(mocker: MockerFixture) -> None:
         check_tabular_correctness,
         expected_sql="query from input;",
         input="query from input;",
+        cursor_mock=cursor_mock,
     )
 
 
-def test_query_file(mocker: MockerFixture, fs: FakeFilesystem) -> None:
+def test_query_file(mocker: MockerFixture, fs: FakeFilesystem, cursor_mock) -> None:
     """
     test querying from file (with multiple lines);
     """
@@ -159,6 +151,7 @@ def test_query_file(mocker: MockerFixture, fs: FakeFilesystem) -> None:
         lambda x: None,
         expected_sql="query from file\nsecond line",
         input=None,
+        cursor_mock=cursor_mock,
     )
 
 
@@ -188,15 +181,7 @@ def test_connection_error(mocker: MockerFixture) -> None:
     ), "the execution should fail, but cli returned success code"
 
 
-def test_sql_execution_error(mocker: MockerFixture) -> None:
-    connect_function_mock = mocker.patch("firebolt_cli.query.connect")
-
-    connection_mock = unittest.mock.MagicMock()
-    connect_function_mock.return_value = connection_mock
-
-    cursor_mock = unittest.mock.MagicMock()
-    connection_mock.cursor.return_value = cursor_mock
-    connection_mock.__enter__.return_value = connection_mock
+def test_sql_execution_error(mocker: MockerFixture, cursor_mock) -> None:
     cursor_mock.attach_mock(
         unittest.mock.Mock(side_effect=FireboltError("sql execution failed")), "execute"
     )
@@ -212,10 +197,7 @@ def test_sql_execution_error(mocker: MockerFixture) -> None:
         input="wrong sql;",
     )
 
-    connect_function_mock.assert_called_once()
     cursor_mock.execute.assert_called_once_with("wrong sql;")
-
-    connection_mock.__exit__.assert_called_once()
 
     assert result.stderr != "", "error message is missing"
     assert (

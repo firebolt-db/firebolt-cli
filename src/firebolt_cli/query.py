@@ -84,6 +84,10 @@ def query(**raw_config_options: str) -> None:
             cursor = connection.cursor()
 
             cursor.execute(sql_query)
+
+            if not cursor.description:
+                return
+
             data = cursor.fetchall()
 
             headers = [i.name for i in cursor.description]
