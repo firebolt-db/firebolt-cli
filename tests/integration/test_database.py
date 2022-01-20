@@ -5,7 +5,7 @@ from click.testing import CliRunner
 from firebolt_cli.main import main
 
 
-def test_database_create_drop():
+def test_database_create_drop(configure_cli):
     """
     1. Create the database with json output
     2. Check the output is correct
@@ -48,7 +48,7 @@ def test_database_create_drop():
     assert result.exit_code == 0
 
 
-def test_database_drop_non_existing():
+def test_database_drop_non_existing(configure_cli):
     """
     Trying to drop non-existing database
     """
