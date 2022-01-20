@@ -115,10 +115,7 @@ def drop(**raw_config_options: str) -> None:
         else:
             echo("Drop request is aborted")
 
-    except FireboltError as err:
-        echo(err, err=True)
-        sys.exit(os.EX_DATAERR)
-    except RuntimeError as err:
+    except (RuntimeError, FireboltError) as err:
         echo(err, err=True)
         sys.exit(os.EX_DATAERR)
 
