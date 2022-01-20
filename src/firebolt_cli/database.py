@@ -26,6 +26,7 @@ def database() -> None:
     type=str,
     default="",
 )
+@option("--json", help="Use json for output", default=False, is_flag=True)
 @option("--region", help="Region for the new database", default="us-east-1", type=str)
 def create(**raw_config_options: str) -> None:
     """
