@@ -52,7 +52,7 @@ def start_stop_generic(
         if action == "start":
             engine = engine.start(wait_for_startup=not raw_config_options["nowait"])
         elif action == "stop":
-            engine = engine.stop()
+            engine = engine.stop(wait_for_stop=not raw_config_options["nowait"])
         else:
             assert False, "not available action"
 
@@ -117,12 +117,17 @@ def start(**raw_config_options: str) -> None:
     type=str,
     required=True,
 )
+@option(
+    "--nowait",
+    help="If the flag is set, the command will finish"
+    " immediately after sending the start request",
+    is_flag=True,
+)
 def stop(**raw_config_options: str) -> None:
     """
     Stop an existing engine
     """
 
-    raw_config_options["nowait"] = None
     start_stop_generic(
         action="stop",
         accepted_initial_states={
