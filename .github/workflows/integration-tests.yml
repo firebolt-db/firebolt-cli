@@ -39,5 +39,6 @@ jobs:
           STOPPED_ENGINE_NAME: ${{ steps.setup.outputs.stopped_engine_name }}
           STOPPED_ENGINE_URL: ${{ steps.setup.outputs.stopped_engine_url }}
           API_ENDPOINT: "api.dev.firebolt.io"
+          ACCOUNT_NAME: "firebolt"
         run: |
-          pytest -o log_cli=true -o log_cli_level=INFO tests/integration
+          pytest -o log_cli=false -o log_cli_level=INFO tests/integration
