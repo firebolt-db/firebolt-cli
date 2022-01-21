@@ -3,6 +3,8 @@ from click import group, version_option
 from firebolt_cli import __version__
 from firebolt_cli.configure import configure
 from firebolt_cli.database import database
+from firebolt_cli.engine import engine
+from firebolt_cli.query import query
 
 
 @group()
@@ -14,4 +16,6 @@ def main() -> None:
 
 
 main.add_command(configure)
+main.add_command(engine)
+main.add_command(query)
 main.add_command(database)
