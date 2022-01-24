@@ -135,7 +135,7 @@ def databases_list_generic_workflow(
 
     output_validator(result.stdout)
     assert result.stderr == ""
-    assert result.exit_code == 0
+    assert result.exit_code == 0, "non-zero exit code"
 
 
 def test_databases_list_happy_path_json(mocker: MockerFixture) -> None:
