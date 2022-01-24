@@ -2,12 +2,11 @@ import os
 import sys
 
 from click import command, echo, group, option
-from firebolt.common import Settings
 from firebolt.common.exception import FireboltError
-from firebolt.service.manager import ResourceManager
 from firebolt.service.types import EngineStatusSummary
 
 from firebolt_cli.common_options import common_options
+from firebolt_cli.utils import construct_resource_manager
 
 
 @group()
@@ -35,15 +34,8 @@ def start(**raw_config_options: str) -> None:
     """
     Start an existing engine
     """
-    settings = Settings(
-        server=raw_config_options["api_endpoint"],
-        user=raw_config_options["username"],
-        password=raw_config_options["password"],
-        default_region="",
-    )
-
     try:
-        rm = ResourceManager(settings=settings)
+        rm = construct_resource_manager(**raw_config_options)
 
         engine = rm.engines.get_by_name(raw_config_options["name"])
         if engine.current_status_summary not in {

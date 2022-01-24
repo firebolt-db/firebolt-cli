@@ -1,6 +1,8 @@
 import json
 from typing import Sequence
 
+from firebolt.common import Settings
+from firebolt.service.manager import ResourceManager
 from tabulate import tabulate
 
 
@@ -38,3 +40,18 @@ def prepare_execution_result_table(
         return json.dumps([dict(zip(header, d)) for d in data], indent=4)
     else:
         return tabulate(data, headers=header, tablefmt="grid")
+
+
+def construct_resource_manager(**raw_config_options: str) -> ResourceManager:
+    """
+    Propagate raw_config_options to the settings and construct a resource manager
+    """
+
+    settings = Settings(
+        server=raw_config_options["api_endpoint"],
+        user=raw_config_options["username"],
+        password=raw_config_options["password"],
+        default_region=raw_config_options.get("region", ""),
+    )
+
+    return ResourceManager(settings)
