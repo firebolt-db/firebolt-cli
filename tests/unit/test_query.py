@@ -302,3 +302,24 @@ def test_interactive_raise_error(mocker: MockerFixture) -> None:
         enter_interactive_session(cursor_mock, False)
 
     cursor_mock.execute.assert_called_once_with("wrong sql")
+
+
+def test_interactive_multiline(mocker: MockerFixture) -> None:
+    """
+    Test interactive sql happy path,
+    multiple requests are passed one by one to the cursor
+    """
+    inp = create_pipe_input()
+    cursor_mock = unittest.mock.MagicMock()
+
+    inp.send_text("SELECT\n")
+    inp.send_text("col\n")
+    inp.send_text("FROM\n")
+    inp.send_text("table;\n")
+
+    os.close(inp._w)
+
+    with create_app_session(input=inp, output=DummyOutput()):
+        enter_interactive_session(cursor_mock, False)
+
+    cursor_mock.execute.assert_called_once_with("SELECT\ncol\nFROM\ntable")
