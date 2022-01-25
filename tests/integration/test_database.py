@@ -6,7 +6,7 @@ from click.testing import CliRunner
 from firebolt_cli.main import main
 
 
-def test_database_create_drop(configure_cli, database_name: str):
+def test_database_create_drop(configure_cli: None, database_name: str):
     """
     1. Create the database with json output
     2. Check the output is correct
@@ -49,7 +49,7 @@ def test_database_create_drop(configure_cli, database_name: str):
     assert result.exit_code == 0
 
 
-def test_database_drop_non_existing(configure_cli):
+def test_database_drop_non_existing(configure_cli: None):
     """
     Trying to drop non-existing database
     """
@@ -62,7 +62,7 @@ def test_database_drop_non_existing(configure_cli):
 
 
 @pytest.fixture()
-def test_database_list_setup(database_name):
+def test_database_list_setup(database_name: str) -> None:
     # Setup the test
     CliRunner(mix_stderr=False).invoke(
         main,
@@ -112,7 +112,9 @@ def test_database_list_setup(database_name):
     )
 
 
-def test_database_list(database_name: str, configure_cli, test_database_list_setup):
+def test_database_list(
+    database_name: str, configure_cli: None, test_database_list_setup: None
+):
     """
     Test database list command with:
         - name_contains: multiple match, exact match, and no match
