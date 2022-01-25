@@ -1,3 +1,4 @@
+import unittest.mock
 from unittest import mock
 
 import pytest
@@ -10,7 +11,7 @@ from pyfakefs.fake_filesystem import FakeFilesystem
 from pytest_mock import MockerFixture
 
 from firebolt_cli.configure import configure
-from firebolt_cli.engine import start
+from firebolt_cli.engine import create, start
 
 
 @pytest.fixture(autouse=True)
@@ -174,3 +175,147 @@ def test_engine_start_wrong_state(mocker: MockerFixture) -> None:
 
     assert result.stderr != "", "cli should fail, but stderr is empty"
     assert result.exit_code != 0, "cli was expected to fail, but it didn't"
+
+
+# Test plan
+# + Happy path engine creation minimal
+# Happy path engine creation all parameters json
+# Test invalid params for each parameter
+# + Test db doesn't exist
+# Test engine name is already taken
+# Test binding failed
+
+
+def test_engine_create_happy_path(mocker: MockerFixture) -> None:
+    """ """
+    rm = mocker.patch.object(ResourceManager, "__init__", return_value=None)
+    databases_mock = mocker.patch.object(ResourceManager, "databases", create=True)
+    engines_mock = mocker.patch.object(ResourceManager, "engines", create=True)
+    database_mock = unittest.mock.MagicMock()
+    databases_mock.get_by_name.return_value = database_mock
+
+    result = CliRunner(mix_stderr=False).invoke(
+        create,
+        [
+            "--name",
+            "engine_name",
+            "--database_name",
+            "database_name",
+            "--spec",
+            "C1",
+            "--region",
+            "us-east-1",
+        ],
+    )
+
+    rm.assert_called_once()
+    databases_mock.get_by_name.assert_called_once()
+    engines_mock.create.assert_called_once()
+
+    database_mock.attach_to_engine.assert_called_once()
+
+    assert result.stdout != "", ""
+    assert result.stderr == "", ""
+    assert result.exit_code == 0, ""
+
+
+def test_engine_create_database_not_found(mocker: MockerFixture) -> None:
+    """ """
+    rm = mocker.patch.object(ResourceManager, "__init__", return_value=None)
+    databases_mock = mocker.patch.object(ResourceManager, "databases", create=True)
+    engines_mock = mocker.patch.object(ResourceManager, "engines", create=True)
+
+    databases_mock.get_by_name.side_effect = FireboltError("database not found")
+
+    result = CliRunner(mix_stderr=False).invoke(
+        create,
+        [
+            "--name",
+            "engine_name",
+            "--database_name",
+            "database_name",
+            "--spec",
+            "C1",
+            "--region",
+            "us-east-1",
+        ],
+    )
+
+    rm.assert_called_once()
+    databases_mock.get_by_name.assert_called_once()
+    engines_mock.create.assert_not_called()
+
+    databases_mock.attach_to_engine.assert_not_called()
+
+    assert result.stderr != "", ""
+    assert result.exit_code != 0, ""
+
+
+def test_engine_create_name_taken(mocker: MockerFixture) -> None:
+    """ """
+    rm = mocker.patch.object(ResourceManager, "__init__", return_value=None)
+    databases_mock = mocker.patch.object(ResourceManager, "databases", create=True)
+    engines_mock = mocker.patch.object(ResourceManager, "engines", create=True)
+
+    engines_mock.create.side_effect = FireboltError("engine name already exists")
+
+    result = CliRunner(mix_stderr=False).invoke(
+        create,
+        [
+            "--name",
+            "engine_name",
+            "--database_name",
+            "database_name",
+            "--spec",
+            "C1",
+            "--region",
+            "us-east-1",
+        ],
+    )
+
+    rm.assert_called_once()
+    databases_mock.get_by_name.assert_called_once()
+    engines_mock.create.assert_called_once()
+
+    databases_mock.attach_to_engine.assert_not_called()
+
+    assert result.stderr != "", ""
+    assert result.exit_code != 0, ""
+
+
+def test_engine_create_binding_failed(mocker: MockerFixture) -> None:
+    """ """
+    rm = mocker.patch.object(ResourceManager, "__init__", return_value=None)
+    databases_mock = mocker.patch.object(ResourceManager, "databases", create=True)
+    engines_mock = mocker.patch.object(ResourceManager, "engines", create=True)
+
+    database_mock = unittest.mock.MagicMock()
+    databases_mock.get_by_name.return_value = database_mock
+    database_mock.attach_to_engine.side_effect = FireboltError("binding failed")
+
+    engine_mock = unittest.mock.MagicMock()
+    engines_mock.create.return_value = engine_mock
+
+    result = CliRunner(mix_stderr=False).invoke(
+        create,
+        [
+            "--name",
+            "engine_name",
+            "--database_name",
+            "database_name",
+            "--spec",
+            "C1",
+            "--region",
+            "us-east-1",
+        ],
+    )
+
+    rm.assert_called_once()
+    databases_mock.get_by_name.assert_called_once()
+    engines_mock.create.assert_called_once()
+
+    engine_mock.delete.assert_called_once()
+    databases_mock.attach_to_engine.assert_not_called()
+
+    assert result.stderr != "", ""
+    assert result.exit_code != 0, ""
