@@ -112,7 +112,7 @@ def engine_start_stop_generic(
             wait_for_startup=not nowait
         )
     if check_engine_stop_call:
-        engine_mock_before_call.stop.assert_called_once_with()
+        engine_mock_before_call.stop.assert_called_once_with(wait_for_stop=not nowait)
 
     return result
 
