@@ -112,7 +112,7 @@ def start(**raw_config_options: str) -> None:
 @option(
     "--nowait",
     help="If the flag is set, the command will finish"
-    " immediately after sending the start request",
+    " immediately after sending the stop request",
     is_flag=True,
 )
 def stop(**raw_config_options: str) -> None:
