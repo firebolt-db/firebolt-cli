@@ -8,7 +8,9 @@ from click import command, echo, option
 from firebolt.common.exception import FireboltError
 from firebolt.db import Cursor
 from firebolt.db.connection import connect
+from prompt_toolkit.lexers import PygmentsLexer
 from prompt_toolkit.shortcuts import PromptSession
+from pygments.lexers import PostgresLexer
 from tabulate import tabulate
 
 from firebolt_cli.common_options import (
@@ -65,6 +67,7 @@ def enter_interactive_session(cursor: Cursor, use_csv: bool) -> None:
     session: PromptSession = PromptSession(
         message="firebolt> ",
         prompt_continuation="     ...> ",
+        lexer=PygmentsLexer(PostgresLexer),
     )
 
     while 1:
