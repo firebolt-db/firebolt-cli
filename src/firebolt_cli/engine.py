@@ -62,7 +62,7 @@ def start_stop_generic(
                 )
             )
 
-    except FireboltError as err:
+    except (FireboltError, RuntimeError) as err:
         echo(err, err=True)
         sys.exit(os.EX_DATAERR)
 
