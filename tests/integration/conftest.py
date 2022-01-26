@@ -13,6 +13,8 @@ USER_NAME_ENV = "USER_NAME"
 PASSWORD_ENV = "PASSWORD"
 ACCOUNT_NAME_ENV = "ACCOUNT_NAME"
 API_ENDPOINT_ENV = "API_ENDPOINT"
+ENGINE_URL_ENV = "ENGINE_URL"
+ENGINE_NAME_ENV = "ENGINE_NAME"
 
 
 def must_env(var_name: str) -> str:
@@ -24,6 +26,16 @@ def must_env(var_name: str) -> str:
 @fixture(scope="session")
 def database_name() -> str:
     return must_env(DATABASE_NAME_ENV)
+
+
+@fixture(scope="session")
+def engine_name() -> str:
+    return must_env(ENGINE_NAME_ENV)
+
+
+@fixture(scope="session")
+def engine_url() -> str:
+    return must_env(ENGINE_URL_ENV)
 
 
 @fixture(scope="session")
@@ -54,8 +66,7 @@ def configure_cli(
     username: str,
     database_name: str,
 ) -> None:
-    runner = CliRunner()
-    runner.invoke(
+    CliRunner().invoke(
         configure,
         [
             "--username",
