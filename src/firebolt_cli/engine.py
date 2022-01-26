@@ -1,9 +1,13 @@
 import os
 import sys
 
-from click import Choice, command, echo, group, option
+from click import Choice, IntRange, command, echo, group, option
 from firebolt.common.exception import FireboltError
-from firebolt.service.types import EngineStatusSummary
+from firebolt.service.types import (
+    EngineStatusSummary,
+    EngineType,
+    WarmupMethod,
+)
 
 from firebolt_cli.common_options import common_options
 from firebolt_cli.utils import (
@@ -98,7 +102,7 @@ def start(**raw_config_options: str) -> None:
 )
 @option(
     "--spec",
-    help="Name of the engine, engine should be in stopped state",
+    help="Engine spec",
     type=Choice(
         ["C{}".format(i) for i in range(1, 8)]
         + ["S{}".format(i) for i in range(1, 7)]
@@ -107,6 +111,45 @@ def start(**raw_config_options: str) -> None:
         case_sensitive=False,
     ),
     required=True,
+)
+@option(
+    "--description",
+    help="Engine description",
+    type=str,
+    default="",
+    required=False,
+)
+@option(
+    "--type",
+    help="Engine type: rw for general purpose and ro for data analytics",
+    type=Choice(["ro", "rw"], case_sensitive=False),
+    default="ro",
+    required=False,
+)
+@option(
+    "--scale",
+    help="Engine scale",
+    type=IntRange(1, 128, clamp=False),
+    default=1,
+    required=False,
+    show_default=True,
+)
+@option(
+    "--auto_stop",
+    help="Stop engine automatically after specified time in minutes",
+    type=IntRange(1, 30 * 24 * 60, clamp=False),
+    default=20,
+    required=False,
+    show_default=True,
+)
+@option(
+    "--warmup",
+    help="Engine warmup method. "
+    "Minimal(min), Preload indexes(ind), Preload all data(all) ",
+    type=Choice(["min", "ind", "all"]),
+    default="ind",
+    required=False,
+    show_default=True,
 )
 @option("--region", required=True)
 @option(
@@ -118,6 +161,14 @@ def create(**raw_config_options: str) -> None:
     """
     Creates engine with the requested parameters
     """
+
+    ENGINE_TYPES = {"rw": EngineType.GENERAL_PURPOSE, "ro": EngineType.DATA_ANALYTICS}
+    WARMUP_METHODS = {
+        "min": WarmupMethod.MINIMAL,
+        "ind": WarmupMethod.PRELOAD_INDEXES,
+        "all": WarmupMethod.PRELOAD_ALL_DATA,
+    }
+
     rm = construct_resource_manager(**raw_config_options)
 
     try:
@@ -126,15 +177,21 @@ def create(**raw_config_options: str) -> None:
         engine = rm.engines.create(
             name=raw_config_options["name"],
             spec=raw_config_options["spec"],
-            region="us-east-1",
+            region=raw_config_options["region"],
+            engine_type=ENGINE_TYPES[raw_config_options["type"]],
+            scale=int(raw_config_options["scale"]),
+            auto_stop=int(raw_config_options["auto_stop"]),
+            warmup=WARMUP_METHODS[raw_config_options["warmup"]],
+            description=raw_config_options["description"],
         )
+
         try:
             database.attach_to_engine(engine, is_default_engine=True)
-        except FireboltError as err:
+        except (FireboltError, RuntimeError) as err:
             engine.delete()
             raise err
 
-    except FireboltError as err:
+    except (FireboltError, RuntimeError) as err:
         echo(err, err=True)
         sys.exit(os.EX_USAGE)
 
@@ -149,10 +206,23 @@ def create(**raw_config_options: str) -> None:
             data=[
                 engine.name,
                 engine.description,
+                engine.settings.is_read_only,
+                engine.settings.auto_stop_delay_duration,
+                engine.settings.preset,
+                engine.settings.warm_up,
                 str(engine.create_time),
                 database.name,
             ],
-            header=["name", "description", "create_time", "attached_to_database"],
+            header=[
+                "name",
+                "description",
+                "is_read_only",
+                "auto_stop",
+                "preset",
+                "warm_up",
+                "create_time",
+                "attached_to_database",
+            ],
             use_json=bool(raw_config_options["json"]),
         )
     )
