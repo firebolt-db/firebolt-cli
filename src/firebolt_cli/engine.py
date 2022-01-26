@@ -56,7 +56,11 @@ def start_stop_generic(
         elif engine.current_status_summary in accepted_final_states:
             echo(success_message.format(name=engine.name))
         else:
-            raise FireboltError(failure_message.format(name=engine.name))
+            raise FireboltError(
+                failure_message.format(
+                    name=engine.name, status=engine.current_status_summary
+                )
+            )
 
     except FireboltError as err:
         echo(err, err=True)
@@ -96,7 +100,7 @@ def start(**raw_config_options: str) -> None:
         " the current engine state is {state}",
         success_message="Engine {name} is successfully started",
         success_message_nowait="Start request for engine {name} is successfully sent",
-        failure_message="Engine {name} failed to start",
+        failure_message="Engine {name} failed to start. Engine status: {status}.",
         **raw_config_options
     )
 
@@ -135,7 +139,7 @@ def stop(**raw_config_options: str) -> None:
         " the current engine state is {state}",
         success_message="Engine {name} is successfully stopped",
         success_message_nowait="Stop request for engine {name} is successfully sent",
-        failure_message="Engine {name} failed to stop",
+        failure_message="Engine {name} failed to stop. Engine status: {status}.",
         **raw_config_options
     )
 
