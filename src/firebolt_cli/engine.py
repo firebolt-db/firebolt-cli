@@ -69,7 +69,7 @@ def start_stop_generic(
                 )
             )
 
-    except FireboltError as err:
+    except (FireboltError, RuntimeError) as err:
         echo(err, err=True)
         sys.exit(os.EX_DATAERR)
 
@@ -293,6 +293,30 @@ def create(**raw_config_options: str) -> None:
     )
 
 
+@command()
+@common_options
+@option(
+    "--name",
+    help="Name of the engine",
+    type=str,
+    required=True,
+)
+def status(**raw_config_options: str) -> None:
+    """
+    Check the engine status
+    """
+
+    rm = construct_resource_manager(**raw_config_options)
+    try:
+        engine = rm.engines.get_by_name(name=raw_config_options["name"])
+
+        echo(f"Engine {engine.name} current status is: {engine.current_status_summary}")
+    except (FireboltError, RuntimeError) as err:
+        echo(err, err=True)
+        sys.exit(os.EX_DATAERR)
+
+
 engine.add_command(start)
 engine.add_command(create)
 engine.add_command(stop)
+engine.add_command(status)
