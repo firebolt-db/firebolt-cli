@@ -148,15 +148,9 @@ def stop(**raw_config_options: str) -> None:
 @common_options
 @option(
     "--name",
-    help="Name of the engine, engine should be in running or starting state",
+    help="Name of the engine",
     type=str,
     required=True,
-)
-@option(
-    "--nowait",
-    help="If the flag is set, the command will finish"
-    " immediately after sending the stop request",
-    is_flag=True,
 )
 def status(**raw_config_options: str) -> None:
     """
