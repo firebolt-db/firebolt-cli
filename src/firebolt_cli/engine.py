@@ -1,7 +1,7 @@
 import os
 import sys
 
-from click import Choice, IntRange, command, echo, group, option
+from click import Choice, IntRange, command, confirm, echo, group, option
 from firebolt.common.exception import FireboltError
 from firebolt.service.types import (
     EngineStatusSummary,
@@ -316,7 +316,39 @@ def status(**raw_config_options: str) -> None:
         sys.exit(os.EX_DATAERR)
 
 
-engine.add_command(start)
+@command()
+@common_options
+@option("--name", help="Engine name, that should be deleted", type=str, required=True)
+@option(
+    "--yes",
+    help="Automatic yes on confirmation prompt",
+    is_flag=True,
+)
+def drop(**raw_config_options: str) -> None:
+    """
+    Drop an existing engine
+    """
+    try:
+        rm = construct_resource_manager(**raw_config_options)
+        engine = rm.engines.get_by_name(name=raw_config_options["name"])
+
+        if raw_config_options["yes"] or confirm(
+            "Do you really want to drop the engine {name}?".format(
+                name=raw_config_options["name"]
+            )
+        ):
+            engine.delete()
+            echo(f"Drop request for engine {engine.name} is successfully sent")
+        else:
+            echo("Drop request is aborted")
+
+    except (RuntimeError, FireboltError) as err:
+        echo(err, err=True)
+        sys.exit(os.EX_DATAERR)
+
+
 engine.add_command(create)
+engine.add_command(drop)
+engine.add_command(start)
 engine.add_command(stop)
 engine.add_command(status)

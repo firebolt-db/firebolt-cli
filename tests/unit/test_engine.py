@@ -1,5 +1,5 @@
 import unittest.mock
-from typing import Callable, Sequence
+from typing import Callable, Optional, Sequence
 from unittest import mock
 
 import pytest
@@ -16,7 +16,7 @@ from pyfakefs.fake_filesystem import FakeFilesystem
 from pytest_mock import MockerFixture
 
 from firebolt_cli.configure import configure
-from firebolt_cli.engine import create, start, status, stop
+from firebolt_cli.engine import create, drop, start, status, stop
 
 
 @pytest.fixture(autouse=True)
@@ -460,3 +460,84 @@ def test_engine_status(mocker: MockerFixture) -> None:
     assert "engine running" in result.stdout
     assert result.stderr == ""
     assert result.exit_code == 0
+
+
+def engine_drop_generic_workflow(
+    mocker: MockerFixture,
+    additional_parameters: Sequence[str],
+    input: Optional[str],
+    delete_should_be_called: bool,
+) -> None:
+
+    rm = mocker.patch.object(ResourceManager, "__init__", return_value=None)
+    engines_mock = mocker.patch.object(ResourceManager, "engines", create=True)
+
+    engine_mock = mocker.MagicMock()
+    engines_mock.get_by_name.return_value = engine_mock
+
+    result = CliRunner(mix_stderr=False).invoke(
+        drop,
+        [
+            "--name",
+            "to_drop_engine_name",
+        ]
+        + additional_parameters,
+        input=input,
+    )
+
+    rm.assert_called_once()
+    engines_mock.get_by_name.assert_called_once_with(name="to_drop_engine_name")
+    if delete_should_be_called:
+        engine_mock.delete.assert_called_once_with()
+
+    assert result.exit_code == 0, "non-zero exit code"
+
+
+def test_engine_drop(mocker: MockerFixture) -> None:
+    """
+    Happy path, deletion of existing engine without confirmation prompt
+    """
+    engine_drop_generic_workflow(
+        mocker,
+        additional_parameters=["--yes"],
+        input=None,
+        delete_should_be_called=True,
+    )
+
+
+def test_engine_drop_prompt_yes(mocker: MockerFixture) -> None:
+    """
+    Happy path, deletion of existing database with confirmation prompt
+    """
+    engine_drop_generic_workflow(
+        mocker, additional_parameters=[], input="yes", delete_should_be_called=True
+    )
+
+
+def test_engine_drop_prompt_no(mocker: MockerFixture) -> None:
+    """
+    Happy path, deletion of existing database with confirmation prompt, and user rejects
+    """
+    engine_drop_generic_workflow(
+        mocker, additional_parameters=[], input="no", delete_should_be_called=False
+    )
+
+
+def test_engine_drop_not_found(mocker: MockerFixture) -> None:
+    """
+    Trying to drop the database, if the database is not found by name
+    """
+    rm = mocker.patch.object(ResourceManager, "__init__", return_value=None)
+    engines_mock = mocker.patch.object(ResourceManager, "engines", create=True)
+
+    engines_mock.get_by_name.side_effect = RuntimeError("engine not found")
+
+    result = CliRunner(mix_stderr=False).invoke(
+        drop, "--name to_drop_engine_name".split()
+    )
+
+    rm.assert_called_once()
+    engines_mock.get_by_name.assert_called_once_with(name="to_drop_engine_name")
+
+    assert result.stderr != "", "cli should fail with an error message in stderr"
+    assert result.exit_code != 0, "non-zero exit code"
