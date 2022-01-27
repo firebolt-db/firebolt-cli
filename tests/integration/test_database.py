@@ -17,15 +17,8 @@ def test_database_create_drop(configure_cli: None, database_name: str):
     # Creating a test database
     result = CliRunner(mix_stderr=False).invoke(
         main,
-        [
-            "database",
-            "create",
-            "--name",
-            database_name + "_create_test",
-            "--description",
-            "database_description",
-            "--json",
-        ],
+        f"database create --name {database_name}_create_test "
+        f"--description database_description --json".split(),
     )
     assert result.exit_code == 0
 
@@ -38,13 +31,13 @@ def test_database_create_drop(configure_cli: None, database_name: str):
 
     # Trying to create a database with the same name
     result = CliRunner(mix_stderr=False).invoke(
-        main, ["database", "create", "--name", database_name + "_create_test", "--json"]
+        main, f"database create --name {database_name}_create_test --json".split()
     )
     assert result.exit_code != 0
 
     # Dropping the created database
     result = CliRunner(mix_stderr=False).invoke(
-        main, ["database", "drop", "--name", database_name + "_create_test", "--yes"]
+        main, f"database drop --name {database_name}_create_test --yes".split()
     )
     assert result.exit_code == 0
 
@@ -54,7 +47,7 @@ def test_database_drop_non_existing(configure_cli: None):
     Trying to drop non-existing database
     """
     result = CliRunner(mix_stderr=False).invoke(
-        main, ["database", "drop", "--name", "non_existing_test_database", "--yes"]
+        main, f"database drop --name non_existing_test_database --yes".split()
     )
 
     assert result.exit_code != 0, ""
@@ -66,24 +59,12 @@ def test_database_list_setup(database_name: str) -> None:
     # Setup the test
     CliRunner(mix_stderr=False).invoke(
         main,
-        [
-            "database",
-            "create",
-            "--name",
-            database_name + "_list_integration_test1",
-            "--json",
-        ],
+        f"database create --name {database_name}_list_integration_test1 --json".split(),
     )
 
     CliRunner(mix_stderr=False).invoke(
         main,
-        [
-            "database",
-            "create",
-            "--name",
-            database_name + "_list_integration_test2",
-            "--json",
-        ],
+        f"database create --name {database_name}_list_integration_test2 --json".split(),
     )
 
     yield
@@ -91,24 +72,12 @@ def test_database_list_setup(database_name: str) -> None:
     # Clean up the test
     CliRunner(mix_stderr=False).invoke(
         main,
-        [
-            "database",
-            "drop",
-            "--name",
-            database_name + "_list_integration_test1",
-            "--yes",
-        ],
+        f"database drop --name {database_name}_list_integration_test1 --yes".split(),
     )
 
     CliRunner(mix_stderr=False).invoke(
         main,
-        [
-            "database",
-            "drop",
-            "--name",
-            database_name + "_list_integration_test2",
-            "--yes",
-        ],
+        f"database drop --name {database_name}_list_integration_test2 --yes".split(),
     )
 
 
@@ -125,11 +94,11 @@ def test_database_list(
         return [item["name"] for item in json.loads(output)]
 
     # Test returning simply the list of databases
-    result = CliRunner(mix_stderr=False).invoke(main, ["database", "list"])
+    result = CliRunner(mix_stderr=False).invoke(main, "database list".split())
     assert result.exit_code == 0, ""
 
     # Test return the list of databases in json format
-    result = CliRunner(mix_stderr=False).invoke(main, ["database", "list", "--json"])
+    result = CliRunner(mix_stderr=False).invoke(main, "database list --json".split())
     assert result.exit_code == 0, ""
 
     output = set(json_to_name_list(result.stdout))
@@ -139,38 +108,23 @@ def test_database_list(
     # Test name contains
     result = CliRunner(mix_stderr=False).invoke(
         main,
-        [
-            "database",
-            "list",
-            "--json",
-            "--name-contains",
-            database_name + "_list_integration_test",
-        ],
+        f"database list --json "
+        f"--name-contains {database_name}_list_integration_test".split(),
     )
     assert len(json_to_name_list(result.stdout)) == 2
 
     # Test name contains exact name
     result = CliRunner(mix_stderr=False).invoke(
         main,
-        [
-            "database",
-            "list",
-            "--json",
-            "--name-contains",
-            database_name + "_list_integration_test1",
-        ],
+        f"database list --json "
+        f"--name-contains {database_name}_list_integration_test1".split(),
     )
     assert len(json_to_name_list(result.stdout)) == 1
 
     # Test name contains non existing
     result = CliRunner(mix_stderr=False).invoke(
         main,
-        [
-            "database",
-            "list",
-            "--json",
-            "--name-contains",
-            database_name + "_non_existing_database",
-        ],
+        f"database list --json "
+        f"--name-contains {database_name}_non_existing_database".split(),
     )
     assert len(json_to_name_list(result.stdout)) == 0
