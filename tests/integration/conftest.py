@@ -1,6 +1,7 @@
 from logging import getLogger
 from os import environ
 
+import pytest
 from click.testing import CliRunner
 from pytest import fixture
 
@@ -93,3 +94,8 @@ def configure_cli(
         ],
         input=password,
     )
+
+
+@pytest.fixture
+def cli_runner() -> CliRunner:
+    return CliRunner(mix_stderr=False)

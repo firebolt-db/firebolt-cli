@@ -25,7 +25,7 @@ def start_stop_generic(
     failure_message: str,
     success_message: str,
     success_message_nowait: str,
-    **raw_config_options: str
+    **raw_config_options: str,
 ) -> None:
 
     try:
@@ -101,7 +101,7 @@ def start(**raw_config_options: str) -> None:
         success_message="Engine {name} is successfully started",
         success_message_nowait="Start request for engine {name} is successfully sent",
         failure_message="Engine {name} failed to start. Engine status: {status}.",
-        **raw_config_options
+        **raw_config_options,
     )
 
 
@@ -140,9 +140,39 @@ def stop(**raw_config_options: str) -> None:
         success_message="Engine {name} is successfully stopped",
         success_message_nowait="Stop request for engine {name} is successfully sent",
         failure_message="Engine {name} failed to stop. Engine status: {status}.",
-        **raw_config_options
+        **raw_config_options,
     )
+
+
+@command()
+@common_options
+@option(
+    "--name",
+    help="Name of the engine, engine should be in running or starting state",
+    type=str,
+    required=True,
+)
+@option(
+    "--nowait",
+    help="If the flag is set, the command will finish"
+    " immediately after sending the stop request",
+    is_flag=True,
+)
+def status(**raw_config_options: str) -> None:
+    """
+    Check the engine status
+    """
+
+    rm = construct_resource_manager(**raw_config_options)
+    try:
+        engine = rm.engines.get_by_name(name=raw_config_options["name"])
+
+        echo(f"Engine {engine.name} current status is: {engine.current_status_summary}")
+    except (FireboltError, RuntimeError) as err:
+        echo(err, err=True)
+        sys.exit(os.EX_DATAERR)
 
 
 engine.add_command(start)
 engine.add_command(stop)
+engine.add_command(status)
