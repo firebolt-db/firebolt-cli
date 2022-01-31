@@ -3,43 +3,24 @@ from collections import namedtuple
 from typing import Callable, Optional, Sequence
 from unittest import mock
 
-import pytest
-from appdirs import user_config_dir
 from click.testing import CliRunner
 from firebolt.common.exception import AttachedEngineInUseError, FireboltError
 from firebolt.service.manager import ResourceManager
 from pyfakefs.fake_filesystem import FakeFilesystem
 from pytest_mock import MockerFixture
 
-from firebolt_cli.configure import configure
 from firebolt_cli.database import create, drop, list
 
 Database = namedtuple("Database", "name description")
 
 
-@pytest.fixture(autouse=True)
-def configure_cli(fs: FakeFilesystem) -> None:
-    fs.create_dir(user_config_dir())
-    runner = CliRunner()
-    runner.invoke(
-        configure,
-        [
-            "--username",
-            "username",
-            "--account-name",
-            "account_name",
-            "--database-name",
-            "database_name",
-            "--engine-name",
-            "engine_name",
-            "--api-endpoint",
-            "api_endpoint",
-        ],
-        input="password",
-    )
+def test_database_create(
+    mocker: MockerFixture,
+    fs: FakeFilesystem,
+    configure_cli: Callable,
+) -> None:
+    configure_cli()
 
-
-def test_database_create(mocker: MockerFixture, fs: FakeFilesystem) -> None:
     rm = mocker.patch.object(ResourceManager, "__init__", return_value=None)
     databases_mock = mocker.patch.object(ResourceManager, "databases", create=True)
 
@@ -58,7 +39,10 @@ def test_database_create(mocker: MockerFixture, fs: FakeFilesystem) -> None:
     assert result.exit_code == 0, "non-zero exit code"
 
 
-def test_database_create_wrong_name(mocker: MockerFixture) -> None:
+def test_database_create_wrong_name(
+    mocker: MockerFixture, configure_cli: Callable
+) -> None:
+    configure_cli()
     rm = mocker.patch.object(ResourceManager, "__init__", return_value=None)
     databases_mock = mocker.patch.object(ResourceManager, "databases", create=True)
     databases_mock.create.side_effect = RuntimeError("database already exists")
@@ -81,7 +65,10 @@ def test_database_create_wrong_name(mocker: MockerFixture) -> None:
     assert result.exit_code != 0, "non-zero exit code"
 
 
-def test_database_create_json_output(mocker: MockerFixture) -> None:
+def test_database_create_json_output(
+    mocker: MockerFixture, configure_cli: Callable
+) -> None:
+    configure_cli()
     rm = mocker.patch.object(ResourceManager, "__init__", return_value=None)
     databases_mock = mocker.patch.object(ResourceManager, "databases", create=True)
     database_mock = mocker.PropertyMock()
@@ -138,10 +125,13 @@ def databases_list_generic_workflow(
     assert result.exit_code == 0, "non-zero exit code"
 
 
-def test_databases_list_happy_path_json(mocker: MockerFixture) -> None:
+def test_databases_list_happy_path_json(
+    mocker: MockerFixture, configure_cli: Callable
+) -> None:
     """
     Test common workflow with some databases and json output
     """
+    configure_cli()
     databases = [Database("db_name1", ""), Database("db_name2", "")]
 
     def json_validator(output: str) -> None:
@@ -160,10 +150,13 @@ def test_databases_list_happy_path_json(mocker: MockerFixture) -> None:
     )
 
 
-def test_databases_list_happy_path_name_contains(mocker: MockerFixture) -> None:
+def test_databases_list_happy_path_name_contains(
+    mocker: MockerFixture, configure_cli: Callable
+) -> None:
     """
     Test common workflow with some databases and tabular output
     """
+    configure_cli()
     databases = [Database("db_name1", ""), Database("db_name2", "")]
 
     def tabular_validator(output: str) -> None:
@@ -180,10 +173,13 @@ def test_databases_list_happy_path_name_contains(mocker: MockerFixture) -> None:
     )
 
 
-def test_databases_list_happy_path_no_databases(mocker: MockerFixture) -> None:
+def test_databases_list_happy_path_no_databases(
+    mocker: MockerFixture, configure_cli: Callable
+) -> None:
     """
     Test common workflow without databases and json output
     """
+    configure_cli()
 
     def json_validator(output: str) -> None:
         assert len(json.loads(output)) == 0
@@ -197,10 +193,11 @@ def test_databases_list_happy_path_no_databases(mocker: MockerFixture) -> None:
     )
 
 
-def test_databases_list_failed(mocker: MockerFixture) -> None:
+def test_databases_list_failed(mocker: MockerFixture, configure_cli: Callable) -> None:
     """
     Test list databases when get_many fails
     """
+    configure_cli()
     mocker.patch.object(ResourceManager, "__init__", return_value=None)
     databases_mock = mocker.patch.object(ResourceManager, "databases", create=True)
 
@@ -244,10 +241,11 @@ def database_drop_generic_workflow(
     assert result.exit_code == 0, "non-zero exit code"
 
 
-def test_database_drop(mocker: MockerFixture) -> None:
+def test_database_drop(mocker: MockerFixture, configure_cli: Callable) -> None:
     """
     Happy path, deletion of existing database without confirmation prompt
     """
+    configure_cli()
     database_drop_generic_workflow(
         mocker,
         additional_parameters=["--yes"],
@@ -256,28 +254,37 @@ def test_database_drop(mocker: MockerFixture) -> None:
     )
 
 
-def test_database_drop_prompt_yes(mocker: MockerFixture) -> None:
+def test_database_drop_prompt_yes(
+    mocker: MockerFixture, configure_cli: Callable
+) -> None:
     """
     Happy path, deletion of existing database with confirmation prompt
     """
+    configure_cli()
     database_drop_generic_workflow(
         mocker, additional_parameters=[], input="yes", delete_should_be_called=True
     )
 
 
-def test_database_drop_prompt_no(mocker: MockerFixture) -> None:
+def test_database_drop_prompt_no(
+    mocker: MockerFixture, configure_cli: Callable
+) -> None:
     """
     Happy path, deletion of existing database with confirmation prompt, and user rejects
     """
+    configure_cli()
     database_drop_generic_workflow(
         mocker, additional_parameters=[], input="no", delete_should_be_called=False
     )
 
 
-def test_database_drop_not_found(mocker: MockerFixture) -> None:
+def test_database_drop_not_found(
+    mocker: MockerFixture, configure_cli: Callable
+) -> None:
     """
     Trying to drop the database, if the database is not found by name
     """
+    configure_cli()
     rm = mocker.patch.object(ResourceManager, "__init__", return_value=None)
     databases_mock = mocker.patch.object(ResourceManager, "databases", create=True)
     databases_mock.get_by_name.side_effect = RuntimeError("database not found")
@@ -297,10 +304,13 @@ def test_database_drop_not_found(mocker: MockerFixture) -> None:
     assert result.exit_code != 0, "non-zero exit code"
 
 
-def test_database_drop_wrong_state(mocker: MockerFixture) -> None:
+def test_database_drop_wrong_state(
+    mocker: MockerFixture, configure_cli: Callable
+) -> None:
     """
     Trying to drop the database, if an attached engine is running
     """
+    configure_cli()
 
     rm = mocker.patch.object(ResourceManager, "__init__", return_value=None)
     databases_mock = mocker.patch.object(ResourceManager, "databases", create=True)
