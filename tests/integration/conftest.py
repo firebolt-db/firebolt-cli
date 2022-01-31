@@ -1,6 +1,7 @@
 from logging import getLogger
 from os import environ
 
+import pytest
 from click.testing import CliRunner
 from pytest import fixture
 
@@ -15,6 +16,8 @@ ACCOUNT_NAME_ENV = "ACCOUNT_NAME"
 API_ENDPOINT_ENV = "API_ENDPOINT"
 ENGINE_URL_ENV = "ENGINE_URL"
 ENGINE_NAME_ENV = "ENGINE_NAME"
+STOPPED_ENGINE_URL_ENV = "STOPPED_ENGINE_URL"
+STOPPED_ENGINE_NAME_ENV = "STOPPED_ENGINE_NAME"
 
 
 def must_env(var_name: str) -> str:
@@ -24,8 +27,13 @@ def must_env(var_name: str) -> str:
 
 
 @fixture(scope="session")
-def database_name() -> str:
-    return must_env(DATABASE_NAME_ENV)
+def engine_url() -> str:
+    return must_env(ENGINE_URL_ENV)
+
+
+@fixture(scope="session")
+def stopped_engine_url() -> str:
+    return must_env(STOPPED_ENGINE_URL_ENV)
 
 
 @fixture(scope="session")
@@ -34,8 +42,13 @@ def engine_name() -> str:
 
 
 @fixture(scope="session")
-def engine_url() -> str:
-    return must_env(ENGINE_URL_ENV)
+def stopped_engine_name() -> str:
+    return must_env(STOPPED_ENGINE_NAME_ENV)
+
+
+@fixture(scope="session")
+def database_name() -> str:
+    return must_env(DATABASE_NAME_ENV)
 
 
 @fixture(scope="session")
@@ -80,3 +93,8 @@ def configure_cli(
         ],
         input=password,
     )
+
+
+@pytest.fixture
+def cli_runner() -> CliRunner:
+    return CliRunner(mix_stderr=False)
