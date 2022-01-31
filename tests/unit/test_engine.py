@@ -1,4 +1,5 @@
-from typing import Callable
+import unittest.mock
+from typing import Callable, Sequence
 from unittest import mock
 
 import pytest
@@ -6,12 +7,16 @@ from appdirs import user_config_dir
 from click.testing import CliRunner, Result
 from firebolt.common.exception import FireboltError
 from firebolt.service.manager import ResourceManager
-from firebolt.service.types import EngineStatusSummary
+from firebolt.service.types import (
+    EngineStatusSummary,
+    EngineType,
+    WarmupMethod,
+)
 from pyfakefs.fake_filesystem import FakeFilesystem
 from pytest_mock import MockerFixture
 
 from firebolt_cli.configure import configure
-from firebolt_cli.engine import start, status, stop
+from firebolt_cli.engine import create, start, status, stop
 
 
 @pytest.fixture(autouse=True)
@@ -252,3 +257,206 @@ def test_engine_status(mocker: MockerFixture) -> None:
     assert "engine running" in result.stdout
     assert result.stderr == ""
     assert result.exit_code == 0
+
+
+@pytest.fixture()
+def configure_resource_manager(mocker: MockerFixture) -> ResourceManager:
+    """
+    Configure resource manager mock
+    """
+    rm = mocker.patch.object(ResourceManager, "__init__", return_value=None)
+    databases_mock = mocker.patch.object(ResourceManager, "databases", create=True)
+    engines_mock = mocker.patch.object(ResourceManager, "engines", create=True)
+
+    database_mock = unittest.mock.MagicMock()
+    databases_mock.get_by_name.return_value = database_mock
+
+    engine_mock = unittest.mock.MagicMock()
+    engines_mock.create.return_value = engine_mock
+
+    yield rm, databases_mock, database_mock, engines_mock, engine_mock
+
+    rm.assert_called_once()
+
+
+def test_engine_create_happy_path(
+    mocker: MockerFixture, configure_resource_manager: Sequence
+) -> None:
+    """
+    Test engine create standard workflow
+    """
+    rm, databases_mock, database_mock, engines_mock, _ = configure_resource_manager
+
+    result = CliRunner(mix_stderr=False).invoke(
+        create,
+        [
+            "--name",
+            "engine_name",
+            "--database_name",
+            "database_name",
+            "--spec",
+            "C1",
+            "--region",
+            "us-east-1",
+        ],
+    )
+
+    databases_mock.get_by_name.assert_called_once()
+    engines_mock.create.assert_called_once()
+
+    database_mock.attach_to_engine.assert_called_once()
+
+    assert result.stdout != "", ""
+    assert result.stderr == "", ""
+    assert result.exit_code == 0, ""
+
+
+def test_engine_create_database_not_found(configure_resource_manager: Sequence) -> None:
+    """
+    Test creation of engine if the database it is attached to doesn't exist
+    """
+    rm, databases_mock, _, engines_mock, _ = configure_resource_manager
+
+    databases_mock.get_by_name.side_effect = FireboltError("database not found")
+
+    result = CliRunner(mix_stderr=False).invoke(
+        create,
+        [
+            "--name",
+            "engine_name",
+            "--database_name",
+            "database_name",
+            "--spec",
+            "C1",
+            "--region",
+            "us-east-1",
+        ],
+    )
+
+    databases_mock.get_by_name.assert_called_once()
+    engines_mock.create.assert_not_called()
+
+    databases_mock.attach_to_engine.assert_not_called()
+
+    assert result.stderr != "", ""
+    assert result.exit_code != 0, ""
+
+
+def test_engine_create_name_taken(configure_resource_manager: Sequence) -> None:
+    """
+    Test creation of engine if the engine name is already taken
+    """
+    rm, databases_mock, _, engines_mock, _ = configure_resource_manager
+    engines_mock.create.side_effect = FireboltError("engine name already exists")
+
+    result = CliRunner(mix_stderr=False).invoke(
+        create,
+        [
+            "--name",
+            "engine_name",
+            "--database_name",
+            "database_name",
+            "--spec",
+            "C1",
+            "--region",
+            "us-east-1",
+        ],
+    )
+
+    databases_mock.get_by_name.assert_called_once()
+    engines_mock.create.assert_called_once()
+
+    databases_mock.attach_to_engine.assert_not_called()
+
+    assert result.stderr != "", ""
+    assert result.exit_code != 0, ""
+
+
+def test_engine_create_binding_failed(configure_resource_manager: Sequence) -> None:
+    """
+    Test creation of engine if for some reason binding failed;
+    Check, that the database deletion was requested
+    """
+    (
+        rm,
+        databases_mock,
+        database_mock,
+        engines_mock,
+        engine_mock,
+    ) = configure_resource_manager
+
+    database_mock.attach_to_engine.side_effect = FireboltError("binding failed")
+
+    result = CliRunner(mix_stderr=False).invoke(
+        create,
+        [
+            "--name",
+            "engine_name",
+            "--database_name",
+            "database_name",
+            "--spec",
+            "C1",
+            "--region",
+            "us-east-1",
+        ],
+    )
+
+    databases_mock.get_by_name.assert_called_once()
+    engines_mock.create.assert_called_once()
+
+    engine_mock.delete.assert_called_once()
+    databases_mock.attach_to_engine.assert_not_called()
+
+    assert result.stderr != "", ""
+    assert result.exit_code != 0, ""
+
+
+def test_engine_create_happy_path_optional_parameters(
+    configure_resource_manager: Sequence,
+) -> None:
+    """
+    Test engine create standard workflow with all optional parameters
+    """
+    rm, databases_mock, database_mock, engines_mock, _ = configure_resource_manager
+
+    result = CliRunner(mix_stderr=False).invoke(
+        create,
+        [
+            "--name",
+            "engine_name",
+            "--database_name",
+            "database_name",
+            "--spec",
+            "C1",
+            "--region",
+            "us-east-2",
+            "--description",
+            "test_description",
+            "--type",
+            "rw",
+            "--scale",
+            "23",
+            "--auto_stop",
+            "893",
+            "--warmup",
+            "all",
+        ],
+    )
+
+    databases_mock.get_by_name.assert_called_once()
+    engines_mock.create.assert_called_once_with(
+        name="engine_name",
+        spec="C1",
+        region="us-east-2",
+        engine_type=EngineType.GENERAL_PURPOSE,
+        scale=23,
+        auto_stop=893,
+        warmup=WarmupMethod.PRELOAD_ALL_DATA,
+        description="test_description",
+    )
+
+    database_mock.attach_to_engine.assert_called_once()
+
+    assert result.stdout != "", ""
+    assert result.stderr == "", ""
+    assert result.exit_code == 0, ""
