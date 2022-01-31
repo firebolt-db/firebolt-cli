@@ -3,26 +3,25 @@ from collections import namedtuple
 from typing import Callable, Optional, Sequence
 from unittest import mock
 
+import pytest
 from click.testing import CliRunner
 from firebolt.common.exception import AttachedEngineInUseError, FireboltError
-from firebolt.service.manager import ResourceManager
 from pyfakefs.fake_filesystem import FakeFilesystem
-from pytest_mock import MockerFixture
 
 from firebolt_cli.database import create, drop, list
 
 Database = namedtuple("Database", "name description")
 
 
-def test_database_create(
-    mocker: MockerFixture,
-    fs: FakeFilesystem,
-    configure_cli: Callable,
-) -> None:
+@pytest.fixture(autouse=True)
+def configure_cli_autouse(configure_cli: Callable) -> None:
     configure_cli()
 
-    rm = mocker.patch.object(ResourceManager, "__init__", return_value=None)
-    databases_mock = mocker.patch.object(ResourceManager, "databases", create=True)
+
+def test_database_create(
+    fs: FakeFilesystem, configure_resource_manager: Sequence
+) -> None:
+    rm, databases_mock, _, _, _ = configure_resource_manager
 
     result = CliRunner().invoke(
         create,
@@ -32,19 +31,14 @@ def test_database_create(
         ],
     )
 
-    rm.assert_called()
     databases_mock.create.assert_called_once_with(
         name="test_database", description="", region=mock.ANY
     )
     assert result.exit_code == 0, "non-zero exit code"
 
 
-def test_database_create_wrong_name(
-    mocker: MockerFixture, configure_cli: Callable
-) -> None:
-    configure_cli()
-    rm = mocker.patch.object(ResourceManager, "__init__", return_value=None)
-    databases_mock = mocker.patch.object(ResourceManager, "databases", create=True)
+def test_database_create_wrong_name(configure_resource_manager: Sequence) -> None:
+    rm, databases_mock, _, _, _ = configure_resource_manager
     databases_mock.create.side_effect = RuntimeError("database already exists")
 
     result = CliRunner(mix_stderr=False).invoke(
@@ -55,7 +49,6 @@ def test_database_create_wrong_name(
         ],
     )
 
-    rm.assert_called()
     databases_mock.create.assert_called_once_with(
         name="test_database", description="", region=mock.ANY
     )
@@ -65,17 +58,12 @@ def test_database_create_wrong_name(
     assert result.exit_code != 0, "non-zero exit code"
 
 
-def test_database_create_json_output(
-    mocker: MockerFixture, configure_cli: Callable
-) -> None:
-    configure_cli()
-    rm = mocker.patch.object(ResourceManager, "__init__", return_value=None)
-    databases_mock = mocker.patch.object(ResourceManager, "databases", create=True)
-    database_mock = mocker.PropertyMock()
+def test_database_create_json_output(configure_resource_manager: Sequence) -> None:
+    rm, databases_mock, database_mock, _, _ = configure_resource_manager
+
     database_mock.name = "test_database"
     database_mock.description = "test_description"
     database_mock.create_time = "time"
-
     databases_mock.create.return_value = database_mock
 
     result = CliRunner(mix_stderr=False).invoke(
@@ -89,7 +77,6 @@ def test_database_create_json_output(
         ],
     )
 
-    rm.assert_called()
     databases_mock.create.assert_called_once_with(
         name="test_database", description="test_description", region=mock.ANY
     )
@@ -102,7 +89,7 @@ def test_database_create_json_output(
 
 
 def databases_list_generic_workflow(
-    mocker: MockerFixture,
+    configure_resource_manager: Sequence,
     additional_parameters: Sequence[str],
     return_databases: Sequence,
     name_contains: Optional[str],
@@ -112,8 +99,7 @@ def databases_list_generic_workflow(
     General workflow with different databases and parameters and
     custom callback function for checking the results
     """
-    mocker.patch.object(ResourceManager, "__init__", return_value=None)
-    databases_mock = mocker.patch.object(ResourceManager, "databases", create=True)
+    rm, databases_mock, _, _, _ = configure_resource_manager
 
     databases_mock.get_many.return_value = return_databases
 
@@ -126,12 +112,11 @@ def databases_list_generic_workflow(
 
 
 def test_databases_list_happy_path_json(
-    mocker: MockerFixture, configure_cli: Callable
+    configure_resource_manager: Sequence,
 ) -> None:
     """
     Test common workflow with some databases and json output
     """
-    configure_cli()
     databases = [Database("db_name1", ""), Database("db_name2", "")]
 
     def json_validator(output: str) -> None:
@@ -142,7 +127,7 @@ def test_databases_list_happy_path_json(
             assert False, "not a valid json was in the output"
 
     databases_list_generic_workflow(
-        mocker=mocker,
+        configure_resource_manager=configure_resource_manager,
         return_databases=databases,
         additional_parameters=["--json"],
         name_contains=None,
@@ -151,12 +136,11 @@ def test_databases_list_happy_path_json(
 
 
 def test_databases_list_happy_path_name_contains(
-    mocker: MockerFixture, configure_cli: Callable
+    configure_resource_manager: Sequence,
 ) -> None:
     """
     Test common workflow with some databases and tabular output
     """
-    configure_cli()
     databases = [Database("db_name1", ""), Database("db_name2", "")]
 
     def tabular_validator(output: str) -> None:
@@ -165,7 +149,7 @@ def test_databases_list_happy_path_name_contains(
         assert len(output) > 0
 
     databases_list_generic_workflow(
-        mocker=mocker,
+        configure_resource_manager=configure_resource_manager,
         return_databases=databases,
         additional_parameters=["--json"],
         name_contains=None,
@@ -174,18 +158,17 @@ def test_databases_list_happy_path_name_contains(
 
 
 def test_databases_list_happy_path_no_databases(
-    mocker: MockerFixture, configure_cli: Callable
+    configure_resource_manager: Sequence,
 ) -> None:
     """
     Test common workflow without databases and json output
     """
-    configure_cli()
 
     def json_validator(output: str) -> None:
         assert len(json.loads(output)) == 0
 
     databases_list_generic_workflow(
-        mocker=mocker,
+        configure_resource_manager=configure_resource_manager,
         return_databases=[],
         additional_parameters=["--json", "--name-contains", "advanced_filter"],
         name_contains="advanced_filter",
@@ -193,13 +176,11 @@ def test_databases_list_happy_path_no_databases(
     )
 
 
-def test_databases_list_failed(mocker: MockerFixture, configure_cli: Callable) -> None:
+def test_databases_list_failed(configure_resource_manager: Sequence) -> None:
     """
     Test list databases when get_many fails
     """
-    configure_cli()
-    mocker.patch.object(ResourceManager, "__init__", return_value=None)
-    databases_mock = mocker.patch.object(ResourceManager, "databases", create=True)
+    rm, databases_mock, database_mock, _, _ = configure_resource_manager
 
     databases_mock.get_many.side_effect = FireboltError("internal error")
 
@@ -211,17 +192,12 @@ def test_databases_list_failed(mocker: MockerFixture, configure_cli: Callable) -
 
 
 def database_drop_generic_workflow(
-    mocker: MockerFixture,
+    configure_resource_manager: Sequence,
     additional_parameters: Sequence[str],
     input: Optional[str],
     delete_should_be_called: bool,
 ) -> None:
-
-    rm = mocker.patch.object(ResourceManager, "__init__", return_value=None)
-    databases_mock = mocker.patch.object(ResourceManager, "databases", create=True)
-
-    database_mock = mocker.MagicMock()
-    databases_mock.get_by_name.return_value = database_mock
+    rm, databases_mock, database_mock, _, _ = configure_resource_manager
 
     result = CliRunner(mix_stderr=False).invoke(
         drop,
@@ -233,7 +209,6 @@ def database_drop_generic_workflow(
         input=input,
     )
 
-    rm.assert_called_once()
     databases_mock.get_by_name.assert_called_once_with(name="to_drop_database_name")
     if delete_should_be_called:
         database_mock.delete.assert_called_once_with()
@@ -241,52 +216,47 @@ def database_drop_generic_workflow(
     assert result.exit_code == 0, "non-zero exit code"
 
 
-def test_database_drop(mocker: MockerFixture, configure_cli: Callable) -> None:
+def test_database_drop(configure_resource_manager: Sequence) -> None:
     """
     Happy path, deletion of existing database without confirmation prompt
     """
-    configure_cli()
     database_drop_generic_workflow(
-        mocker,
+        configure_resource_manager,
         additional_parameters=["--yes"],
         input=None,
         delete_should_be_called=True,
     )
 
 
-def test_database_drop_prompt_yes(
-    mocker: MockerFixture, configure_cli: Callable
-) -> None:
+def test_database_drop_prompt_yes(configure_resource_manager: Sequence) -> None:
     """
     Happy path, deletion of existing database with confirmation prompt
     """
-    configure_cli()
     database_drop_generic_workflow(
-        mocker, additional_parameters=[], input="yes", delete_should_be_called=True
+        configure_resource_manager,
+        additional_parameters=[],
+        input="yes",
+        delete_should_be_called=True,
     )
 
 
-def test_database_drop_prompt_no(
-    mocker: MockerFixture, configure_cli: Callable
-) -> None:
+def test_database_drop_prompt_no(configure_resource_manager: Sequence) -> None:
     """
     Happy path, deletion of existing database with confirmation prompt, and user rejects
     """
-    configure_cli()
     database_drop_generic_workflow(
-        mocker, additional_parameters=[], input="no", delete_should_be_called=False
+        configure_resource_manager,
+        additional_parameters=[],
+        input="no",
+        delete_should_be_called=False,
     )
 
 
-def test_database_drop_not_found(
-    mocker: MockerFixture, configure_cli: Callable
-) -> None:
+def test_database_drop_not_found(configure_resource_manager: Sequence) -> None:
     """
     Trying to drop the database, if the database is not found by name
     """
-    configure_cli()
-    rm = mocker.patch.object(ResourceManager, "__init__", return_value=None)
-    databases_mock = mocker.patch.object(ResourceManager, "databases", create=True)
+    rm, databases_mock, database_mock, _, _ = configure_resource_manager
     databases_mock.get_by_name.side_effect = RuntimeError("database not found")
 
     result = CliRunner(mix_stderr=False).invoke(
@@ -297,26 +267,18 @@ def test_database_drop_not_found(
         ],
     )
 
-    rm.assert_called_once()
     databases_mock.get_by_name.assert_called_once_with(name="to_drop_database_name")
 
     assert result.stderr != "", "cli should fail with an error message in stderr"
     assert result.exit_code != 0, "non-zero exit code"
 
 
-def test_database_drop_wrong_state(
-    mocker: MockerFixture, configure_cli: Callable
-) -> None:
+def test_database_drop_wrong_state(configure_resource_manager: Sequence) -> None:
     """
     Trying to drop the database, if an attached engine is running
     """
-    configure_cli()
+    rm, databases_mock, database_mock, _, _ = configure_resource_manager
 
-    rm = mocker.patch.object(ResourceManager, "__init__", return_value=None)
-    databases_mock = mocker.patch.object(ResourceManager, "databases", create=True)
-
-    database_mock = mocker.MagicMock()
-    databases_mock.get_by_name.return_value = database_mock
     database_mock.delete.side_effect = AttachedEngineInUseError(
         "database has a running engine"
     )
@@ -325,7 +287,6 @@ def test_database_drop_wrong_state(
         drop, ["--name", "to_drop_database_name", "--yes"]
     )
 
-    rm.assert_called_once()
     databases_mock.get_by_name.assert_called_once_with(name="to_drop_database_name")
     database_mock.delete.assert_called_once_with()
 

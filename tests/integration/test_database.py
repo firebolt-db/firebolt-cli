@@ -17,7 +17,7 @@ def test_database_create_drop(configure_cli: None, database_name: str):
     # Creating a test database
     result = CliRunner(mix_stderr=False).invoke(
         main,
-        f"database create --name {database_name}_create_test "
+        f"database create --name {database_name}_create_test2 "
         f"--description database_description --json".split(),
     )
     assert result.exit_code == 0
@@ -26,18 +26,18 @@ def test_database_create_drop(configure_cli: None, database_name: str):
     output = json.loads(result.stdout)
     assert "name" in output
     assert "description" in output
-    assert output["name"] == database_name + "_create_test"
+    assert output["name"] == database_name + "_create_test2"
     assert output["description"] == "database_description"
 
     # Trying to create a database with the same name
     result = CliRunner(mix_stderr=False).invoke(
-        main, f"database create --name {database_name}_create_test --json".split()
+        main, f"database create --name {database_name}_create_test2 --json".split()
     )
     assert result.exit_code != 0
 
     # Dropping the created database
     result = CliRunner(mix_stderr=False).invoke(
-        main, f"database drop --name {database_name}_create_test --yes".split()
+        main, f"database drop --name {database_name}_create_test2 --yes".split()
     )
     assert result.exit_code == 0
 
