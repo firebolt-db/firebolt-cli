@@ -8,7 +8,7 @@ from click.testing import CliRunner
 from firebolt.common.exception import AttachedEngineInUseError, FireboltError
 from pyfakefs.fake_filesystem import FakeFilesystem
 
-from firebolt_cli.database import create, drop, list
+from firebolt_cli.database import create, describe, drop, list
 
 Database = namedtuple("Database", "name description")
 
@@ -64,7 +64,6 @@ def test_database_create_json_output(configure_resource_manager: Sequence) -> No
     database_mock.name = "test_database"
     database_mock.description = "test_description"
     database_mock.create_time = "time"
-    databases_mock.create.return_value = database_mock
 
     result = CliRunner(mix_stderr=False).invoke(
         create,
@@ -109,6 +108,23 @@ def databases_list_generic_workflow(
     output_validator(result.stdout)
     assert result.stderr == ""
     assert result.exit_code == 0, "non-zero exit code"
+
+
+def test_databases_list_happy_path(
+    configure_resource_manager: Sequence,
+) -> None:
+    """
+    Test common workflow with some databases and json output
+    """
+    databases = [Database("db_name1", ""), Database("db_name2", "")]
+
+    databases_list_generic_workflow(
+        configure_resource_manager=configure_resource_manager,
+        return_databases=databases,
+        additional_parameters=[],
+        name_contains=None,
+        output_validator=lambda x: len(x) > 0,
+    )
 
 
 def test_databases_list_happy_path_json(
@@ -292,3 +308,53 @@ def test_database_drop_wrong_state(configure_resource_manager: Sequence) -> None
 
     assert result.stderr != "", "cli should fail with an error message in stderr"
     assert result.exit_code != 0, "non-zero exit code"
+
+
+def test_database_describe_happy_path(configure_resource_manager: Sequence) -> None:
+    """ """
+    rm, databases_mock, database_mock, _, _ = configure_resource_manager
+    database_mock.data_size_full = 100
+
+    result = CliRunner(mix_stderr=False).invoke(
+        describe, ["--name", "to_describe_database"]
+    )
+
+    assert result.stderr == ""
+    assert result.exit_code == 0
+
+
+def test_database_describe_json(configure_resource_manager: Sequence) -> None:
+    """ """
+    rm, databases_mock, database_mock, _, _ = configure_resource_manager
+    database_mock.data_size_full = 2048
+    database_mock.name = "to_describe_database"
+    database_mock.description = "db description"
+
+    result = CliRunner(mix_stderr=False).invoke(
+        describe, ["--name", "to_describe_database", "--json"]
+    )
+    database_description = json.loads(result.stdout)
+    assert "name" in database_description
+    assert "description" in database_description
+    assert "data_size" in database_description
+    assert "attached_engine_names" in database_description
+
+    assert database_description["name"] == "to_describe_database"
+    assert database_description["description"] == "db description"
+    assert database_description["data_size"] == "2 KB"
+
+    assert result.stderr == ""
+    assert result.exit_code == 0
+
+
+def test_database_describe_not_found(configure_resource_manager: Sequence) -> None:
+    """ """
+    rm, databases_mock, database_mock, _, _ = configure_resource_manager
+    databases_mock.get_by_name.side_effect = FireboltError("db not found")
+
+    result = CliRunner(mix_stderr=False).invoke(
+        describe, ["--name", "to_describe_database"]
+    )
+
+    assert result.stderr != ""
+    assert result.exit_code != 0

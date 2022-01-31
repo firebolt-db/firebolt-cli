@@ -63,12 +63,16 @@ def configure_resource_manager(mocker: MockerFixture) -> ResourceManager:
     rm = mocker.patch.object(ResourceManager, "__init__", return_value=None)
     databases_mock = mocker.patch.object(ResourceManager, "databases", create=True)
     engines_mock = mocker.patch.object(ResourceManager, "engines", create=True)
+    mocker.patch.object(ResourceManager, "bindings", create=True)
+    mocker.patch.object(ResourceManager, "regions", create=True)
 
     database_mock = unittest.mock.MagicMock()
+    databases_mock.create.return_value = database_mock
     databases_mock.get_by_name.return_value = database_mock
 
     engine_mock = unittest.mock.MagicMock()
     engines_mock.create.return_value = engine_mock
+    engines_mock.get_by_name.return_value = engine_mock
 
     yield rm, databases_mock, database_mock, engines_mock, engine_mock
 
