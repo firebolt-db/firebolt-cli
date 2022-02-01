@@ -6,7 +6,9 @@ from typing import Optional
 import click
 from click import command, echo, option
 from firebolt.common.exception import FireboltError
+from firebolt.db import Cursor
 from firebolt.db.connection import connect
+from prompt_toolkit.shortcuts import PromptSession
 from tabulate import tabulate
 
 from firebolt_cli.common_options import (
@@ -36,6 +38,54 @@ def read_from_stdin_buffer() -> Optional[str]:
     return sys.stdin.buffer.read().decode("utf-8") or None
 
 
+def print_result_if_any(cursor: Cursor, use_csv: bool) -> None:
+    """
+    Fetch the data from cursor and print it in csv or tabular format
+    """
+    if not cursor.description:
+        return
+
+    data = cursor.fetchall()
+
+    headers = [i.name for i in cursor.description]
+    if use_csv:
+        writer = csv.writer(sys.stdout)
+        writer.writerow(headers)
+        writer.writerows(data)
+    else:
+        echo(tabulate(data, headers=headers, tablefmt="grid"))
+
+
+def enter_interactive_session(cursor: Cursor, use_csv: bool) -> None:
+    """
+    Enters an infinite loop of interactive shell
+    """
+    echo("Connection succeeded")
+
+    session: PromptSession = PromptSession(
+        message="firebolt> ",
+        prompt_continuation="     ...> ",
+    )
+
+    while 1:
+        try:
+            sql_query = session.prompt()
+            sql_query = sql_query.strip().rstrip(";")
+            if len(sql_query) == 0:
+                continue
+
+            cursor.execute(sql_query)
+            print_result_if_any(cursor, use_csv=use_csv)
+        except FireboltError as err:
+            echo(err)
+            continue
+        except KeyboardInterrupt:
+            continue
+        except EOFError:
+            echo("Bye!")
+            break
+
+
 @command()
 @common_options
 @option("--engine-name")
@@ -53,14 +103,6 @@ def query(**raw_config_options: str) -> None:
     """
     stdin_query = read_from_stdin_buffer()
     file_query = read_from_file(raw_config_options["file"])
-
-    if not (stdin_query or file_query):
-        echo(
-            "SQL Query should be provided either from file or from stdin;"
-            "The interactive SQL is not implemented yet",
-            err=True,
-        )
-        sys.exit(os.EX_SOFTWARE)
 
     if stdin_query and file_query:
         echo(
@@ -83,20 +125,13 @@ def query(**raw_config_options: str) -> None:
 
             cursor = connection.cursor()
 
-            cursor.execute(sql_query)
-
-            if not cursor.description:
-                return
-
-            data = cursor.fetchall()
-
-            headers = [i.name for i in cursor.description]
-            if raw_config_options["csv"]:
-                writer = csv.writer(sys.stdout)
-                writer.writerow(headers)
-                writer.writerows(data)
+            if sql_query:
+                # if query is available, then execute, print result and exit
+                cursor.execute(sql_query)
+                print_result_if_any(cursor, bool(raw_config_options["csv"]))
             else:
-                echo(tabulate(data, headers=headers, tablefmt="grid"))
+                # otherwise start the interactive session
+                enter_interactive_session(cursor, bool(raw_config_options["csv"]))
 
     except FireboltError as err:
         echo(err, err=True)

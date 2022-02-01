@@ -16,7 +16,7 @@ from pyfakefs.fake_filesystem import FakeFilesystem
 from pytest_mock import MockerFixture
 
 from firebolt_cli.configure import configure
-from firebolt_cli.engine import create, start, stop
+from firebolt_cli.engine import create, start, status, stop
 
 
 @pytest.fixture(autouse=True)
@@ -63,8 +63,7 @@ def test_engine_start_not_found(mocker: MockerFixture) -> None:
     engine_mock.get_by_name.side_effect = FireboltError("engine not found")
 
     result = CliRunner(mix_stderr=False).invoke(
-        start,
-        ["--name", "not_existing_engine"],
+        start, "--name not_existing_engine".split()
     )
 
     rm.assert_called_once()
@@ -436,3 +435,36 @@ def test_engine_create_happy_path_optional_parameters(
     assert result.stdout != "", ""
     assert result.stderr == "", ""
     assert result.exit_code == 0, ""
+
+
+def test_engine_status_not_found(mocker: MockerFixture) -> None:
+    rm = mocker.patch.object(ResourceManager, "__init__", return_value=None)
+    engines_mock = mocker.patch.object(ResourceManager, "engines", create=True)
+    engines_mock.get_by_name.side_effect = FireboltError("engine not found")
+
+    result = CliRunner(mix_stderr=False).invoke(
+        status, "--name non_existing_engine".split()
+    )
+
+    engines_mock.get_by_name.assert_called_once_with(name="non_existing_engine")
+    rm.assert_called_once()
+
+    assert result.stderr != ""
+    assert result.exit_code != 0
+
+
+def test_engine_status(mocker: MockerFixture) -> None:
+    rm = mocker.patch.object(ResourceManager, "__init__", return_value=None)
+    engines_mock = mocker.patch.object(ResourceManager, "engines", create=True)
+    engine_mock = mock.MagicMock()
+    engine_mock.current_status_summary = "engine running"
+    engines_mock.get_by_name.return_value = engine_mock
+
+    result = CliRunner(mix_stderr=False).invoke(status, "--name engine_name".split())
+
+    engines_mock.get_by_name.assert_called_once_with(name="engine_name")
+    rm.assert_called_once()
+
+    assert "engine running" in result.stdout
+    assert result.stderr == ""
+    assert result.exit_code == 0
