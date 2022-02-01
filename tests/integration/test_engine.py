@@ -1,3 +1,5 @@
+import json
+
 from click.testing import CliRunner
 
 from firebolt_cli.main import main
@@ -78,3 +80,30 @@ def test_engine_status(engine_name: str, stopped_engine_name: str) -> None:
     )
     assert result.exit_code != 0
     assert result.stderr != ""
+
+
+def test_engine_list(engine_name: str, stopped_engine_name: str) -> None:
+    """
+    Test engine list with and without filter
+    """
+
+    # Test without filter
+    result = CliRunner(mix_stderr=False).invoke(main, f"engine list --json".split())
+    assert result.exit_code == 0
+    assert result.stderr == ""
+
+    output = json.loads(result.stdout)
+    assert len(output) >= 2
+    assert engine_name in {engine["name"] for engine in output}
+    assert stopped_engine_name in {engine["name"] for engine in output}
+
+    # Test with filter
+    result = CliRunner(mix_stderr=False).invoke(
+        main, f"engine list --json --name-contains {stopped_engine_name}".split()
+    )
+    assert result.exit_code == 0
+    assert result.stderr == ""
+
+    output = json.loads(result.stdout)
+    assert len(output) >= 1
+    assert all([stopped_engine_name in engine["name"] for engine in output])
