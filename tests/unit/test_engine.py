@@ -1,3 +1,5 @@
+import json
+from collections import namedtuple
 from typing import Callable
 from unittest import mock
 
@@ -11,7 +13,7 @@ from pyfakefs.fake_filesystem import FakeFilesystem
 from pytest_mock import MockerFixture
 
 from firebolt_cli.configure import configure
-from firebolt_cli.engine import start, status, stop
+from firebolt_cli.engine import list, start, status, stop
 
 
 @pytest.fixture(autouse=True)
@@ -250,5 +252,47 @@ def test_engine_status(mocker: MockerFixture) -> None:
     rm.assert_called_once()
 
     assert "engine running" in result.stdout
+    assert result.stderr == ""
+    assert result.exit_code == 0
+
+
+def test_engine_list(mocker: MockerFixture) -> None:
+    """
+    test engine list happy path
+    """
+    rm = mocker.patch.object(ResourceManager, "__init__", return_value=None)
+    engines_mock = mocker.patch.object(ResourceManager, "engines", create=True)
+    regions_mock = mocker.patch.object(ResourceManager, "regions", create=True)
+
+    Region = namedtuple("Region", "name")
+    regions_mock.get_by_key.return_value = Region("")
+
+    engine_mock1 = mock.MagicMock()
+    engine_mock1.name = "engine_mock1"
+    engine_mock1.current_status_summary = (
+        EngineStatusSummary.ENGINE_STATUS_SUMMARY_RUNNING
+    )
+
+    engine_mock2 = mock.MagicMock()
+    engine_mock2.name = "engine_mock2"
+    engine_mock2.current_status_summary = (
+        EngineStatusSummary.ENGINE_STATUS_SUMMARY_STOPPED
+    )
+
+    engines_mock.get_many.return_value = [engine_mock1, engine_mock2]
+
+    result = CliRunner(mix_stderr=False).invoke(
+        list, "--name-contains engine_name --json".split()
+    )
+
+    output = json.loads(result.stdout)
+
+    assert len(output) == 2
+    assert output[0]["name"] == "engine_mock1"
+    assert output[1]["name"] == "engine_mock2"
+
+    rm.assert_called_once()
+    engines_mock.get_many.assert_called_once_with(name_contains="engine_name")
+
     assert result.stderr == ""
     assert result.exit_code == 0
