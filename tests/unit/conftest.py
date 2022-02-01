@@ -37,7 +37,7 @@ def configure_cli(fs: FakeFilesystem) -> None:
 
 
 @pytest.fixture()
-def cursor_mock(mocker: MockerFixture):
+def cursor_mock(mocker: MockerFixture) -> unittest.mock.Mock:
     connect_function_mock = mocker.patch("firebolt_cli.query.connect")
 
     connection_mock = unittest.mock.MagicMock()

@@ -2,13 +2,15 @@ import os
 import sys
 
 from click import command, confirm, echo, group, option
-from firebolt.common import Settings
 from firebolt.common.exception import FireboltError
-from firebolt.service.manager import ResourceManager
 from pydantic import ValidationError
 
 from firebolt_cli.common_options import common_options
-from firebolt_cli.utils import prepare_execution_result
+from firebolt_cli.utils import (
+    construct_resource_manager,
+    prepare_execution_result_line,
+    prepare_execution_result_table,
+)
 
 
 @group()
@@ -38,15 +40,9 @@ def create(**raw_config_options: str) -> None:
     """
     Create a new database
     """
-    settings = Settings(
-        server=raw_config_options["api_endpoint"],
-        user=raw_config_options["username"],
-        password=raw_config_options["password"],
-        default_region=raw_config_options["region"],
-    )
 
     try:
-        rm = ResourceManager(settings=settings)
+        rm = construct_resource_manager(**raw_config_options)
 
         database = rm.databases.create(
             name=raw_config_options["name"],
@@ -59,22 +55,51 @@ def create(**raw_config_options: str) -> None:
             err=True,
         )
         echo(
-            prepare_execution_result(
-                dict(
-                    {
-                        "name": database.name,
-                        "description": database.description,
-                        "create_time": str(database.create_time),
-                    }
-                ),
+            prepare_execution_result_line(
+                data=[database.name, database.description, str(database.create_time)],
+                header=["name", "description", "create_time"],
                 use_json=bool(raw_config_options["json"]),
             )
         )
 
-    except RuntimeError as err:
+    except (RuntimeError, ValidationError) as err:
         echo(err, err=True)
         sys.exit(os.EX_DATAERR)
-    except ValidationError as err:
+
+
+@command()
+@common_options
+@option(
+    "--name-contains",
+    help="Output databases will be filtered by name_contains",
+    default=None,
+    type=str,
+)
+@option("--json", help="Provide output in json format", is_flag=True)
+def list(**raw_config_options: str) -> None:
+    """
+    list existing databases
+    """
+    try:
+        rm = construct_resource_manager(**raw_config_options)
+
+        databases = rm.databases.get_many(
+            name_contains=raw_config_options["name_contains"]
+        )
+
+        if not raw_config_options["json"]:
+            echo("Found {num_databases} databases".format(num_databases=len(databases)))
+
+        if raw_config_options["json"] or databases:
+            echo(
+                prepare_execution_result_table(
+                    data=[[db.name, db.description] for db in databases],
+                    header=["name", "description"],
+                    use_json=bool(raw_config_options["json"]),
+                )
+            )
+
+    except (RuntimeError, FireboltError) as err:
         echo(err, err=True)
         sys.exit(os.EX_DATAERR)
 
@@ -91,15 +116,8 @@ def drop(**raw_config_options: str) -> None:
     """
     Drop an existing database
     """
-    settings = Settings(
-        server=raw_config_options["api_endpoint"],
-        user=raw_config_options["username"],
-        password=raw_config_options["password"],
-        default_region="",
-    )
-
     try:
-        rm = ResourceManager(settings=settings)
+        rm = construct_resource_manager(**raw_config_options)
         database = rm.databases.get_by_name(name=raw_config_options["name"])
 
         if raw_config_options["yes"] or confirm(
@@ -122,4 +140,5 @@ def drop(**raw_config_options: str) -> None:
 
 
 database.add_command(create)
+database.add_command(list)
 database.add_command(drop)
