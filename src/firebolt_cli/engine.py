@@ -15,6 +15,32 @@ from firebolt_cli.utils import (
     prepare_execution_result_line,
 )
 
+NEW_ENGINE_SPEC = {
+    "C": list(range(1, 8)),
+    "S": list(range(1, 7)),
+    "B": list(range(1, 8)),
+    "M": list(range(1, 8)),
+}
+
+OLD_ENGINE_SPEC = {
+    "c5d": ["large", "xlarge", "2xlarge", "4xlarge", "9xlarge", "12xlarge", "metal"],
+    "i3": ["large", "xlarge", "2xlarge", "4xlarge", "8xlarge", "metal"],
+    "r5d": ["large", "xlarge", "2xlarge", "4xlarge", "8xlarge", "12xlarge", "metal"],
+    "m5d": ["large", "xlarge", "2xlarge", "4xlarge", "8xlarge", "12xlarge", "metal"],
+}
+
+AVAILABLE_OLD_ENGINES = [
+    f"{engine_family}.{engine_type}"
+    for engine_family, engine_types in OLD_ENGINE_SPEC.items()
+    for engine_type in engine_types
+]
+
+AVAILABLE_NEW_ENGINES = [
+    f"{engine_family}{engine_type}"
+    for engine_family, engine_types in NEW_ENGINE_SPEC.items()
+    for engine_type in engine_types
+]
+
 
 @group()
 def engine() -> None:
@@ -169,10 +195,7 @@ def stop(**raw_config_options: str) -> None:
     "--spec",
     help="Engine spec",
     type=Choice(
-        ["C{}".format(i) for i in range(1, 8)]
-        + ["S{}".format(i) for i in range(1, 7)]
-        + ["B{}".format(i) for i in range(1, 8)]
-        + ["M{}".format(i) for i in range(1, 8)],
+        AVAILABLE_OLD_ENGINES + AVAILABLE_NEW_ENGINES,
         case_sensitive=False,
     ),
     required=True,
@@ -216,7 +239,7 @@ def stop(**raw_config_options: str) -> None:
     required=False,
     show_default=True,
 )
-@option("--region", required=True)
+@option("--region", help="Region, where the engine should be created", required=True)
 @option(
     "--json",
     is_flag=True,
@@ -237,7 +260,7 @@ def create(**raw_config_options: str) -> None:
     rm = construct_resource_manager(**raw_config_options)
 
     try:
-        database = rm.databases.get_by_name(raw_config_options["database_name"])
+        database = rm.databases.get_by_name(name=raw_config_options["database_name"])
 
         engine = rm.engines.create(
             name=raw_config_options["name"],
@@ -251,7 +274,7 @@ def create(**raw_config_options: str) -> None:
         )
 
         try:
-            database.attach_to_engine(engine, is_default_engine=True)
+            database.attach_to_engine(engine=engine, is_default_engine=True)
         except (FireboltError, RuntimeError) as err:
             engine.delete()
             raise err
