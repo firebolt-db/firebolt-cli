@@ -62,7 +62,11 @@ def print_result_if_any(cursor: Cursor, use_csv: bool) -> None:
 
 
 @Condition
-def is_end() -> bool:
+def is_multilne_needed() -> bool:
+    """
+    function reads the buffer of the interactive prompt
+    and return true if the continuation of the request is required
+    """
     buffer = get_app().layout.get_buffer_by_name(DEFAULT_BUFFER)
     if buffer is None:
         return True
@@ -81,7 +85,7 @@ def enter_interactive_session(cursor: Cursor, use_csv: bool) -> None:
         message="firebolt> ",
         prompt_continuation="     ...> ",
         lexer=PygmentsLexer(PostgresLexer),
-        multiline=is_end,
+        multiline=is_multilne_needed,
     )
 
     while 1:

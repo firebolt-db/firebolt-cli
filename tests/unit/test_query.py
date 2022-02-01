@@ -291,15 +291,16 @@ def test_interactive_multiple_requests(mocker: MockerFixture) -> None:
     assert cursor_mock.execute.call_count == 4
 
 
-def test_interactive_raise_error(mocker: MockerFixture) -> None:
+def test_interactive_raise_error(capsys, mocker: MockerFixture) -> None:
     """
     Test wrong sql, raise an error, but the execution continues
     """
     inp = create_pipe_input()
     cursor_mock = unittest.mock.MagicMock()
 
+    error_message = "sql execution failed"
     cursor_mock.attach_mock(
-        unittest.mock.Mock(side_effect=FireboltError("sql execution failed")), "execute"
+        unittest.mock.Mock(side_effect=FireboltError(error_message)), "execute"
     )
 
     inp.send_text("wrong sql;\n")
@@ -309,6 +310,8 @@ def test_interactive_raise_error(mocker: MockerFixture) -> None:
         enter_interactive_session(cursor_mock, False)
 
     cursor_mock.execute.assert_called_once_with("wrong sql")
+    captured = capsys.readouterr()
+    assert error_message in captured.out
 
 
 def test_interactive_multiline(mocker: MockerFixture) -> None:
@@ -327,6 +330,6 @@ def test_interactive_multiline(mocker: MockerFixture) -> None:
     os.close(inp._w)
 
     with create_app_session(input=inp, output=DummyOutput()):
-        enter_interactive_session(cursor_mock, False)
+        enter_interactive_session(cursor_mock, True)
 
     cursor_mock.execute.assert_called_once_with("SELECT\ncol\nFROM\ntable")
