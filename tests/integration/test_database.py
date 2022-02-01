@@ -161,3 +161,52 @@ def test_database_list(
         f"--name-contains {database_name}_non_existing_database".split(),
     )
     assert len(json_to_name_list(result.stdout)) == 0
+
+
+def test_database_update(database_name: str, configure_cli: None):
+    """
+    Test updating the database description and
+    then check the description with the describe command
+    """
+    new_database_description = f"{database_name} new database description for the test"
+    result = CliRunner(mix_stderr=False).invoke(
+        main,
+        [
+            "database",
+            "update",
+            "--name",
+            database_name,
+            "--description",
+            new_database_description,
+        ],
+    )
+    assert result.exit_code == 0
+    assert result.stderr == ""
+    assert result.stdout != ""
+
+    result = CliRunner(mix_stderr=False).invoke(
+        main,
+        f"database describe --name {database_name} --json".split(),
+    )
+
+    output = json.loads(result.stdout)
+    assert "name" in output
+    assert "description" in output
+    assert output["name"] == database_name
+    assert output["description"] == new_database_description
+
+    assert result.stderr == ""
+    assert result.exit_code == 0
+
+
+def test_database_update_not_exist(database_name: str, configure_cli: None):
+    """
+    Test database update of not existing database should fail
+    """
+    result = CliRunner(mix_stderr=False).invoke(
+        main,
+        f"database update --description new_description "
+        f"--name {database_name}_non_existing_database".split(),
+    )
+    assert result.stderr != ""
+    assert result.exit_code != 0
