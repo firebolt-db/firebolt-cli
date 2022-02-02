@@ -78,3 +78,34 @@ def test_engine_status(engine_name: str, stopped_engine_name: str) -> None:
     )
     assert result.exit_code != 0
     assert result.stderr != ""
+
+
+def test_engine_restart_stopped(
+    stopped_engine_name: str, cli_runner: CliRunner
+) -> None:
+    """
+    Test restart engine, which is stopped should fail
+    """
+    result = cli_runner.invoke(
+        main, f"engine restart --name {stopped_engine_name}".split()
+    )
+
+    assert result.stderr != ""
+    assert result.exit_code != 0
+
+
+def test_engine_restart_running(engine_name: str, cli_runner: CliRunner) -> None:
+    """
+    Test restart engine, which is running should fail
+    """
+    result = cli_runner.invoke(main, f"engine restart --name {engine_name}".split())
+
+    assert result.stderr != ""
+    assert result.exit_code != 0
+
+    # Check that engine actually running after restart
+    result = CliRunner(mix_stderr=False).invoke(
+        main, f"engine status --name {engine_name}".split()
+    )
+    assert result.exit_code == 0
+    assert "running" in result.stdout.lower()
