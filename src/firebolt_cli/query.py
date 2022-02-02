@@ -8,7 +8,12 @@ from click import command, echo, option
 from firebolt.common.exception import FireboltError
 from firebolt.db import Cursor
 from firebolt.db.connection import connect
+from prompt_toolkit.application import get_app
+from prompt_toolkit.enums import DEFAULT_BUFFER
+from prompt_toolkit.filters import Condition
+from prompt_toolkit.lexers import PygmentsLexer
 from prompt_toolkit.shortcuts import PromptSession
+from pygments.lexers import PostgresLexer
 from tabulate import tabulate
 
 from firebolt_cli.common_options import (
@@ -56,6 +61,20 @@ def print_result_if_any(cursor: Cursor, use_csv: bool) -> None:
         echo(tabulate(data, headers=headers, tablefmt="grid"))
 
 
+@Condition
+def is_multilne_needed() -> bool:
+    """
+    function reads the buffer of the interactive prompt
+    and return true if the continuation of the request is required
+    """
+    buffer = get_app().layout.get_buffer_by_name(DEFAULT_BUFFER)
+    if buffer is None:
+        return True
+
+    text = buffer.text.strip()
+    return len(text) != 0 and not text.endswith(";")
+
+
 def enter_interactive_session(cursor: Cursor, use_csv: bool) -> None:
     """
     Enters an infinite loop of interactive shell
@@ -65,6 +84,8 @@ def enter_interactive_session(cursor: Cursor, use_csv: bool) -> None:
     session: PromptSession = PromptSession(
         message="firebolt> ",
         prompt_continuation="     ...> ",
+        lexer=PygmentsLexer(PostgresLexer),
+        multiline=is_multilne_needed,
     )
 
     while 1:
