@@ -78,3 +78,35 @@ def test_engine_status(engine_name: str, stopped_engine_name: str) -> None:
     )
     assert result.exit_code != 0
     assert result.stderr != ""
+
+
+def test_engine_create_minimal(engine_name: str, database_name: str):
+    engine_name = f"{engine_name}_test_engine_create_minimal"
+
+    result = CliRunner(mix_stderr=False).invoke(
+        main,
+        f"engine create --name {engine_name} --database_name {database_name} "
+        f" --spec i3.large --region us-east-1".split(),
+    )
+    assert result.exit_code == 0
+
+    result = CliRunner(mix_stderr=False).invoke(
+        main, f"engine drop --name {engine_name} --yes".split()
+    )
+    assert result.exit_code == 0
+
+
+def test_engine_create_all_parameters():
+    pass
+
+
+def test_engine_create_existing():
+    pass
+
+
+def test_engine_drop_running():
+    pass
+
+
+def test_engine_drop_not_existing():
+    pass
