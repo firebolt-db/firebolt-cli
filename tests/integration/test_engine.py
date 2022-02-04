@@ -92,28 +92,36 @@ def test_engine_update_subset(database_name: str) -> None:
     )
     assert result.exit_code == 0
 
-    ParamValue = namedtuple("ParamValue", "set expected")
+    ParamValue = namedtuple("ParamValue", "set expected output_name")
     ENGINE_UPDATE_PARAMS = {
-        "type": ParamValue("ro", "ENGINE_SETTINGS_PRESET_DATA_ANALYTICS"),
-        "scale": ParamValue(23, 23),
-        "spec": ParamValue("i3.xlarge", "i3.xlarge"),
-        "auto-stop": ParamValue("1233", "20:33:00"),
-        "warmup": ParamValue("all", "ENGINE_SETTINGS_WARM_UP_ALL"),
-        "description": ParamValue("new engine description", "new engine description"),
+        "type": ParamValue("ro", "ENGINE_SETTINGS_PRESET_DATA_ANALYTICS", "preset"),
+        "scale": ParamValue(23, 23, "scale"),
+        "spec": ParamValue("i3.xlarge", "i3.xlarge", "instance_type"),
+        "auto-stop": ParamValue("1233", "20:33:00", "auto_stop"),
+        "warmup": ParamValue("all", "ENGINE_SETTINGS_WARM_UP_ALL", "warm_up"),
+        "description": ParamValue(
+            "new engine description", "new engine description", "description"
+        ),
     }
 
     for param, value in ENGINE_UPDATE_PARAMS.items():
 
         result = runner.invoke(
             main,
-            f"engine update --name {engine_name} --{param} {value.set} --json".split(),
+            [
+                "engine",
+                "update",
+                "--name",
+                engine_name,
+                f"--{param}",
+                f"'{value.set}'",
+                "--json",
+            ],
         )
         assert result.exit_code == 0
-        output_update = json.loads(result.stdout)
+        output = json.loads(result.stdout)
 
-        result = runner.invoke(main, f"engine status --name {engine_name} --json")
-        assert result.exit_code == 0
-        output_status = json.loads(result.stdout)
+        assert output[value.output_name] == value.expected
 
-        assert output_update == output_status, "output of update is different to status"
-        assert output_status[param] == value.expected
+    runner.invoke(f"engine drop {engine_name} --yes")
+    assert result.exit_code == 0

@@ -224,7 +224,7 @@ def engine_properties_options(create_mode: bool = True) -> Callable:
             show_default=True,
         )(command)
         command = option(
-            "--auto_stop",
+            "--auto-stop",
             help="Stop engine automatically after specified time in minutes",
             type=IntRange(1, 30 * 24 * 60, clamp=False),
             default=20 if create_mode else None,
