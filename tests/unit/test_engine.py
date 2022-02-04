@@ -384,7 +384,13 @@ def test_engine_create_happy_path_optional_parameters(
     """
     Test engine create standard workflow with all optional parameters
     """
-    rm, databases_mock, database_mock, engines_mock, _ = configure_resource_manager
+    (
+        rm,
+        databases_mock,
+        database_mock,
+        engines_mock,
+        engine_mock,
+    ) = configure_resource_manager
 
     result = CliRunner(mix_stderr=False).invoke(
         create,
@@ -410,7 +416,7 @@ def test_engine_create_happy_path_optional_parameters(
         ],
     )
 
-    databases_mock.get_by_name.assert_called_once()
+    databases_mock.get_by_name.assert_called_once_with(name="database_name")
     engines_mock.create.assert_called_once_with(
         name="engine_name",
         spec="C1",
@@ -422,7 +428,9 @@ def test_engine_create_happy_path_optional_parameters(
         description="test_description",
     )
 
-    database_mock.attach_to_engine.assert_called_once()
+    database_mock.attach_to_engine.assert_called_once_with(
+        engine=engine_mock, is_default_engine=True
+    )
 
     assert result.stdout != "", ""
     assert result.stderr == "", ""

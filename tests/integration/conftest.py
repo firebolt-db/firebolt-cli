@@ -79,8 +79,7 @@ def configure_cli(
     username: str,
     database_name: str,
 ) -> None:
-    runner = CliRunner()
-    runner.invoke(
+    CliRunner().invoke(
         configure,
         [
             "--username",
