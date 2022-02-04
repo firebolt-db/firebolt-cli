@@ -1,5 +1,5 @@
 import unittest.mock
-from typing import Callable, Sequence
+from typing import Callable, Optional, Sequence
 from unittest import mock
 
 import pytest
@@ -16,7 +16,7 @@ from pyfakefs.fake_filesystem import FakeFilesystem
 from pytest_mock import MockerFixture
 
 from firebolt_cli.configure import configure
-from firebolt_cli.engine import create, start, status, stop, update
+from firebolt_cli.engine import create, drop, start, status, stop, update
 
 
 @pytest.fixture(autouse=True)
@@ -249,9 +249,7 @@ def configure_resource_manager(mocker: MockerFixture) -> ResourceManager:
     rm.assert_called_once()
 
 
-def test_engine_create_happy_path(
-    mocker: MockerFixture, configure_resource_manager: Sequence
-) -> None:
+def test_engine_create_happy_path(configure_resource_manager: Sequence) -> None:
     """
     Test engine create standard workflow
     """
@@ -262,7 +260,7 @@ def test_engine_create_happy_path(
         [
             "--name",
             "engine_name",
-            "--database_name",
+            "--database-name",
             "database_name",
             "--spec",
             "C1",
@@ -294,7 +292,7 @@ def test_engine_create_database_not_found(configure_resource_manager: Sequence) 
         [
             "--name",
             "engine_name",
-            "--database_name",
+            "--database-name",
             "database_name",
             "--spec",
             "C1",
@@ -324,7 +322,7 @@ def test_engine_create_name_taken(configure_resource_manager: Sequence) -> None:
         [
             "--name",
             "engine_name",
-            "--database_name",
+            "--database-name",
             "database_name",
             "--spec",
             "C1",
@@ -362,7 +360,7 @@ def test_engine_create_binding_failed(configure_resource_manager: Sequence) -> N
         [
             "--name",
             "engine_name",
-            "--database_name",
+            "--database-name",
             "database_name",
             "--spec",
             "C1",
@@ -400,7 +398,7 @@ def test_engine_create_happy_path_optional_parameters(
         [
             "--name",
             "engine_name",
-            "--database_name",
+            "--database-name",
             "database_name",
             "--spec",
             "C1",
@@ -412,7 +410,7 @@ def test_engine_create_happy_path_optional_parameters(
             "rw",
             "--scale",
             "23",
-            "--auto_stop",
+            "--auto-stop",
             "893",
             "--warmup",
             "all",
@@ -514,7 +512,7 @@ def test_engine_update_all_parameters(
         configure_resource_manager,
         "--name engine_name --new_engine_name name_of_the_new_engine "
         "--spec C1 --description test_description "
-        "--type rw --scale 23 --auto_stop 893 --warmup all",
+        "--type rw --scale 23 --auto-stop 893 --warmup all",
     )
 
     engine_mock.update.assert_called_once_with(
@@ -563,7 +561,7 @@ def test_engine_update_subset_parameters2(
 
     engine_mock = generic_engine_update(
         configure_resource_manager,
-        "--name engine_name --spec i3.xlarge --type ro --auto_stop 8393",
+        "--name engine_name --spec i3.xlarge --type ro --auto-stop 8393",
     )
 
     engine_mock.update.assert_called_once_with(
@@ -615,3 +613,84 @@ def test_engine_no_parameters_passed() -> None:
     assert result.stdout == "", ""
     assert "Nothing to update" in result.stderr, ""
     assert result.exit_code != 0, ""
+
+
+def engine_drop_generic_workflow(
+    mocker: MockerFixture,
+    additional_parameters: Sequence[str],
+    input: Optional[str],
+    delete_should_be_called: bool,
+) -> None:
+
+    rm = mocker.patch.object(ResourceManager, "__init__", return_value=None)
+    engines_mock = mocker.patch.object(ResourceManager, "engines", create=True)
+
+    engine_mock = mocker.MagicMock()
+    engines_mock.get_by_name.return_value = engine_mock
+
+    result = CliRunner(mix_stderr=False).invoke(
+        drop,
+        [
+            "--name",
+            "to_drop_engine_name",
+        ]
+        + additional_parameters,
+        input=input,
+    )
+
+    rm.assert_called_once()
+    engines_mock.get_by_name.assert_called_once_with(name="to_drop_engine_name")
+    if delete_should_be_called:
+        engine_mock.delete.assert_called_once_with()
+
+    assert result.exit_code == 0, "non-zero exit code"
+
+
+def test_engine_drop(mocker: MockerFixture) -> None:
+    """
+    Happy path, deletion of existing engine without confirmation prompt
+    """
+    engine_drop_generic_workflow(
+        mocker,
+        additional_parameters=["--yes"],
+        input=None,
+        delete_should_be_called=True,
+    )
+
+
+def test_engine_drop_prompt_yes(mocker: MockerFixture) -> None:
+    """
+    Happy path, deletion of existing database with confirmation prompt
+    """
+    engine_drop_generic_workflow(
+        mocker, additional_parameters=[], input="yes", delete_should_be_called=True
+    )
+
+
+def test_engine_drop_prompt_no(mocker: MockerFixture) -> None:
+    """
+    Happy path, deletion of existing database with confirmation prompt, and user rejects
+    """
+    engine_drop_generic_workflow(
+        mocker, additional_parameters=[], input="no", delete_should_be_called=False
+    )
+
+
+def test_engine_drop_not_found(mocker: MockerFixture) -> None:
+    """
+    Trying to drop the database, if the database is not found by name
+    """
+    rm = mocker.patch.object(ResourceManager, "__init__", return_value=None)
+    engines_mock = mocker.patch.object(ResourceManager, "engines", create=True)
+
+    engines_mock.get_by_name.side_effect = RuntimeError("engine not found")
+
+    result = CliRunner(mix_stderr=False).invoke(
+        drop, "--name to_drop_engine_name".split()
+    )
+
+    rm.assert_called_once()
+    engines_mock.get_by_name.assert_called_once_with(name="to_drop_engine_name")
+
+    assert result.stderr != "", "cli should fail with an error message in stderr"
+    assert result.exit_code != 0, "non-zero exit code"

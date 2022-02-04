@@ -81,7 +81,10 @@ def test_engine_status(engine_name: str, stopped_engine_name: str) -> None:
     assert result.stderr != ""
 
 
-def test_engine_update_subset(database_name: str) -> None:
+def test_engine_update_single_parameter(database_name: str) -> None:
+    """
+    Test updating single parameter one by one
+    """
     runner = CliRunner(mix_stderr=False)
 
     engine_name = f"cli_integration_test_engine{int(time.time())}"
@@ -100,7 +103,7 @@ def test_engine_update_subset(database_name: str) -> None:
         "auto-stop": ParamValue("1233", "20:33:00", "auto_stop"),
         "warmup": ParamValue("all", "ENGINE_SETTINGS_WARM_UP_ALL", "warm_up"),
         "description": ParamValue(
-            "new engine description", "new engine description", "description"
+            "new_engine_description", "new_engine_description", "description"
         ),
     }
 
@@ -108,20 +111,12 @@ def test_engine_update_subset(database_name: str) -> None:
 
         result = runner.invoke(
             main,
-            [
-                "engine",
-                "update",
-                "--name",
-                engine_name,
-                f"--{param}",
-                f"'{value.set}'",
-                "--json",
-            ],
+            f"engine update --name {engine_name} --{param} {value.set} --json".split(),
         )
         assert result.exit_code == 0
         output = json.loads(result.stdout)
 
         assert output[value.output_name] == value.expected
 
-    runner.invoke(f"engine drop {engine_name} --yes")
+    runner.invoke(main, f"engine drop --name {engine_name} --yes")
     assert result.exit_code == 0
