@@ -8,7 +8,7 @@ from click.testing import CliRunner
 from firebolt.common.exception import AttachedEngineInUseError, FireboltError
 from pyfakefs.fake_filesystem import FakeFilesystem
 
-from firebolt_cli.database import create, describe, drop, list
+from firebolt_cli.database import create, describe, drop, list, update
 
 Database = namedtuple("Database", "name description")
 
@@ -356,5 +356,39 @@ def test_database_describe_not_found(configure_resource_manager: Sequence) -> No
         describe, ["--name", "to_describe_database"]
     )
 
+    assert result.stderr != ""
+    assert result.exit_code != 0
+
+
+def test_database_update_happy_path(configure_resource_manager: Sequence):
+    """
+    test database update command happy path
+    """
+    rm, databases_mock, database_mock, _, _ = configure_resource_manager
+    database_mock.name = "db_name"
+    database_mock.description = "old description"
+    database_mock.update.return_value = database_mock
+
+    result = CliRunner(mix_stderr=False).invoke(
+        update, ["--name", "db_name", "--description", "new description", "--json"]
+    )
+    database_description = json.loads(result.stdout)
+    assert database_description["name"] == "db_name"
+    assert database_description["description"] == "new description"
+
+    assert result.stderr == ""
+    assert result.exit_code == 0
+
+
+def test_database_update_not_found(configure_resource_manager: Sequence):
+    """
+    test database update command, if database doesn't exist
+    """
+    rm, databases_mock, database_mock, _, _ = configure_resource_manager
+    databases_mock.get_by_name.side_effect = FireboltError("db not found")
+
+    result = CliRunner(mix_stderr=False).invoke(
+        update, ["--name", "dn_name", "--description", "db_description"]
+    )
     assert result.stderr != ""
     assert result.exit_code != 0
