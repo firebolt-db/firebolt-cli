@@ -1,5 +1,5 @@
 import json
-from typing import Sequence
+from typing import Optional, Sequence
 
 from firebolt.common import Settings
 from firebolt.service.manager import ResourceManager
@@ -57,10 +57,15 @@ def construct_resource_manager(**raw_config_options: str) -> ResourceManager:
     return ResourceManager(settings)
 
 
-def convert_bytes(num: float) -> str:
+def convert_bytes(num: Optional[float]) -> str:
     """
     this function will convert bytes to KB, MB, GB, TB, PB, EB, ZB, YB
     """
+    if num is None:
+        return ""
+
+    if num < 0:
+        raise ValueError("Byte size cannot be negative")
 
     def format_output(bytes: float, dim: str) -> str:
         return "{} {}".format(f"{bytes:.2f}".rstrip("0").rstrip("."), dim)

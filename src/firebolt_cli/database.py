@@ -107,7 +107,7 @@ def create(**raw_config_options: str) -> None:
 @option("--json", help="Provide output in json format", is_flag=True)
 def list(**raw_config_options: str) -> None:
     """
-    list existing databases
+    List existing databases
     """
     try:
         rm = construct_resource_manager(**raw_config_options)

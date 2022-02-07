@@ -3,6 +3,7 @@ import json
 import pytest
 
 from firebolt_cli.utils import (
+    convert_bytes,
     prepare_execution_result_line,
     prepare_execution_result_table,
 )
@@ -62,3 +63,18 @@ def test_prepare_execution_wrong_header() -> None:
 
     with pytest.raises(ValueError):
         prepare_execution_result_line(data, wrong_headers, use_json=False)
+
+
+def test_convert_bytes() -> None:
+    assert "" == convert_bytes(None)
+
+    with pytest.raises(ValueError):
+        convert_bytes(-10.0)
+
+    assert "0 KB" == convert_bytes(0)
+    assert "1 KB" == convert_bytes(2 ** 10)
+    assert "1 MB" == convert_bytes(2 ** 20)
+    assert "1 GB" == convert_bytes(2 ** 30)
+    assert "1.2 GB" == convert_bytes(1.2 * 2 ** 30)
+    assert "9.99 GB" == convert_bytes(9.99 * 2 ** 30)
+    assert "19.99 EB" == convert_bytes(19.99 * 2 ** 60)
