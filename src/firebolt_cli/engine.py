@@ -16,6 +16,7 @@ from firebolt_cli.common_options import common_options
 from firebolt_cli.utils import (
     construct_resource_manager,
     prepare_execution_result_line,
+    prepare_execution_result_table,
 )
 
 NEW_ENGINE_SPEC = {
@@ -66,12 +67,19 @@ def start_stop_generic(
     try:
         rm = construct_resource_manager(**raw_config_options)
 
-        engine = rm.engines.get_by_name(raw_config_options["name"])
+        engine = rm.engines.get_by_name(name=raw_config_options["name"])
         if engine.current_status_summary not in accepted_initial_states:
+
+            current_status_name = (
+                engine.current_status_summary.name
+                if engine.current_status_summary
+                else ""
+            )
+
             raise FireboltError(
                 wrong_initial_state_error.format(
                     name=engine.name,
-                    state=engine.current_status_summary,
+                    state=current_status_name,
                 )
             )
 
@@ -79,6 +87,8 @@ def start_stop_generic(
             engine = engine.start(wait_for_startup=not raw_config_options["nowait"])
         elif action == "stop":
             engine = engine.stop(wait_for_stop=not raw_config_options["nowait"])
+        elif action == "restart":
+            engine = engine.restart(wait_for_startup=not raw_config_options["nowait"])
         else:
             assert False, "not available action"
 
@@ -90,10 +100,14 @@ def start_stop_generic(
         elif engine.current_status_summary in accepted_final_states:
             echo(success_message.format(name=engine.name))
         else:
+            current_status_name = (
+                engine.current_status_summary.name
+                if engine.current_status_summary
+                else EngineStatusSummary.ENGINE_STATUS_SUMMARY_UNSPECIFIED.name
+            )
+
             raise FireboltError(
-                failure_message.format(
-                    name=engine.name, status=engine.current_status_summary
-                )
+                failure_message.format(name=engine.name, status=current_status_name)
             )
 
     except (FireboltError, RuntimeError) as err:
@@ -114,6 +128,7 @@ def start_stop_generic(
     help="If the flag is set, the command will finish"
     " immediately after sending the start request",
     is_flag=True,
+    default=False,
 )
 def start(**raw_config_options: str) -> None:
     """
@@ -152,6 +167,7 @@ def start(**raw_config_options: str) -> None:
     help="If the flag is set, the command will finish"
     " immediately after sending the stop request",
     is_flag=True,
+    default=False,
 )
 def stop(**raw_config_options: str) -> None:
     """
@@ -306,7 +322,48 @@ WARMUP_METHODS = {
 
 @command()
 @common_options
+@option(
+    "--name",
+    help="Name of the engine, engine should be in running or failed state",
+    type=str,
+    required=True,
+)
+@option(
+    "--nowait",
+    help="If the flag is set, the command will finish"
+    " immediately after sending the restart request",
+    is_flag=True,
+    default=False,
+)
+def restart(**raw_config_options: str) -> None:
+    """
+    Restart an existing engine
+    """
+
+    start_stop_generic(
+        action="restart",
+        accepted_initial_states={
+            EngineStatusSummary.ENGINE_STATUS_SUMMARY_RUNNING,
+            EngineStatusSummary.ENGINE_STATUS_SUMMARY_FAILED,
+        },
+        accepted_final_states={EngineStatusSummary.ENGINE_STATUS_SUMMARY_RUNNING},
+        accepted_final_nowait_states={
+            EngineStatusSummary.ENGINE_STATUS_SUMMARY_STOPPING,
+            EngineStatusSummary.ENGINE_STATUS_SUMMARY_STARTING,
+        },
+        wrong_initial_state_error="Engine {name} is not in a running or failed state,"
+        " the current engine state is {state}",
+        success_message="Engine {name} is successfully restarted",
+        success_message_nowait="Restart request for engine {name} is successfully sent",
+        failure_message="Engine {name} failed to restart. Engine status: {status}.",
+        **raw_config_options,
+    )
+
+
+@command()
+@common_options
 @engine_properties_options(create_mode=True)
+@option("--name", help="Name of the engine", type=str, required=True)
 @option(
     "--database-name",
     help="Name of the database the engine should be attached to",
@@ -440,9 +497,53 @@ def status(**raw_config_options: str) -> None:
     rm = construct_resource_manager(**raw_config_options)
     try:
         engine = rm.engines.get_by_name(name=raw_config_options["name"])
-
-        echo(f"Engine {engine.name} current status is: {engine.current_status_summary}")
+        current_status_name = (
+            engine.current_status_summary.name if engine.current_status_summary else ""
+        )
+        echo(f"Engine {engine.name} current " f"status is: {current_status_name}")
     except (FireboltError, RuntimeError) as err:
+        echo(err, err=True)
+        sys.exit(os.EX_DATAERR)
+
+
+@command()
+@common_options
+@option(
+    "--name-contains",
+    help="Output engines will be filtered by name_contains",
+    default=None,
+    type=str,
+)
+@option("--json", help="Provide output in json format", is_flag=True)
+def list(**raw_config_options: str) -> None:
+    """
+    List existing engines
+    """
+
+    try:
+        rm = construct_resource_manager(**raw_config_options)
+
+        engines = rm.engines.get_many(name_contains=raw_config_options["name_contains"])
+
+        if not raw_config_options["json"]:
+            echo("Found {num_engines} engines".format(num_engines=len(engines)))
+
+        if raw_config_options["json"] or engines:
+            echo(
+                prepare_execution_result_table(
+                    data=[
+                        [
+                            engine.name,
+                            engine.current_status_summary.name,
+                            rm.regions.get_by_key(engine.compute_region_key).name,
+                        ]
+                        for engine in engines
+                    ],
+                    header=["name", "status", "region"],
+                    use_json=bool(raw_config_options["json"]),
+                )
+            )
+    except (RuntimeError, FireboltError) as err:
         echo(err, err=True)
         sys.exit(os.EX_DATAERR)
 
@@ -481,7 +582,9 @@ def drop(**raw_config_options: str) -> None:
 engine.add_command(create)
 engine.add_command(drop)
 engine.add_command(start)
+engine.add_command(restart)
 engine.add_command(stop)
 engine.add_command(status)
 engine.add_command(update)
 engine.add_command(start)
+engine.add_command(list)
