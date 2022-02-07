@@ -18,7 +18,15 @@ from pyfakefs.fake_filesystem import FakeFilesystem
 from pytest_mock import MockerFixture
 
 from firebolt_cli.configure import configure
-from firebolt_cli.engine import create, drop, list, start, status, stop
+from firebolt_cli.engine import (
+    create,
+    drop,
+    list,
+    restart,
+    start,
+    status,
+    stop,
+)
 
 
 @pytest.fixture(autouse=True)
@@ -69,7 +77,7 @@ def test_engine_start_not_found(mocker: MockerFixture) -> None:
     )
 
     rm.assert_called_once()
-    engine_mock.get_by_name.assert_called_once_with("not_existing_engine")
+    engine_mock.get_by_name.assert_called_once_with(name="not_existing_engine")
 
     assert result.stderr != "", "cli should fail, but stderr is empty"
     assert result.exit_code != 0, "cli was expected to fail, but it didn't"
@@ -82,6 +90,7 @@ def engine_start_stop_generic(
     state_after_call: EngineStatusSummary,
     nowait: bool,
     check_engine_start_call: bool = False,
+    check_engine_restart_call: bool = False,
     check_engine_stop_call: bool = False,
 ) -> Result:
     """
@@ -101,6 +110,7 @@ def engine_start_stop_generic(
         state_after_call  # EngineStatusSummary.ENGINE_STATUS_SUMMARY_FAILED
     )
     engine_mock_before_call.start.return_value = engine_mock_after_call
+    engine_mock_before_call.restart.return_value = engine_mock_after_call
     engine_mock_before_call.stop.return_value = engine_mock_after_call
 
     additional_parameters = ["--nowait"] if nowait else []
@@ -111,7 +121,7 @@ def engine_start_stop_generic(
     )
 
     rm.assert_called_once()
-    engines_mock.get_by_name.assert_called_once_with("broken_engine")
+    engines_mock.get_by_name.assert_called_once_with(name="broken_engine")
 
     if check_engine_start_call:
         engine_mock_before_call.start.assert_called_once_with(
@@ -119,6 +129,11 @@ def engine_start_stop_generic(
         )
     if check_engine_stop_call:
         engine_mock_before_call.stop.assert_called_once_with(wait_for_stop=not nowait)
+
+    if check_engine_restart_call:
+        engine_mock_before_call.restart.assert_called_once_with(
+            wait_for_startup=not nowait
+        )
 
     return result
 
@@ -459,7 +474,7 @@ def test_engine_status(mocker: MockerFixture) -> None:
     rm = mocker.patch.object(ResourceManager, "__init__", return_value=None)
     engines_mock = mocker.patch.object(ResourceManager, "engines", create=True)
     engine_mock = mock.MagicMock()
-    engine_mock.current_status_summary = "engine running"
+    engine_mock.current_status_summary.name = "engine running"
     engines_mock.get_by_name.return_value = engine_mock
 
     result = CliRunner(mix_stderr=False).invoke(status, "--name engine_name".split())
@@ -470,6 +485,58 @@ def test_engine_status(mocker: MockerFixture) -> None:
     assert "engine running" in result.stdout
     assert result.stderr == ""
     assert result.exit_code == 0
+
+
+def test_engine_restart(mocker: MockerFixture) -> None:
+    """
+    Test restart engine happy path
+    """
+    result = engine_start_stop_generic(
+        restart,
+        mocker,
+        state_before_call=EngineStatusSummary.ENGINE_STATUS_SUMMARY_FAILED,
+        state_after_call=EngineStatusSummary.ENGINE_STATUS_SUMMARY_RUNNING,
+        nowait=False,
+        check_engine_restart_call=True,
+    )
+
+    assert result.exit_code == 0, "cli was expected to execute correctly, but it failed"
+
+
+def test_engine_restart_failed(mocker: MockerFixture) -> None:
+    """
+    Test restart engine failed
+    """
+    result = engine_start_stop_generic(
+        restart,
+        mocker,
+        state_before_call=EngineStatusSummary.ENGINE_STATUS_SUMMARY_FAILED,
+        state_after_call=EngineStatusSummary.ENGINE_STATUS_SUMMARY_FAILED,
+        nowait=False,
+        check_engine_restart_call=True,
+    )
+
+    assert result.stderr != ""
+    assert result.exit_code != 0
+
+
+def test_engine_restart_not_exist(mocker: MockerFixture) -> None:
+    """
+    Test engine restart, if engine doesn't exist
+    """
+    rm = mocker.patch.object(ResourceManager, "__init__", return_value=None)
+    engines_mock = mocker.patch.object(ResourceManager, "engines", create=True)
+    engines_mock.get_by_name.side_effect = FireboltError("engine not found")
+
+    result = CliRunner(mix_stderr=False).invoke(
+        restart, "--name non_existing_engine".split()
+    )
+
+    engines_mock.get_by_name.assert_called_once_with(name="non_existing_engine")
+    rm.assert_called_once()
+
+    assert result.stderr != ""
+    assert result.exit_code != 0
 
 
 def test_engine_list(mocker: MockerFixture) -> None:
