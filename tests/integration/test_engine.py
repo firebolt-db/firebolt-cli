@@ -82,6 +82,58 @@ def test_engine_status(engine_name: str, stopped_engine_name: str) -> None:
     assert result.stderr != ""
 
 
+def test_engine_create_minimal(engine_name: str, database_name: str):
+    """
+    test engine create/drop with minimum amount of parameters
+    """
+    engine_name = f"{engine_name}_test_engine_create_minimal"
+
+    result = CliRunner(mix_stderr=False).invoke(
+        main,
+        f"engine create --json "
+        f"--name {engine_name} "
+        f"--database_name {database_name} "
+        f" --spec i3.large "
+        f"--region us-east-1".split(),
+    )
+    assert result.exit_code == 0
+    output = json.loads(result.stdout)
+    assert output["name"] == engine_name
+    assert output["attached_to_database"] == database_name
+
+    result = CliRunner(mix_stderr=False).invoke(
+        main, f"engine drop --name {engine_name} --yes".split()
+    )
+    assert result.exit_code == 0
+
+
+def test_engine_create_existing(engine_name: str, database_name: str):
+    """
+    Test engine create, if the name of engine is already taken
+    """
+    result = CliRunner(mix_stderr=False).invoke(
+        main,
+        f"engine create --json "
+        f"--name {engine_name} "
+        f"--database_name {database_name} "
+        f" --spec i3.large "
+        f"--region us-east-1".split(),
+    )
+    assert "not unique" in result.stderr
+    assert result.exit_code != 0
+
+
+def test_engine_drop_not_existing(engine_name: str):
+    """
+    engine drop non-existing engine should return an error
+    """
+    result = CliRunner(mix_stderr=False).invoke(
+        main, f"engine drop --name {engine_name}_not_existing_db --yes".split()
+    )
+    assert result.exit_code != 0
+    assert "not found" in result.stderr.lower()
+
+
 def test_engine_list(engine_name: str, stopped_engine_name: str) -> None:
     """
     Test engine list with and without filter
