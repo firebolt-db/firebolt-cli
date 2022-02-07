@@ -196,19 +196,18 @@ def stop(**raw_config_options: str) -> None:
 
 def engine_properties_options(create_mode: bool = True) -> Callable:
     """
+    decorator for engine create/update common options
 
-    :param required_minimum:
-    :return:
+    :param create_mode: True for create, will make some of the options required
     """
-
-    def _engine_properties_options_inner(command: Callable) -> Callable:
-        command = option(
+    _ENGINE_OPTIONS = [
+        option(
             "--name",
             help="Name of the engine",
             type=str,
             required=True,
-        )(command)
-        command = option(
+        ),
+        option(
             "--spec",
             help="Engine spec",
             type=Choice(
@@ -216,47 +215,51 @@ def engine_properties_options(create_mode: bool = True) -> Callable:
                 case_sensitive=False,
             ),
             required=create_mode,
-        )(command)
-        command = option(
+        ),
+        option(
             "--description",
             help="Engine description",
             type=str,
             default="" if create_mode else None,
             required=False,
-        )(command)
-        command = option(
+        ),
+        option(
             "--type",
             help="Engine type: rw for general purpose and ro for data analytics",
-            type=Choice(["ro", "rw"], case_sensitive=False),
+            type=Choice(ENGINE_TYPES.keys(), case_sensitive=False),
             default="ro" if create_mode else None,
             required=False,
-        )(command)
-        command = option(
+        ),
+        option(
             "--scale",
             help="Engine scale",
             type=IntRange(1, 128, clamp=False),
             default=1 if create_mode else None,
             required=False,
             show_default=True,
-        )(command)
-        command = option(
+        ),
+        option(
             "--auto-stop",
             help="Stop engine automatically after specified time in minutes",
             type=IntRange(1, 30 * 24 * 60, clamp=False),
             default=20 if create_mode else None,
             required=False,
             show_default=True,
-        )(command)
-        command = option(
+        ),
+        option(
             "--warmup",
             help="Engine warmup method. "
             "Minimal(min), Preload indexes(ind), Preload all data(all) ",
-            type=Choice(["min", "ind", "all"]),
+            type=Choice(WARMUP_METHODS.keys()),
             default="ind" if create_mode else None,
             required=False,
             show_default=True,
-        )(command)
+        ),
+    ]
 
+    def _engine_properties_options_inner(command: Callable) -> Callable:
+        for add_option in reversed(_ENGINE_OPTIONS):
+            command = add_option(command)
         return command
 
     return _engine_properties_options_inner
@@ -438,16 +441,17 @@ def update(**raw_config_options: str) -> None:
     """
     Update engine parameters, engine should be stopped before update
     """
-    something_to_update = False
-    for param in [
-        "spec",
-        "type",
-        "scale",
-        "auto_stop",
-        "warmup",
-        "description",
-    ]:
-        something_to_update |= raw_config_options[param] is not None
+    something_to_update = any(
+        raw_config_options[param] is not None
+        for param in [
+            "spec",
+            "type",
+            "scale",
+            "auto_stop",
+            "warmup",
+            "description",
+        ]
+    )
 
     if not something_to_update:
         echo("Nothing to update, at least one parameter should be provided", err=True)
