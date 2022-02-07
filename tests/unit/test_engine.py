@@ -1,23 +1,17 @@
 import json
-import unittest.mock
-from collections import namedtuple
 from typing import Callable, Optional, Sequence
 from unittest import mock
 
 import pytest
-from appdirs import user_config_dir
 from click.testing import CliRunner, Result
 from firebolt.common.exception import FireboltError
-from firebolt.service.manager import ResourceManager
 from firebolt.service.types import (
     EngineStatusSummary,
     EngineType,
     WarmupMethod,
 )
-from pyfakefs.fake_filesystem import FakeFilesystem
 from pytest_mock import MockerFixture
 
-from firebolt_cli.configure import configure
 from firebolt_cli.engine import (
     create,
     drop,
@@ -30,28 +24,11 @@ from firebolt_cli.engine import (
 
 
 @pytest.fixture(autouse=True)
-def configure_cli(fs: FakeFilesystem) -> None:
-    fs.create_dir(user_config_dir())
-    runner = CliRunner()
-    runner.invoke(
-        configure,
-        [
-            "--username",
-            "username",
-            "--account-name",
-            "account_name",
-            "--database-name",
-            "database_name",
-            "--engine-name",
-            "engine_name",
-            "--api-endpoint",
-            "api_endpoint",
-        ],
-        input="password",
-    )
+def configure_cli_autouse(configure_cli: Callable) -> None:
+    configure_cli()
 
 
-def test_engine_start_missing_name(mocker: MockerFixture) -> None:
+def test_engine_start_missing_name() -> None:
     """
     Name is not provided the engine start command
     """
@@ -64,20 +41,19 @@ def test_engine_start_missing_name(mocker: MockerFixture) -> None:
     assert result.exit_code != 0, "cli was expected to fail, but it didn't"
 
 
-def test_engine_start_not_found(mocker: MockerFixture) -> None:
+def test_engine_start_not_found(configure_resource_manager: Sequence) -> None:
     """
     Name of a non-existing engine is provided to the start engine command
     """
-    rm = mocker.patch.object(ResourceManager, "__init__", return_value=None)
-    engine_mock = mocker.patch.object(ResourceManager, "engines", create=True)
-    engine_mock.get_by_name.side_effect = FireboltError("engine not found")
+    rm, _, _, engines_mock, _ = configure_resource_manager
+
+    engines_mock.get_by_name.side_effect = FireboltError("engine not found")
 
     result = CliRunner(mix_stderr=False).invoke(
         start, "--name not_existing_engine".split()
     )
 
-    rm.assert_called_once()
-    engine_mock.get_by_name.assert_called_once_with(name="not_existing_engine")
+    engines_mock.get_by_name.assert_called_once_with(name="not_existing_engine")
 
     assert result.stderr != "", "cli should fail, but stderr is empty"
     assert result.exit_code != 0, "cli was expected to fail, but it didn't"
@@ -85,7 +61,7 @@ def test_engine_start_not_found(mocker: MockerFixture) -> None:
 
 def engine_start_stop_generic(
     command: Callable,
-    mocker: MockerFixture,
+    configure_resource_manager: Sequence,
     state_before_call: EngineStatusSummary,
     state_after_call: EngineStatusSummary,
     nowait: bool,
@@ -96,49 +72,42 @@ def engine_start_stop_generic(
     """
     generic start/stop engine procedure check
     """
-    rm = mocker.patch.object(ResourceManager, "__init__", return_value=None)
-    engines_mock = mocker.patch.object(ResourceManager, "engines", create=True)
+    rm, _, _, engines_mock, engine_mock = configure_resource_manager
 
-    engine_mock_before_call = mock.MagicMock()
-    engine_mock_before_call.current_status_summary = (
-        state_before_call  # EngineStatusSummary.ENGINE_STATUS_SUMMARY_STOPPED
-    )
-    engines_mock.get_by_name.return_value = engine_mock_before_call
+    engines_mock.get_by_name.return_value = engine_mock
+    engine_mock.current_status_summary = state_before_call
 
     engine_mock_after_call = mock.MagicMock()
-    engine_mock_after_call.current_status_summary = (
-        state_after_call  # EngineStatusSummary.ENGINE_STATUS_SUMMARY_FAILED
-    )
-    engine_mock_before_call.start.return_value = engine_mock_after_call
-    engine_mock_before_call.restart.return_value = engine_mock_after_call
-    engine_mock_before_call.stop.return_value = engine_mock_after_call
+
+    engine_mock_after_call.current_status_summary = state_after_call
+
+    engine_mock.restart.return_value = engine_mock_after_call
+    engine_mock.start.return_value = engine_mock_after_call
+    engine_mock.stop.return_value = engine_mock_after_call
 
     additional_parameters = ["--nowait"] if nowait else []
 
     result = CliRunner(mix_stderr=False).invoke(
         command,
-        ["--name", "broken_engine"] + additional_parameters,
+        ["--name", "engine_name"] + additional_parameters,
     )
 
-    rm.assert_called_once()
-    engines_mock.get_by_name.assert_called_once_with(name="broken_engine")
+    engines_mock.get_by_name.assert_called_once_with(name="engine_name")
 
     if check_engine_start_call:
-        engine_mock_before_call.start.assert_called_once_with(
-            wait_for_startup=not nowait
-        )
+        engine_mock.start.assert_called_once_with(wait_for_startup=not nowait)
     if check_engine_stop_call:
-        engine_mock_before_call.stop.assert_called_once_with(wait_for_stop=not nowait)
+        engine_mock.stop.assert_called_once_with(wait_for_stop=not nowait)
+    if check_engine_restart_call:
+        engine_mock.restart.assert_called_once_with(wait_for_startup=not nowait)
 
     if check_engine_restart_call:
-        engine_mock_before_call.restart.assert_called_once_with(
-            wait_for_startup=not nowait
-        )
+        engine_mock.restart.assert_called_once_with(wait_for_startup=not nowait)
 
     return result
 
 
-def test_engine_start_failed(mocker: MockerFixture) -> None:
+def test_engine_start_failed(configure_resource_manager: Sequence) -> None:
     """
     Engine was in stopped state before starting,
     but didn't change the state to running after the start call
@@ -146,7 +115,7 @@ def test_engine_start_failed(mocker: MockerFixture) -> None:
 
     result = engine_start_stop_generic(
         start,
-        mocker,
+        configure_resource_manager,
         state_before_call=EngineStatusSummary.ENGINE_STATUS_SUMMARY_STOPPED,
         state_after_call=EngineStatusSummary.ENGINE_STATUS_SUMMARY_FAILED,
         nowait=False,
@@ -157,14 +126,14 @@ def test_engine_start_failed(mocker: MockerFixture) -> None:
     assert result.exit_code != 0, "cli was expected to fail, but it didn't"
 
 
-def test_engine_start_happy_path(mocker: MockerFixture) -> None:
+def test_engine_start_happy_path(configure_resource_manager: Sequence) -> None:
     """
     Test the normal behavior
     """
 
     result = engine_start_stop_generic(
         start,
-        mocker,
+        configure_resource_manager,
         state_before_call=EngineStatusSummary.ENGINE_STATUS_SUMMARY_STOPPED,
         state_after_call=EngineStatusSummary.ENGINE_STATUS_SUMMARY_RUNNING,
         nowait=False,
@@ -174,13 +143,13 @@ def test_engine_start_happy_path(mocker: MockerFixture) -> None:
     assert result.exit_code == 0, "cli was expected to execute correctly, but it failed"
 
 
-def test_engine_start_happy_path_nowait(mocker: MockerFixture) -> None:
+def test_engine_start_happy_path_nowait(configure_resource_manager: Sequence) -> None:
     """
     Test normal behavior with nowait parameter
     """
     result = engine_start_stop_generic(
         start,
-        mocker,
+        configure_resource_manager,
         state_before_call=EngineStatusSummary.ENGINE_STATUS_SUMMARY_STOPPED,
         state_after_call=EngineStatusSummary.ENGINE_STATUS_SUMMARY_STARTING,
         nowait=True,
@@ -190,13 +159,13 @@ def test_engine_start_happy_path_nowait(mocker: MockerFixture) -> None:
     assert result.exit_code == 0, "cli was expected to execute correctly, but it failed"
 
 
-def test_engine_start_wrong_state(mocker: MockerFixture) -> None:
+def test_engine_start_wrong_state(configure_resource_manager: Sequence) -> None:
     """
     Name of a non-existing engine is provided to the start engine command
     """
     result = engine_start_stop_generic(
         start,
-        mocker,
+        configure_resource_manager,
         state_before_call=EngineStatusSummary.ENGINE_STATUS_SUMMARY_STARTING,
         state_after_call=EngineStatusSummary.ENGINE_STATUS_SUMMARY_STARTING,
         nowait=True,
@@ -207,7 +176,7 @@ def test_engine_start_wrong_state(mocker: MockerFixture) -> None:
     assert result.exit_code != 0, "cli was expected to fail, but it didn't"
 
 
-def test_engine_stop_failed(mocker: MockerFixture) -> None:
+def test_engine_stop_failed(configure_resource_manager: Sequence) -> None:
     """
     Engine was in running state before starting,
     but the state changed to the failed afterwards
@@ -215,7 +184,7 @@ def test_engine_stop_failed(mocker: MockerFixture) -> None:
 
     result = engine_start_stop_generic(
         stop,
-        mocker,
+        configure_resource_manager,
         state_before_call=EngineStatusSummary.ENGINE_STATUS_SUMMARY_RUNNING,
         state_after_call=EngineStatusSummary.ENGINE_STATUS_SUMMARY_FAILED,
         nowait=False,
@@ -226,14 +195,14 @@ def test_engine_stop_failed(mocker: MockerFixture) -> None:
     assert result.exit_code != 0, "cli was expected to fail, but it didn't"
 
 
-def test_engine_stop_happy_path(mocker: MockerFixture) -> None:
+def test_engine_stop_happy_path(configure_resource_manager: Sequence) -> None:
     """
     Test the normal behavior of engine stopping
     """
 
     result = engine_start_stop_generic(
         stop,
-        mocker,
+        configure_resource_manager,
         state_before_call=EngineStatusSummary.ENGINE_STATUS_SUMMARY_RUNNING,
         state_after_call=EngineStatusSummary.ENGINE_STATUS_SUMMARY_STOPPED,
         nowait=False,
@@ -243,24 +212,25 @@ def test_engine_stop_happy_path(mocker: MockerFixture) -> None:
     assert result.exit_code == 0, "cli was expected to execute correctly, but it failed"
 
 
-@pytest.fixture()
-def configure_resource_manager(mocker: MockerFixture) -> ResourceManager:
-    """
-    Configure resource manager mock
-    """
-    rm = mocker.patch.object(ResourceManager, "__init__", return_value=None)
-    databases_mock = mocker.patch.object(ResourceManager, "databases", create=True)
-    engines_mock = mocker.patch.object(ResourceManager, "engines", create=True)
+def test_engine_status(configure_resource_manager: Sequence) -> None:
+    (
+        rm,
+        databases_mock,
+        database_mock,
+        engines_mock,
+        engine_mock,
+    ) = configure_resource_manager
 
-    database_mock = unittest.mock.MagicMock()
-    databases_mock.get_by_name.return_value = database_mock
+    engine_mock.current_status_summary.name = "engine running"
+    engines_mock.get_by_name.return_value = engine_mock
 
-    engine_mock = unittest.mock.MagicMock()
-    engines_mock.create.return_value = engine_mock
+    result = CliRunner(mix_stderr=False).invoke(status, "--name engine_name".split())
 
-    yield rm, databases_mock, database_mock, engines_mock, engine_mock
+    engines_mock.get_by_name.assert_called_once_with(name="engine_name")
 
-    rm.assert_called_once()
+    assert "engine running" in result.stdout
+    assert result.stderr == ""
+    assert result.exit_code == 0
 
 
 def test_engine_create_happy_path(
@@ -454,9 +424,9 @@ def test_engine_create_happy_path_optional_parameters(
     assert result.exit_code == 0, ""
 
 
-def test_engine_status_not_found(mocker: MockerFixture) -> None:
-    rm = mocker.patch.object(ResourceManager, "__init__", return_value=None)
-    engines_mock = mocker.patch.object(ResourceManager, "engines", create=True)
+def test_engine_status_not_found(configure_resource_manager: Sequence) -> None:
+    rm, _, _, engines_mock, _ = configure_resource_manager
+
     engines_mock.get_by_name.side_effect = FireboltError("engine not found")
 
     result = CliRunner(mix_stderr=False).invoke(
@@ -470,30 +440,13 @@ def test_engine_status_not_found(mocker: MockerFixture) -> None:
     assert result.exit_code != 0
 
 
-def test_engine_status(mocker: MockerFixture) -> None:
-    rm = mocker.patch.object(ResourceManager, "__init__", return_value=None)
-    engines_mock = mocker.patch.object(ResourceManager, "engines", create=True)
-    engine_mock = mock.MagicMock()
-    engine_mock.current_status_summary.name = "engine running"
-    engines_mock.get_by_name.return_value = engine_mock
-
-    result = CliRunner(mix_stderr=False).invoke(status, "--name engine_name".split())
-
-    engines_mock.get_by_name.assert_called_once_with(name="engine_name")
-    rm.assert_called_once()
-
-    assert "engine running" in result.stdout
-    assert result.stderr == ""
-    assert result.exit_code == 0
-
-
-def test_engine_restart(mocker: MockerFixture) -> None:
+def test_engine_restart(configure_resource_manager: Sequence) -> None:
     """
     Test restart engine happy path
     """
     result = engine_start_stop_generic(
         restart,
-        mocker,
+        configure_resource_manager,
         state_before_call=EngineStatusSummary.ENGINE_STATUS_SUMMARY_FAILED,
         state_after_call=EngineStatusSummary.ENGINE_STATUS_SUMMARY_RUNNING,
         nowait=False,
@@ -503,13 +456,13 @@ def test_engine_restart(mocker: MockerFixture) -> None:
     assert result.exit_code == 0, "cli was expected to execute correctly, but it failed"
 
 
-def test_engine_restart_failed(mocker: MockerFixture) -> None:
+def test_engine_restart_failed(configure_resource_manager: Sequence) -> None:
     """
     Test restart engine failed
     """
     result = engine_start_stop_generic(
         restart,
-        mocker,
+        configure_resource_manager,
         state_before_call=EngineStatusSummary.ENGINE_STATUS_SUMMARY_FAILED,
         state_after_call=EngineStatusSummary.ENGINE_STATUS_SUMMARY_FAILED,
         nowait=False,
@@ -520,13 +473,11 @@ def test_engine_restart_failed(mocker: MockerFixture) -> None:
     assert result.exit_code != 0
 
 
-def test_engine_restart_not_exist(mocker: MockerFixture) -> None:
+def test_engine_restart_not_exist(configure_resource_manager: Sequence) -> None:
     """
     Test engine restart, if engine doesn't exist
     """
-    rm = mocker.patch.object(ResourceManager, "__init__", return_value=None)
-    engines_mock = mocker.patch.object(ResourceManager, "engines", create=True)
-    engines_mock.get_by_name.side_effect = FireboltError("engine not found")
+    rm, _, _, engines_mock, _ = configure_resource_manager
 
     result = CliRunner(mix_stderr=False).invoke(
         restart, "--name non_existing_engine".split()
@@ -539,16 +490,11 @@ def test_engine_restart_not_exist(mocker: MockerFixture) -> None:
     assert result.exit_code != 0
 
 
-def test_engine_list(mocker: MockerFixture) -> None:
+def test_engine_list(configure_resource_manager: Sequence) -> None:
     """
     test engine list happy path
     """
-    rm = mocker.patch.object(ResourceManager, "__init__", return_value=None)
-    engines_mock = mocker.patch.object(ResourceManager, "engines", create=True)
-    regions_mock = mocker.patch.object(ResourceManager, "regions", create=True)
-
-    Region = namedtuple("Region", "name")
-    regions_mock.get_by_key.return_value = Region("")
+    rm, _, _, engines_mock, _ = configure_resource_manager
 
     engine_mock1 = mock.MagicMock()
     engine_mock1.name = "engine_mock1"
@@ -582,17 +528,13 @@ def test_engine_list(mocker: MockerFixture) -> None:
 
 
 def engine_drop_generic_workflow(
-    mocker: MockerFixture,
+    configure_resource_manager: Sequence,
     additional_parameters: Sequence[str],
     input: Optional[str],
     delete_should_be_called: bool,
 ) -> None:
 
-    rm = mocker.patch.object(ResourceManager, "__init__", return_value=None)
-    engines_mock = mocker.patch.object(ResourceManager, "engines", create=True)
-
-    engine_mock = mocker.MagicMock()
-    engines_mock.get_by_name.return_value = engine_mock
+    rm, _, _, engines_mock, engine_mock = configure_resource_manager
 
     result = CliRunner(mix_stderr=False).invoke(
         drop,
@@ -604,7 +546,6 @@ def engine_drop_generic_workflow(
         input=input,
     )
 
-    rm.assert_called_once()
     engines_mock.get_by_name.assert_called_once_with(name="to_drop_engine_name")
     if delete_should_be_called:
         engine_mock.delete.assert_called_once_with()
@@ -612,42 +553,47 @@ def engine_drop_generic_workflow(
     assert result.exit_code == 0, "non-zero exit code"
 
 
-def test_engine_drop(mocker: MockerFixture) -> None:
+def test_engine_drop(configure_resource_manager: Sequence) -> None:
     """
     Happy path, deletion of existing engine without confirmation prompt
     """
     engine_drop_generic_workflow(
-        mocker,
+        configure_resource_manager,
         additional_parameters=["--yes"],
         input=None,
         delete_should_be_called=True,
     )
 
 
-def test_engine_drop_prompt_yes(mocker: MockerFixture) -> None:
+def test_engine_drop_prompt_yes(configure_resource_manager: Sequence) -> None:
     """
     Happy path, deletion of existing database with confirmation prompt
     """
     engine_drop_generic_workflow(
-        mocker, additional_parameters=[], input="yes", delete_should_be_called=True
+        configure_resource_manager,
+        additional_parameters=[],
+        input="yes",
+        delete_should_be_called=True,
     )
 
 
-def test_engine_drop_prompt_no(mocker: MockerFixture) -> None:
+def test_engine_drop_prompt_no(configure_resource_manager: Sequence) -> None:
     """
     Happy path, deletion of existing database with confirmation prompt, and user rejects
     """
     engine_drop_generic_workflow(
-        mocker, additional_parameters=[], input="no", delete_should_be_called=False
+        configure_resource_manager,
+        additional_parameters=[],
+        input="no",
+        delete_should_be_called=False,
     )
 
 
-def test_engine_drop_not_found(mocker: MockerFixture) -> None:
+def test_engine_drop_not_found(configure_resource_manager: Sequence) -> None:
     """
     Trying to drop the database, if the database is not found by name
     """
-    rm = mocker.patch.object(ResourceManager, "__init__", return_value=None)
-    engines_mock = mocker.patch.object(ResourceManager, "engines", create=True)
+    rm, _, _, engines_mock, _ = configure_resource_manager
 
     engines_mock.get_by_name.side_effect = RuntimeError("engine not found")
 
@@ -655,7 +601,6 @@ def test_engine_drop_not_found(mocker: MockerFixture) -> None:
         drop, "--name to_drop_engine_name".split()
     )
 
-    rm.assert_called_once()
     engines_mock.get_by_name.assert_called_once_with(name="to_drop_engine_name")
 
     assert result.stderr != "", "cli should fail with an error message in stderr"

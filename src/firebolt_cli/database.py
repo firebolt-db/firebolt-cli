@@ -8,6 +8,7 @@ from pydantic import ValidationError
 from firebolt_cli.common_options import common_options
 from firebolt_cli.utils import (
     construct_resource_manager,
+    convert_bytes,
     prepare_execution_result_line,
     prepare_execution_result_table,
 )
@@ -139,6 +140,49 @@ def drop(**raw_config_options: str) -> None:
         sys.exit(os.EX_DATAERR)
 
 
+@command()
+@common_options
+@option(
+    "--name",
+    help="Database name, that should be described",
+    default=None,
+    type=str,
+)
+@option("--json", help="Provide output in json format", is_flag=True)
+def describe(**raw_config_options: str) -> None:
+    try:
+        rm = construct_resource_manager(**raw_config_options)
+        database = rm.databases.get_by_name(name=raw_config_options["name"])
+        attached_engines = rm.bindings.get_engines_bound_to_database(database)
+        attached_engine_names = [str(engine.name) for engine in attached_engines]
+
+        echo(
+            prepare_execution_result_line(
+                data=[
+                    database.name,
+                    database.description,
+                    str(rm.regions.get_by_key(database.compute_region_key).name),
+                    convert_bytes(database.data_size_full),
+                    str(database.create_time),
+                    attached_engine_names,
+                ],
+                header=[
+                    "name",
+                    "description",
+                    "region",
+                    "data_size",
+                    "create_time",
+                    "attached_engine_names",
+                ],
+                use_json=bool(raw_config_options["json"]),
+            )
+        )
+    except (RuntimeError, FireboltError) as err:
+        echo(err, err=True)
+        sys.exit(os.EX_DATAERR)
+
+
 database.add_command(create)
 database.add_command(list)
 database.add_command(drop)
+database.add_command(describe)

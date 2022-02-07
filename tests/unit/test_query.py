@@ -16,13 +16,14 @@ from firebolt_cli.query import enter_interactive_session, query
 
 
 def test_query_stdin_file_ambiguity(
-    mocker: MockerFixture, fs: FakeFilesystem, configure_cli: Callable
+    fs: FakeFilesystem, configure_cli: Callable
 ) -> None:
     """
     If both query from the file and query from stdin
     are provided, cli should return an error
     """
     configure_cli()
+
     fs.create_file("path_to_file.sql")
     result = CliRunner(mix_stderr=False).invoke(
         query,
@@ -39,11 +40,10 @@ def test_query_stdin_file_ambiguity(
     ), "the execution should fail, but cli returned success code"
 
 
-def test_query_file_missing(mocker: MockerFixture, configure_cli: Callable) -> None:
+def test_query_file_missing() -> None:
     """
     If sql file doesn't exist, the cli should return an error
     """
-    configure_cli()
     result = CliRunner(mix_stderr=False).invoke(
         query,
         [
@@ -60,7 +60,6 @@ def test_query_file_missing(mocker: MockerFixture, configure_cli: Callable) -> N
 
 
 def query_generic_test(
-    mocker: MockerFixture,
     additional_parameter: str,
     check_output_callback: Callable[[str], None],
     expected_sql: str,
@@ -103,7 +102,7 @@ def query_generic_test(
 
 
 def test_query_csv_output(
-    mocker: MockerFixture, cursor_mock: unittest.mock.Mock, configure_cli: Callable
+    cursor_mock: unittest.mock.Mock, configure_cli: Callable
 ) -> None:
     """
     test sql execution with --csv parameter, and check the csv correctness
@@ -117,7 +116,6 @@ def test_query_csv_output(
             assert False, "output csv is incorrectly formatted"
 
     query_generic_test(
-        mocker,
         ["--csv"],
         check_csv_correctness,
         expected_sql="query from input;",
@@ -127,18 +125,18 @@ def test_query_csv_output(
 
 
 def test_query_tabular_output(
-    mocker: MockerFixture, cursor_mock: unittest.mock.Mock, configure_cli: Callable
+    cursor_mock: unittest.mock.Mock, configure_cli: Callable
 ) -> None:
     """
     test sql execution and check the tabular output correctness
     """
+
     configure_cli()
 
     def check_tabular_correctness(output: str) -> None:
         assert len(output) != ""
 
     query_generic_test(
-        mocker,
         [],
         check_tabular_correctness,
         expected_sql="query from input;",
@@ -148,10 +146,7 @@ def test_query_tabular_output(
 
 
 def test_query_file(
-    mocker: MockerFixture,
-    fs: FakeFilesystem,
-    cursor_mock: unittest.mock.Mock,
-    configure_cli: Callable,
+    fs: FakeFilesystem, cursor_mock: unittest.mock.Mock, configure_cli: Callable
 ) -> None:
     """
     test querying from file (with multiple lines);
@@ -161,7 +156,6 @@ def test_query_file(
     fs.create_file("path_to_file.sql", contents="query from file\nsecond line")
 
     query_generic_test(
-        mocker,
         ["--file", "path_to_file.sql"],
         lambda x: None,
         expected_sql="query from file\nsecond line",
@@ -174,7 +168,6 @@ def test_connection_error(mocker: MockerFixture, configure_cli: Callable) -> Non
     """
     If the firebolt.db.connect raise an exception, cli should handle it properly
     """
-
     configure_cli()
 
     connect_function_mock = mocker.patch(
@@ -200,9 +193,10 @@ def test_connection_error(mocker: MockerFixture, configure_cli: Callable) -> Non
 
 
 def test_sql_execution_error(
-    mocker: MockerFixture, cursor_mock: unittest.mock.Mock, configure_cli: Callable
+    cursor_mock: unittest.mock.Mock, configure_cli: Callable
 ) -> None:
     configure_cli()
+
     cursor_mock.attach_mock(
         unittest.mock.Mock(side_effect=FireboltError("sql execution failed")), "execute"
     )
