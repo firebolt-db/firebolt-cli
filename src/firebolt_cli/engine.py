@@ -1,12 +1,46 @@
 import os
 import sys
 
-from click import command, echo, group, option
+from click import Choice, IntRange, command, confirm, echo, group, option
 from firebolt.common.exception import FireboltError
-from firebolt.service.types import EngineStatusSummary
+from firebolt.service.types import (
+    EngineStatusSummary,
+    EngineType,
+    WarmupMethod,
+)
 
 from firebolt_cli.common_options import common_options
-from firebolt_cli.utils import construct_resource_manager
+from firebolt_cli.utils import (
+    construct_resource_manager,
+    prepare_execution_result_line,
+    prepare_execution_result_table,
+)
+
+NEW_ENGINE_SPEC = {
+    "C": list(range(1, 8)),
+    "S": list(range(1, 7)),
+    "B": list(range(1, 8)),
+    "M": list(range(1, 8)),
+}
+
+OLD_ENGINE_SPEC = {
+    "c5d": ["large", "xlarge", "2xlarge", "4xlarge", "9xlarge", "12xlarge", "metal"],
+    "i3": ["large", "xlarge", "2xlarge", "4xlarge", "8xlarge", "metal"],
+    "r5d": ["large", "xlarge", "2xlarge", "4xlarge", "8xlarge", "12xlarge", "metal"],
+    "m5d": ["large", "xlarge", "2xlarge", "4xlarge", "8xlarge", "12xlarge", "metal"],
+}
+
+AVAILABLE_OLD_ENGINES = [
+    f"{engine_family}.{engine_type}"
+    for engine_family, engine_types in OLD_ENGINE_SPEC.items()
+    for engine_type in engine_types
+]
+
+AVAILABLE_NEW_ENGINES = [
+    f"{engine_family}{engine_type}"
+    for engine_family, engine_types in NEW_ENGINE_SPEC.items()
+    for engine_type in engine_types
+]
 
 
 @group()
@@ -66,7 +100,7 @@ def start_stop_generic(
             current_status_name = (
                 engine.current_status_summary.name
                 if engine.current_status_summary
-                else ""
+                else EngineStatusSummary.ENGINE_STATUS_SUMMARY_UNSPECIFIED.name
             )
 
             raise FireboltError(
@@ -199,6 +233,140 @@ def restart(**raw_config_options: str) -> None:
 
 @command()
 @common_options
+@option("--name", help="Name of the engine", type=str, required=True)
+@option(
+    "--database_name",
+    help="Name of the database the engine should be attached to",
+    type=str,
+    required=True,
+)
+@option(
+    "--spec",
+    help="Engine spec",
+    type=Choice(
+        AVAILABLE_OLD_ENGINES + AVAILABLE_NEW_ENGINES,
+        case_sensitive=False,
+    ),
+    required=True,
+)
+@option(
+    "--description",
+    help="Engine description",
+    type=str,
+    default="",
+    required=False,
+)
+@option(
+    "--type",
+    help="Engine type: rw for general purpose and ro for data analytics",
+    type=Choice(["ro", "rw"], case_sensitive=False),
+    default="ro",
+    required=False,
+)
+@option(
+    "--scale",
+    help="Engine scale",
+    type=IntRange(1, 128, clamp=False),
+    default=1,
+    required=False,
+    show_default=True,
+)
+@option(
+    "--auto_stop",
+    help="Stop engine automatically after specified time in minutes",
+    type=IntRange(1, 30 * 24 * 60, clamp=False),
+    default=20,
+    required=False,
+    show_default=True,
+)
+@option(
+    "--warmup",
+    help="Engine warmup method. "
+    "Minimal(min), Preload indexes(ind), Preload all data(all) ",
+    type=Choice(["min", "ind", "all"]),
+    default="ind",
+    required=False,
+    show_default=True,
+)
+@option("--region", help="Region, where the engine should be created", required=True)
+@option(
+    "--json",
+    is_flag=True,
+    help="Provide output in json format",
+)
+def create(**raw_config_options: str) -> None:
+    """
+    Creates engine with the requested parameters
+    """
+
+    ENGINE_TYPES = {"rw": EngineType.GENERAL_PURPOSE, "ro": EngineType.DATA_ANALYTICS}
+    WARMUP_METHODS = {
+        "min": WarmupMethod.MINIMAL,
+        "ind": WarmupMethod.PRELOAD_INDEXES,
+        "all": WarmupMethod.PRELOAD_ALL_DATA,
+    }
+
+    rm = construct_resource_manager(**raw_config_options)
+
+    try:
+        database = rm.databases.get_by_name(name=raw_config_options["database_name"])
+
+        engine = rm.engines.create(
+            name=raw_config_options["name"],
+            spec=raw_config_options["spec"],
+            region=raw_config_options["region"],
+            engine_type=ENGINE_TYPES[raw_config_options["type"]],
+            scale=int(raw_config_options["scale"]),
+            auto_stop=int(raw_config_options["auto_stop"]),
+            warmup=WARMUP_METHODS[raw_config_options["warmup"]],
+            description=raw_config_options["description"],
+        )
+
+        try:
+            database.attach_to_engine(engine=engine, is_default_engine=True)
+        except (FireboltError, RuntimeError) as err:
+            engine.delete()
+            raise err
+
+    except (FireboltError, RuntimeError) as err:
+        echo(err, err=True)
+        sys.exit(os.EX_USAGE)
+
+    if not raw_config_options["json"]:
+        echo(
+            f"Engine {engine.name} is successfully created"
+            " and attached to the {database.name}"
+        )
+
+    echo(
+        prepare_execution_result_line(
+            data=[
+                engine.name,
+                engine.description,
+                engine.settings.is_read_only,
+                engine.settings.auto_stop_delay_duration,
+                engine.settings.preset,
+                engine.settings.warm_up,
+                str(engine.create_time),
+                database.name,
+            ],
+            header=[
+                "name",
+                "description",
+                "is_read_only",
+                "auto_stop",
+                "preset",
+                "warm_up",
+                "create_time",
+                "attached_to_database",
+            ],
+            use_json=bool(raw_config_options["json"]),
+        )
+    )
+
+
+@command()
+@common_options
 @option(
     "--name",
     help="Name of the engine",
@@ -222,7 +390,83 @@ def status(**raw_config_options: str) -> None:
         sys.exit(os.EX_DATAERR)
 
 
+@command()
+@common_options
+@option(
+    "--name-contains",
+    help="Output engines will be filtered by name_contains",
+    default=None,
+    type=str,
+)
+@option("--json", help="Provide output in json format", is_flag=True)
+def list(**raw_config_options: str) -> None:
+    """
+    List existing engines
+    """
+
+    try:
+        rm = construct_resource_manager(**raw_config_options)
+
+        engines = rm.engines.get_many(name_contains=raw_config_options["name_contains"])
+
+        if not raw_config_options["json"]:
+            echo("Found {num_engines} engines".format(num_engines=len(engines)))
+
+        if raw_config_options["json"] or engines:
+            echo(
+                prepare_execution_result_table(
+                    data=[
+                        [
+                            engine.name,
+                            engine.current_status_summary.name,
+                            rm.regions.get_by_key(engine.compute_region_key).name,
+                        ]
+                        for engine in engines
+                    ],
+                    header=["name", "status", "region"],
+                    use_json=bool(raw_config_options["json"]),
+                )
+            )
+    except (RuntimeError, FireboltError) as err:
+        echo(err, err=True)
+        sys.exit(os.EX_DATAERR)
+
+
+@command()
+@common_options
+@option("--name", help="Engine name, that should be deleted", type=str, required=True)
+@option(
+    "--yes",
+    help="Automatic yes on confirmation prompt",
+    is_flag=True,
+)
+def drop(**raw_config_options: str) -> None:
+    """
+    Drop an existing engine
+    """
+    try:
+        rm = construct_resource_manager(**raw_config_options)
+        engine = rm.engines.get_by_name(name=raw_config_options["name"])
+
+        if raw_config_options["yes"] or confirm(
+            "Do you really want to drop the engine {name}?".format(
+                name=raw_config_options["name"]
+            )
+        ):
+            engine.delete()
+            echo(f"Drop request for engine {engine.name} is successfully sent")
+        else:
+            echo("Drop request is aborted")
+
+    except (RuntimeError, FireboltError) as err:
+        echo(err, err=True)
+        sys.exit(os.EX_DATAERR)
+
+
+engine.add_command(create)
+engine.add_command(drop)
 engine.add_command(start)
 engine.add_command(restart)
 engine.add_command(stop)
 engine.add_command(status)
+engine.add_command(list)
