@@ -13,6 +13,7 @@ from firebolt_cli.common_options import common_options
 from firebolt_cli.utils import (
     construct_resource_manager,
     prepare_execution_result_line,
+    prepare_execution_result_table,
 )
 
 NEW_ENGINE_SPEC = {
@@ -341,6 +342,48 @@ def status(**raw_config_options: str) -> None:
 
 @command()
 @common_options
+@option(
+    "--name-contains",
+    help="Output engines will be filtered by name_contains",
+    default=None,
+    type=str,
+)
+@option("--json", help="Provide output in json format", is_flag=True)
+def list(**raw_config_options: str) -> None:
+    """
+    List existing engines
+    """
+
+    try:
+        rm = construct_resource_manager(**raw_config_options)
+
+        engines = rm.engines.get_many(name_contains=raw_config_options["name_contains"])
+
+        if not raw_config_options["json"]:
+            echo("Found {num_engines} engines".format(num_engines=len(engines)))
+
+        if raw_config_options["json"] or engines:
+            echo(
+                prepare_execution_result_table(
+                    data=[
+                        [
+                            engine.name,
+                            engine.current_status_summary.name,
+                            rm.regions.get_by_key(engine.compute_region_key).name,
+                        ]
+                        for engine in engines
+                    ],
+                    header=["name", "status", "region"],
+                    use_json=bool(raw_config_options["json"]),
+                )
+            )
+    except (RuntimeError, FireboltError) as err:
+        echo(err, err=True)
+        sys.exit(os.EX_DATAERR)
+
+
+@command()
+@common_options
 @option("--name", help="Engine name, that should be deleted", type=str, required=True)
 @option(
     "--yes",
@@ -375,3 +418,4 @@ engine.add_command(drop)
 engine.add_command(start)
 engine.add_command(stop)
 engine.add_command(status)
+engine.add_command(list)
