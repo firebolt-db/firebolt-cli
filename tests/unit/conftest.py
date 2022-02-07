@@ -1,4 +1,5 @@
 import unittest
+from collections import namedtuple
 
 import pytest
 from appdirs import user_config_dir
@@ -64,7 +65,10 @@ def configure_resource_manager(mocker: MockerFixture) -> ResourceManager:
     databases_mock = mocker.patch.object(ResourceManager, "databases", create=True)
     engines_mock = mocker.patch.object(ResourceManager, "engines", create=True)
     mocker.patch.object(ResourceManager, "bindings", create=True)
-    mocker.patch.object(ResourceManager, "regions", create=True)
+    regions_mock = mocker.patch.object(ResourceManager, "regions", create=True)
+
+    Region = namedtuple("Region", "name")
+    regions_mock.get_by_key.return_value = Region("us-east-1")
 
     database_mock = unittest.mock.MagicMock()
     databases_mock.create.return_value = database_mock
