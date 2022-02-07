@@ -156,17 +156,13 @@ def describe(**raw_config_options: str) -> None:
         attached_engines = rm.bindings.get_engines_bound_to_database(database)
         attached_engine_names = [str(engine.name) for engine in attached_engines]
 
-        data_size = (
-            convert_bytes(database.data_size_full) if database.data_size_full else ""
-        )
-
         echo(
             prepare_execution_result_line(
                 data=[
                     database.name,
                     database.description,
                     str(rm.regions.get_by_key(database.compute_region_key).name),
-                    data_size,
+                    convert_bytes(database.data_size_full),
                     str(database.create_time),
                     attached_engine_names,
                 ],
