@@ -207,8 +207,7 @@ def update(**raw_config_options: str) -> None:
         rm = construct_resource_manager(**raw_config_options)
         database = rm.databases.get_by_name(name=raw_config_options["name"])
 
-        database.description = raw_config_options["description"]
-        database = database.update()
+        database = database.update(description=raw_config_options["description"])
 
         if not raw_config_options["json"]:
             echo(f"The database {database.name} was successfully updated")

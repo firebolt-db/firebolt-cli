@@ -427,7 +427,7 @@ def create(**raw_config_options: str) -> None:
 @common_options
 @engine_properties_options(create_mode=False)
 @option(
-    "--new_engine_name",
+    "--new-engine-name",
     help="Set this parameter for renaming the engine",
     default=None,
     required=False,

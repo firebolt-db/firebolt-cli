@@ -557,7 +557,7 @@ def test_engine_update_all_parameters(
 
     engine_mock = generic_engine_update(
         configure_resource_manager,
-        "--name engine_name --new_engine_name name_of_the_new_engine "
+        "--name engine_name --new-engine-name name_of_the_new_engine "
         "--spec C1 --description test_description "
         "--type rw --scale 23 --auto-stop 893 --warmup all",
     )
@@ -583,7 +583,7 @@ def test_engine_update_subset_parameters1(
 
     engine_mock = generic_engine_update(
         configure_resource_manager,
-        "--name engine_name --new_engine_name name_of_the_new_engine "
+        "--name engine_name --new-engine-name name_of_the_new_engine "
         "--description test_description --scale 42 --warmup ind",
     )
 
