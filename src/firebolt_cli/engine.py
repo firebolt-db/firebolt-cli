@@ -12,7 +12,7 @@ from firebolt.service.types import (
     WarmupMethod,
 )
 
-from firebolt_cli.common_options import common_options
+from firebolt_cli.common_options import common_options, json_option
 from firebolt_cli.utils import (
     construct_resource_manager,
     prepare_execution_result_line,
@@ -49,7 +49,7 @@ AVAILABLE_NEW_ENGINES = [
 @group()
 def engine() -> None:
     """
-    Manage the engines using the firebolt cli
+    Manage the engines
     """
 
 
@@ -374,12 +374,7 @@ def restart(**raw_config_options: str) -> None:
     required=True,
 )
 @option("--region", help="Region, where the engine should be created", required=True)
-@option(
-    "--json",
-    is_flag=True,
-    help="Provide output in json format",
-    required=False,
-)
+@json_option
 def create(**raw_config_options: str) -> None:
     """
     Creates engine with the requested parameters
@@ -432,11 +427,7 @@ def create(**raw_config_options: str) -> None:
     default=None,
     required=False,
 )
-@option(
-    "--json",
-    is_flag=True,
-    help="Provide output in json format",
-)
+@json_option
 def update(**raw_config_options: str) -> None:
     """
     Update engine parameters, engine should be stopped before update
@@ -514,11 +505,11 @@ def status(**raw_config_options: str) -> None:
 @common_options
 @option(
     "--name-contains",
-    help="Output engines will be filtered by name_contains",
+    help="Output engines will be filtered by name-contains",
     default=None,
     type=str,
 )
-@option("--json", help="Provide output in json format", is_flag=True)
+@json_option
 def list(**raw_config_options: str) -> None:
     """
     List existing engines

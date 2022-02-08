@@ -7,7 +7,7 @@ from firebolt.model.database import Database
 from firebolt.service.manager import ResourceManager
 from pydantic import ValidationError
 
-from firebolt_cli.common_options import common_options
+from firebolt_cli.common_options import common_options, json_option
 from firebolt_cli.utils import (
     construct_resource_manager,
     convert_bytes,
@@ -52,7 +52,7 @@ def print_db_full_information(
 @group()
 def database() -> None:
     """
-    Manage the databases using the python-cli
+    Manage the databases
     """
 
 
@@ -65,13 +65,8 @@ def database() -> None:
     type=str,
     default="",
 )
-@option("--json", help="Use json for output", default=False, is_flag=True)
+@json_option
 @option("--region", help="Region for the new database", default="us-east-1", type=str)
-@option(
-    "--json",
-    is_flag=True,
-    help="Provide output in json format",
-)
 def create(**raw_config_options: str) -> None:
     """
     Create a new database
@@ -104,7 +99,7 @@ def create(**raw_config_options: str) -> None:
     default=None,
     type=str,
 )
-@option("--json", help="Provide output in json format", is_flag=True)
+@json_option
 def list(**raw_config_options: str) -> None:
     """
     List existing databases
@@ -143,7 +138,7 @@ def list(**raw_config_options: str) -> None:
 )
 def drop(**raw_config_options: str) -> None:
     """
-    Drop an existing database
+    Drop specified database
     """
     try:
         rm = construct_resource_manager(**raw_config_options)
@@ -172,8 +167,11 @@ def drop(**raw_config_options: str) -> None:
     default=None,
     type=str,
 )
-@option("--json", help="Provide output in json format", is_flag=True)
+@json_option
 def describe(**raw_config_options: str) -> None:
+    """
+    Describe specified database
+    """
     try:
         rm = construct_resource_manager(**raw_config_options)
         database = rm.databases.get_by_name(name=raw_config_options["name"])
@@ -198,10 +196,10 @@ def describe(**raw_config_options: str) -> None:
     type=str,
     required=True,
 )
-@option("--json", help="Provide output in json format", is_flag=True)
+@json_option
 def update(**raw_config_options: str) -> None:
     """
-    Update the database description
+    Update specified database description
     """
     try:
         rm = construct_resource_manager(**raw_config_options)

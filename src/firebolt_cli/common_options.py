@@ -106,3 +106,25 @@ def common_options(command: Callable) -> Callable:
     for add_option in reversed(_common_options):
         command = add_option(command)
     return command
+
+
+def json_option(command: Callable) -> Callable:
+    return option(
+        "--json", help="Provide output in json format", default=False, is_flag=True
+    )(command)
+
+
+def option_engine_name(command: Callable) -> Callable:
+    return option(
+        "--engine-name",
+        help="Name of engine to use for SQL queries. Incompatible with --engine-url",
+        required=False,
+    )(command)
+
+
+def option_engine_url(command: Callable) -> Callable:
+    return option(
+        "--engine-url",
+        help="Url of engine to use for SQL queries. Incompatible with --engine-name",
+        required=False,
+    )(command)
