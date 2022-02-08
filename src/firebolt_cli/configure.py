@@ -3,7 +3,12 @@ from os import path
 
 from click import UsageError, command, echo, option, prompt
 
-from firebolt_cli.common_options import config_file, config_section
+from firebolt_cli.common_options import (
+    config_file,
+    config_section,
+    option_engine_name,
+    option_engine_url,
+)
 
 
 def update_config_file(**kwargs: str) -> None:
@@ -35,14 +40,8 @@ def update_config_file(**kwargs: str) -> None:
 @option("--account-name", help="Name of Firebolt account")
 @option("--database-name", help="Database to use for SQL queries")
 @option("--api-endpoint", hidden=True)
-@option(
-    "--engine-name",
-    help="Name of engine to use for SQL queries. Incompatible with --engine-url",
-)
-@option(
-    "--engine-url",
-    help="Url of engine to use for SQL queries. Incompatible with --engine-name",
-)
+@option_engine_name
+@option_engine_url
 def configure(**raw_config_options: str) -> None:
     """
     Store firebolt configuration parameters in config file
