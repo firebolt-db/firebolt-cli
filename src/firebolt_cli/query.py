@@ -111,7 +111,7 @@ def enter_interactive_session(cursor: Cursor, use_csv: bool) -> None:
 @command()
 @common_options
 @option_engine_name_url(read_from_config=True)
-@option("--csv", help="Provide query output in csv format", is_flag=True)
+@option("--csv", help="Provide query output in csv format", is_flag=True, default=False)
 @option(
     "--database-name",
     help="Database name to use for SQL queries",
@@ -120,6 +120,7 @@ def enter_interactive_session(cursor: Cursor, use_csv: bool) -> None:
 @option(
     "--file",
     help="Path to the file with the sql query to be executed",
+    default=None,
     type=click.Path(exists=True),
 )
 def query(**raw_config_options: str) -> None:
