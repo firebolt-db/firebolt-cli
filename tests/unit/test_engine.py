@@ -13,6 +13,7 @@ from firebolt.service.types import (
 
 from firebolt_cli.engine import (
     create,
+    describe,
     drop,
     list,
     restart,
@@ -740,3 +741,64 @@ def test_engine_drop_not_found(configure_resource_manager: Sequence) -> None:
 
     assert result.stderr != "", "cli should fail with an error message in stderr"
     assert result.exit_code != 0, "non-zero exit code"
+
+
+def test_engine_describe_happy_path(configure_resource_manager: Sequence) -> None:
+    """ """
+    rm, _, _, _, engine_mock = configure_resource_manager
+
+    result = CliRunner(mix_stderr=False).invoke(
+        describe, ["--name", "to_describe_engine"]
+    )
+
+    assert result.stderr == ""
+    assert result.exit_code == 0
+
+
+def test_engine_describe_json(configure_resource_manager: Sequence) -> None:
+    """ """
+    rm, _, _, _, engine_mock = configure_resource_manager
+
+    engine_mock.name = "to_describe_engine"
+    engine_mock.description = "engine description"
+    engine_mock.latest_revision_key = None
+    engine_mock.settings.preset = "preset"
+    engine_mock.settings.warm_up = "index"
+    engine_mock.create_time = ""
+    engine_mock.database = None
+
+    result = CliRunner(mix_stderr=False).invoke(
+        describe, ["--name", "to_describe_engine", "--json"]
+    )
+
+    engine_description = json.loads(result.stdout)
+
+    for param in [
+        "name",
+        "description",
+        "auto_stop",
+        "warm_up",
+        "attached_to_database",
+        "instance_type",
+        "scale",
+    ]:
+        assert param in engine_description
+
+    assert engine_description["name"] == "to_describe_engine"
+    assert engine_description["description"] == "engine description"
+
+    assert result.stderr == ""
+    assert result.exit_code == 0
+
+
+def test_engine_describe_not_found(configure_resource_manager: Sequence) -> None:
+    """ """
+    rm, _, _, engines_mock, _ = configure_resource_manager
+    engines_mock.get_by_name.side_effect = FireboltError("engine not found")
+
+    result = CliRunner(mix_stderr=False).invoke(
+        describe, ["--name", "to_describe_engine"]
+    )
+
+    assert result.stderr != ""
+    assert result.exit_code != 0
