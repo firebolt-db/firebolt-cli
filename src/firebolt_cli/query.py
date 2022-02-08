@@ -19,8 +19,7 @@ from tabulate import tabulate
 from firebolt_cli.common_options import (
     common_options,
     default_from_config_file,
-    option_engine_name,
-    option_engine_url,
+    option_engine_name_url,
 )
 
 
@@ -111,8 +110,7 @@ def enter_interactive_session(cursor: Cursor, use_csv: bool) -> None:
 
 @command()
 @common_options
-@option_engine_name
-@option_engine_url
+@option_engine_name_url(read_from_config=True)
 @option("--csv", help="Provide query output in csv format", is_flag=True)
 @option(
     "--database-name",
