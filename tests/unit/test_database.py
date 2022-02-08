@@ -366,7 +366,7 @@ def test_database_update_happy_path(configure_resource_manager: Sequence):
     """
     rm, databases_mock, database_mock, _, _ = configure_resource_manager
     database_mock.name = "db_name"
-    database_mock.description = "old description"
+    database_mock.description = "new description"
     database_mock.update.return_value = database_mock
 
     result = CliRunner(mix_stderr=False).invoke(
@@ -375,6 +375,9 @@ def test_database_update_happy_path(configure_resource_manager: Sequence):
     database_description = json.loads(result.stdout)
     assert database_description["name"] == "db_name"
     assert database_description["description"] == "new description"
+
+    databases_mock.get_by_name.assert_called_once_with(name="db_name")
+    database_mock.update.assert_called_once_with(description="new description")
 
     assert result.stderr == ""
     assert result.exit_code == 0
