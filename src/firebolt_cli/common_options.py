@@ -37,7 +37,7 @@ def read_config_key(key: str) -> Optional[str]:
 def default_from_config_file(
     default: Optional[str] = None, required: bool = True
 ) -> Callable:
-    def inner(ctx: Context, param: Parameter, value: Optional[str]) -> str:
+    def inner(ctx: Context, param: Parameter, value: Optional[str]) -> Optional[str]:
         # type check
         assert param.name
         value = value or read_config_key(param.name) or default
@@ -48,7 +48,9 @@ def default_from_config_file(
     return inner
 
 
-def password_from_config_file(ctx: Context, param: Parameter, value: bool) -> str:
+def password_from_config_file(
+    ctx: Context, param: Parameter, value: bool
+) -> Optional[str]:
     # type check
     assert param.name
     # user asked to prompt for password
@@ -120,7 +122,7 @@ def json_option(command: Callable) -> Callable:
     )(command)
 
 
-def option_engine_name_url(read_from_config=False):
+def option_engine_name_url(read_from_config: bool = False) -> Callable:
     def option_engine_name_url_inner(command: Callable) -> Callable:
         command = option(
             "--engine-name",
