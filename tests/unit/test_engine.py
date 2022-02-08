@@ -10,7 +10,6 @@ from firebolt.service.types import (
     EngineType,
     WarmupMethod,
 )
-from pytest_mock import MockerFixture
 
 from firebolt_cli.engine import (
     create,
@@ -20,6 +19,7 @@ from firebolt_cli.engine import (
     start,
     status,
     stop,
+    update,
 )
 
 
@@ -222,7 +222,6 @@ def test_engine_status(configure_resource_manager: Sequence) -> None:
     ) = configure_resource_manager
 
     engine_mock.current_status_summary.name = "engine running"
-    engines_mock.get_by_name.return_value = engine_mock
 
     result = CliRunner(mix_stderr=False).invoke(status, "--name engine_name".split())
 
@@ -233,9 +232,7 @@ def test_engine_status(configure_resource_manager: Sequence) -> None:
     assert result.exit_code == 0
 
 
-def test_engine_create_happy_path(
-    mocker: MockerFixture, configure_resource_manager: Sequence
-) -> None:
+def test_engine_create_happy_path(configure_resource_manager: Sequence) -> None:
     """
     Test engine create standard workflow
     """
@@ -246,7 +243,7 @@ def test_engine_create_happy_path(
         [
             "--name",
             "engine_name",
-            "--database_name",
+            "--database-name",
             "database_name",
             "--spec",
             "C1",
@@ -278,7 +275,7 @@ def test_engine_create_database_not_found(configure_resource_manager: Sequence) 
         [
             "--name",
             "engine_name",
-            "--database_name",
+            "--database-name",
             "database_name",
             "--spec",
             "C1",
@@ -308,7 +305,7 @@ def test_engine_create_name_taken(configure_resource_manager: Sequence) -> None:
         [
             "--name",
             "engine_name",
-            "--database_name",
+            "--database-name",
             "database_name",
             "--spec",
             "C1",
@@ -346,7 +343,7 @@ def test_engine_create_binding_failed(configure_resource_manager: Sequence) -> N
         [
             "--name",
             "engine_name",
-            "--database_name",
+            "--database-name",
             "database_name",
             "--spec",
             "C1",
@@ -384,7 +381,7 @@ def test_engine_create_happy_path_optional_parameters(
         [
             "--name",
             "engine_name",
-            "--database_name",
+            "--database-name",
             "database_name",
             "--spec",
             "C1",
@@ -396,7 +393,7 @@ def test_engine_create_happy_path_optional_parameters(
             "rw",
             "--scale",
             "23",
-            "--auto_stop",
+            "--auto-stop",
             "893",
             "--warmup",
             "all",
@@ -525,6 +522,144 @@ def test_engine_list(configure_resource_manager: Sequence) -> None:
 
     assert result.stderr == ""
     assert result.exit_code == 0
+
+
+def generic_engine_update(configure_resource_manager: Sequence, parameters: str):
+    """
+    Test engine create standard workflow with all optional parameters
+    """
+    (
+        rm,
+        databases_mock,
+        database_mock,
+        engines_mock,
+        engine_mock,
+    ) = configure_resource_manager
+    engine_mock.update.return_value = engine_mock
+
+    result = CliRunner(mix_stderr=False).invoke(update, parameters.split())
+
+    engines_mock.get_by_name.assert_called_once_with(name="engine_name")
+
+    assert result.stdout != "", ""
+    assert result.stderr == "", ""
+    assert result.exit_code == 0, ""
+
+    return engine_mock
+
+
+def test_engine_update_all_parameters(
+    configure_resource_manager: Sequence,
+) -> None:
+    """
+    Test engine create standard workflow with all optional parameters
+    """
+
+    engine_mock = generic_engine_update(
+        configure_resource_manager,
+        "--name engine_name --new_engine_name name_of_the_new_engine "
+        "--spec C1 --description test_description "
+        "--type rw --scale 23 --auto-stop 893 --warmup all",
+    )
+
+    engine_mock.update.assert_called_once_with(
+        name="name_of_the_new_engine",
+        spec="C1",
+        engine_type=EngineType.GENERAL_PURPOSE,
+        scale=23,
+        auto_stop=893,
+        warmup=WarmupMethod.PRELOAD_ALL_DATA,
+        description="test_description",
+    )
+
+
+def test_engine_update_subset_parameters1(
+    configure_resource_manager: Sequence,
+) -> None:
+    """
+    Test engine create standard workflow with a subset of parameters:
+     (new_engine_name, description, scale, warmup)
+    """
+
+    engine_mock = generic_engine_update(
+        configure_resource_manager,
+        "--name engine_name --new_engine_name name_of_the_new_engine "
+        "--description test_description --scale 42 --warmup ind",
+    )
+
+    engine_mock.update.assert_called_once_with(
+        name="name_of_the_new_engine",
+        spec=None,
+        description="test_description",
+        engine_type=None,
+        scale=42,
+        auto_stop=None,
+        warmup=WarmupMethod.PRELOAD_INDEXES,
+    )
+
+
+def test_engine_update_subset_parameters2(
+    configure_resource_manager: Sequence,
+) -> None:
+    """
+    Test engine create standard workflow with a subset of parameters:
+     (spec, type, auto_stop)
+    """
+
+    engine_mock = generic_engine_update(
+        configure_resource_manager,
+        "--name engine_name --spec i3.xlarge --type ro --auto-stop 8393",
+    )
+
+    engine_mock.update.assert_called_once_with(
+        name=None,
+        spec="i3.xlarge",
+        description=None,
+        engine_type=EngineType.DATA_ANALYTICS,
+        scale=None,
+        auto_stop=8393,
+        warmup=None,
+    )
+
+
+def test_engine_update_not_exists(configure_resource_manager: Sequence) -> None:
+    """
+    Test engine update, engine not exists
+    """
+    (
+        rm,
+        databases_mock,
+        database_mock,
+        engines_mock,
+        engine_mock,
+    ) = configure_resource_manager
+    engines_mock.get_by_name.side_effect = FireboltError("engine doesn't exist")
+
+    result = CliRunner(mix_stderr=False).invoke(
+        update,
+        "--name engine_name --warmup all".split(),
+    )
+
+    engines_mock.get_by_name.assert_called_once_with(name="engine_name")
+
+    assert result.stdout == "", ""
+    assert "engine doesn't exist" in result.stderr, ""
+    assert result.exit_code != 0, ""
+
+
+def test_engine_no_parameters_passed() -> None:
+    """
+    Test engine update, no parameters are passed for the update
+    """
+
+    result = CliRunner(mix_stderr=False).invoke(
+        update,
+        "--name engine_name".split(),
+    )
+
+    assert result.stdout == "", ""
+    assert "Nothing to update" in result.stderr, ""
+    assert result.exit_code != 0, ""
 
 
 def engine_drop_generic_workflow(

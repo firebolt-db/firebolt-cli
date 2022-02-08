@@ -1,8 +1,11 @@
 import os
 import sys
+from datetime import timedelta
+from typing import Callable, Optional
 
 from click import Choice, IntRange, command, confirm, echo, group, option
 from firebolt.common.exception import FireboltError
+from firebolt.model.engine import Engine
 from firebolt.service.types import (
     EngineStatusSummary,
     EngineType,
@@ -61,7 +64,6 @@ def start_stop_generic(
     success_message_nowait: str,
     **raw_config_options: str,
 ) -> None:
-
     try:
         rm = construct_resource_manager(**raw_config_options)
 
@@ -73,6 +75,7 @@ def start_stop_generic(
                 if engine.current_status_summary
                 else ""
             )
+
             raise FireboltError(
                 wrong_initial_state_error.format(
                     name=engine.name,
@@ -191,6 +194,135 @@ def stop(**raw_config_options: str) -> None:
     )
 
 
+def engine_properties_options(create_mode: bool = True) -> Callable:
+    """
+    decorator for engine create/update common options
+
+    :param create_mode: True for create, will make some of the options required
+    """
+    _ENGINE_OPTIONS = [
+        option(
+            "--name",
+            help="Name of the engine",
+            type=str,
+            required=True,
+        ),
+        option(
+            "--spec",
+            help="Engine spec",
+            type=Choice(
+                AVAILABLE_OLD_ENGINES + AVAILABLE_NEW_ENGINES,
+                case_sensitive=False,
+            ),
+            required=create_mode,
+        ),
+        option(
+            "--description",
+            help="Engine description",
+            type=str,
+            default="" if create_mode else None,
+            required=False,
+        ),
+        option(
+            "--type",
+            help="Engine type: rw for general purpose and ro for data analytics",
+            type=Choice(ENGINE_TYPES.keys(), case_sensitive=False),
+            default="ro" if create_mode else None,
+            required=False,
+        ),
+        option(
+            "--scale",
+            help="Engine scale",
+            type=IntRange(1, 128, clamp=False),
+            default=1 if create_mode else None,
+            required=False,
+            show_default=True,
+        ),
+        option(
+            "--auto-stop",
+            help="Stop engine automatically after specified time in minutes",
+            type=IntRange(1, 30 * 24 * 60, clamp=False),
+            default=20 if create_mode else None,
+            required=False,
+            show_default=True,
+        ),
+        option(
+            "--warmup",
+            help="Engine warmup method. "
+            "Minimal(min), Preload indexes(ind), Preload all data(all) ",
+            type=Choice(WARMUP_METHODS.keys()),
+            default="ind" if create_mode else None,
+            required=False,
+            show_default=True,
+        ),
+    ]
+
+    def _engine_properties_options_inner(command: Callable) -> Callable:
+        for add_option in reversed(_ENGINE_OPTIONS):
+            command = add_option(command)
+        return command
+
+    return _engine_properties_options_inner
+
+
+def echo_engine_information(rm, engine: Engine, use_json: bool) -> None:
+    """
+
+    :param engine:
+    :param database:
+    :param use_json:
+    :return:
+    """
+
+    revision = rm.engine_revisions.get_by_key(engine.latest_revision_key)
+    instance_type = rm.instance_types.instance_types_by_key[
+        revision.specification.db_compute_instances_type_key
+    ]
+
+    echo(
+        prepare_execution_result_line(
+            data=[
+                engine.name,
+                engine.description,
+                engine.settings.is_read_only,
+                # TODO: auto delay could also be off or set to str
+                str(
+                    timedelta(
+                        seconds=int(engine.settings.auto_stop_delay_duration[:-1])
+                    )
+                ),
+                engine.settings.preset,
+                engine.settings.warm_up,
+                str(engine.create_time),
+                engine.database.name,
+                instance_type.name,
+                revision.specification.db_compute_instances_count,
+            ],
+            header=[
+                "name",
+                "description",
+                "is_read_only",
+                "auto_stop",
+                "preset",
+                "warm_up",
+                "create_time",
+                "attached_to_database",
+                "instance_type",
+                "scale",
+            ],
+            use_json=bool(use_json),
+        )
+    )
+
+
+ENGINE_TYPES = {"rw": EngineType.GENERAL_PURPOSE, "ro": EngineType.DATA_ANALYTICS}
+WARMUP_METHODS = {
+    "min": WarmupMethod.MINIMAL,
+    "ind": WarmupMethod.PRELOAD_INDEXES,
+    "all": WarmupMethod.PRELOAD_ALL_DATA,
+}
+
+
 @command()
 @common_options
 @option(
@@ -233,79 +365,25 @@ def restart(**raw_config_options: str) -> None:
 
 @command()
 @common_options
+@engine_properties_options(create_mode=True)
 @option("--name", help="Name of the engine", type=str, required=True)
 @option(
-    "--database_name",
+    "--database-name",
     help="Name of the database the engine should be attached to",
     type=str,
     required=True,
-)
-@option(
-    "--spec",
-    help="Engine spec",
-    type=Choice(
-        AVAILABLE_OLD_ENGINES + AVAILABLE_NEW_ENGINES,
-        case_sensitive=False,
-    ),
-    required=True,
-)
-@option(
-    "--description",
-    help="Engine description",
-    type=str,
-    default="",
-    required=False,
-)
-@option(
-    "--type",
-    help="Engine type: rw for general purpose and ro for data analytics",
-    type=Choice(["ro", "rw"], case_sensitive=False),
-    default="ro",
-    required=False,
-)
-@option(
-    "--scale",
-    help="Engine scale",
-    type=IntRange(1, 128, clamp=False),
-    default=1,
-    required=False,
-    show_default=True,
-)
-@option(
-    "--auto_stop",
-    help="Stop engine automatically after specified time in minutes",
-    type=IntRange(1, 30 * 24 * 60, clamp=False),
-    default=20,
-    required=False,
-    show_default=True,
-)
-@option(
-    "--warmup",
-    help="Engine warmup method. "
-    "Minimal(min), Preload indexes(ind), Preload all data(all) ",
-    type=Choice(["min", "ind", "all"]),
-    default="ind",
-    required=False,
-    show_default=True,
 )
 @option("--region", help="Region, where the engine should be created", required=True)
 @option(
     "--json",
     is_flag=True,
     help="Provide output in json format",
+    required=False,
 )
 def create(**raw_config_options: str) -> None:
     """
     Creates engine with the requested parameters
     """
-
-    ENGINE_TYPES = {"rw": EngineType.GENERAL_PURPOSE, "ro": EngineType.DATA_ANALYTICS}
-    WARMUP_METHODS = {
-        "min": WarmupMethod.MINIMAL,
-        "ind": WarmupMethod.PRELOAD_INDEXES,
-        "all": WarmupMethod.PRELOAD_ALL_DATA,
-    }
-
     rm = construct_resource_manager(**raw_config_options)
 
     try:
@@ -316,8 +394,12 @@ def create(**raw_config_options: str) -> None:
             spec=raw_config_options["spec"],
             region=raw_config_options["region"],
             engine_type=ENGINE_TYPES[raw_config_options["type"]],
-            scale=int(raw_config_options["scale"]),
-            auto_stop=int(raw_config_options["auto_stop"]),
+            scale=int(raw_config_options["scale"])
+            if raw_config_options["scale"]
+            else None,
+            auto_stop=int(raw_config_options["auto_stop"])
+            if raw_config_options["auto_stop"]
+            else None,
             warmup=WARMUP_METHODS[raw_config_options["warmup"]],
             description=raw_config_options["description"],
         )
@@ -335,34 +417,72 @@ def create(**raw_config_options: str) -> None:
     if not raw_config_options["json"]:
         echo(
             f"Engine {engine.name} is successfully created"
-            " and attached to the {database.name}"
+            f" and attached to the {engine.database.name}"
         )
 
-    echo(
-        prepare_execution_result_line(
-            data=[
-                engine.name,
-                engine.description,
-                engine.settings.is_read_only,
-                engine.settings.auto_stop_delay_duration,
-                engine.settings.preset,
-                engine.settings.warm_up,
-                str(engine.create_time),
-                database.name,
-            ],
-            header=[
-                "name",
-                "description",
-                "is_read_only",
-                "auto_stop",
-                "preset",
-                "warm_up",
-                "create_time",
-                "attached_to_database",
-            ],
-            use_json=bool(raw_config_options["json"]),
-        )
+    echo_engine_information(rm, engine, raw_config_options["json"])
+
+
+@command()
+@common_options
+@engine_properties_options(create_mode=False)
+@option(
+    "--new_engine_name",
+    help="Set this parameter for renaming the engine",
+    default=None,
+    required=False,
+)
+@option(
+    "--json",
+    is_flag=True,
+    help="Provide output in json format",
+)
+def update(**raw_config_options: str) -> None:
+    """
+    Update engine parameters, engine should be stopped before update
+    """
+    something_to_update = any(
+        raw_config_options[param] is not None
+        for param in [
+            "spec",
+            "type",
+            "scale",
+            "auto_stop",
+            "warmup",
+            "description",
+        ]
     )
+
+    if not something_to_update:
+        echo("Nothing to update, at least one parameter should be provided", err=True)
+        sys.exit(os.EX_USAGE)
+
+    rm = construct_resource_manager(**raw_config_options)
+
+    def _string_to_int_or_none(val: Optional[str]) -> Optional[int]:
+        return int(val) if val else None
+
+    try:
+        engine = rm.engines.get_by_name(name=raw_config_options["name"])
+
+        engine = engine.update(
+            name=raw_config_options["new_engine_name"],
+            spec=raw_config_options["spec"],
+            engine_type=ENGINE_TYPES.get(raw_config_options["type"], None),
+            scale=_string_to_int_or_none(raw_config_options["scale"]),
+            auto_stop=_string_to_int_or_none(raw_config_options["auto_stop"]),
+            warmup=WARMUP_METHODS.get(raw_config_options["warmup"], None),
+            description=raw_config_options["description"],
+        )
+
+    except (FireboltError, RuntimeError) as err:
+        echo(err, err=True)
+        sys.exit(os.EX_USAGE)
+
+    if not raw_config_options["json"]:
+        echo(f"Engine {engine.name} is successfully updated")
+
+    echo_engine_information(rm, engine, raw_config_options["json"])
 
 
 @command()
@@ -469,4 +589,6 @@ engine.add_command(start)
 engine.add_command(restart)
 engine.add_command(stop)
 engine.add_command(status)
+engine.add_command(update)
+engine.add_command(start)
 engine.add_command(list)
