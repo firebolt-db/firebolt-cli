@@ -164,7 +164,7 @@ def drop(**raw_config_options: str) -> None:
 @option(
     "--name",
     help="Database name, that should be described",
-    default=None,
+    required=True,
     type=str,
 )
 @json_option
