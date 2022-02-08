@@ -1,0 +1,54 @@
+name: Nightly code check
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 3 * * *' # 3 am UTC every day
+jobs:
+  tests:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false # finish all jobs even if one fails
+      max-parallel: 2
+      matrix: 
+        os: ['ubuntu-latest', 'macos-latest', 'windows-latest']
+        python-version: ['3.7', '3.8', '3.9', '3.10']
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v2
+    
+      - name: Set up Python 
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+    
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install ".[dev]"
+      - name: Test with pytest
+        run: |
+          pytest tests/unit
+      - name: Setup database and engine
+        id: setup
+        uses: firebolt-db/integration-testing-setup@master
+        with:
+          firebolt-username: ${{ secrets.FIREBOLT_USERNAME }}
+          firebolt-password: ${{ secrets.FIREBOLT_PASSWORD }}
+          api-endpoint: "api.dev.firebolt.io"
+          region: "us-east-1"
+          db_suffix: ${{ format('{0}_{1}', matrix.os, matrix.python-version) }}
+
+      - name: Run integration tests
+        env:
+          USER_NAME: ${{ secrets.FIREBOLT_USERNAME }}
+          PASSWORD: ${{ secrets.FIREBOLT_PASSWORD }}
+          DATABASE_NAME: ${{ steps.setup.outputs.database_name }}
+          ENGINE_NAME: ${{ steps.setup.outputs.engine_name }}
+          ENGINE_URL: ${{ steps.setup.outputs.engine_url }}
+          STOPPED_ENGINE_NAME: ${{ steps.setup.outputs.stopped_engine_name }}
+          STOPPED_ENGINE_URL: ${{ steps.setup.outputs.stopped_engine_url }}
+          ACCOUNT_NAME: "firebolt"
+          API_ENDPOINT: "api.dev.firebolt.io"
+        run: |
+          pytest -o log_cli=true -o log_cli_level=INFO tests/integration
+        
