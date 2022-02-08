@@ -1,11 +1,12 @@
 import os
 import sys
 from datetime import timedelta
-from typing import Callable, Optional
+from typing import Callable
 
 from click import Choice, IntRange, command, confirm, echo, group, option
 from firebolt.common.exception import FireboltError
 from firebolt.model.engine import Engine
+from firebolt.service.manager import ResourceManager
 from firebolt.service.types import (
     EngineStatusSummary,
     EngineType,
@@ -17,6 +18,7 @@ from firebolt_cli.utils import (
     construct_resource_manager,
     prepare_execution_result_line,
     prepare_execution_result_table,
+    string_to_int_or_none,
 )
 
 NEW_ENGINE_SPEC = {
@@ -226,7 +228,7 @@ def engine_properties_options(create_mode: bool = True) -> Callable:
         option(
             "--type",
             help="Engine type: rw for general purpose and ro for data analytics",
-            type=Choice(ENGINE_TYPES.keys(), case_sensitive=False),
+            type=Choice(list(ENGINE_TYPES.keys()), case_sensitive=False),
             default="ro" if create_mode else None,
             required=False,
         ),
@@ -250,7 +252,7 @@ def engine_properties_options(create_mode: bool = True) -> Callable:
             "--warmup",
             help="Engine warmup method. "
             "Minimal(min), Preload indexes(ind), Preload all data(all) ",
-            type=Choice(WARMUP_METHODS.keys()),
+            type=Choice(list(WARMUP_METHODS.keys())),
             default="ind" if create_mode else None,
             required=False,
             show_default=True,
@@ -265,7 +267,9 @@ def engine_properties_options(create_mode: bool = True) -> Callable:
     return _engine_properties_options_inner
 
 
-def echo_engine_information(rm, engine: Engine, use_json: bool) -> None:
+def echo_engine_information(
+    rm: ResourceManager, engine: Engine, use_json: bool
+) -> None:
     """
 
     :param engine:
@@ -274,10 +278,13 @@ def echo_engine_information(rm, engine: Engine, use_json: bool) -> None:
     :return:
     """
 
-    revision = rm.engine_revisions.get_by_key(engine.latest_revision_key)
-    instance_type = rm.instance_types.instance_types_by_key[
-        revision.specification.db_compute_instances_type_key
-    ]
+    revision = None
+    instance_type = None
+    if engine.latest_revision_key:
+        revision = rm.engine_revisions.get_by_key(engine.latest_revision_key)
+        instance_type = rm.instance_types.instance_types_by_key[
+            revision.specification.db_compute_instances_type_key
+        ]
 
     echo(
         prepare_execution_result_line(
@@ -294,9 +301,9 @@ def echo_engine_information(rm, engine: Engine, use_json: bool) -> None:
                 engine.settings.preset,
                 engine.settings.warm_up,
                 str(engine.create_time),
-                engine.database.name,
-                instance_type.name,
-                revision.specification.db_compute_instances_count,
+                engine.database.name if engine.database else None,
+                instance_type.name if instance_type else "",
+                revision.specification.db_compute_instances_count if revision else "",
             ],
             header=[
                 "name",
@@ -389,12 +396,8 @@ def create(**raw_config_options: str) -> None:
             spec=raw_config_options["spec"],
             region=raw_config_options["region"],
             engine_type=ENGINE_TYPES[raw_config_options["type"]],
-            scale=int(raw_config_options["scale"])
-            if raw_config_options["scale"]
-            else None,
-            auto_stop=int(raw_config_options["auto_stop"])
-            if raw_config_options["auto_stop"]
-            else None,
+            scale=int(raw_config_options["scale"]),
+            auto_stop=int(raw_config_options["auto_stop"]),
             warmup=WARMUP_METHODS[raw_config_options["warmup"]],
             description=raw_config_options["description"],
         )
@@ -412,10 +415,10 @@ def create(**raw_config_options: str) -> None:
     if not raw_config_options["json"]:
         echo(
             f"Engine {engine.name} is successfully created"
-            f" and attached to the {engine.database.name}"
+            f" and attached to the {database.name}"
         )
 
-    echo_engine_information(rm, engine, raw_config_options["json"])
+    echo_engine_information(rm, engine, bool(raw_config_options["json"]))
 
 
 @command()
@@ -450,9 +453,6 @@ def update(**raw_config_options: str) -> None:
 
     rm = construct_resource_manager(**raw_config_options)
 
-    def _string_to_int_or_none(val: Optional[str]) -> Optional[int]:
-        return int(val) if val else None
-
     try:
         engine = rm.engines.get_by_name(name=raw_config_options["name"])
 
@@ -460,8 +460,8 @@ def update(**raw_config_options: str) -> None:
             name=raw_config_options["new_engine_name"],
             spec=raw_config_options["spec"],
             engine_type=ENGINE_TYPES.get(raw_config_options["type"], None),
-            scale=_string_to_int_or_none(raw_config_options["scale"]),
-            auto_stop=_string_to_int_or_none(raw_config_options["auto_stop"]),
+            scale=string_to_int_or_none(raw_config_options["scale"]),
+            auto_stop=string_to_int_or_none(raw_config_options["auto_stop"]),
             warmup=WARMUP_METHODS.get(raw_config_options["warmup"], None),
             description=raw_config_options["description"],
         )
@@ -473,7 +473,7 @@ def update(**raw_config_options: str) -> None:
     if not raw_config_options["json"]:
         echo(f"Engine {engine.name} is successfully updated")
 
-    echo_engine_information(rm, engine, raw_config_options["json"])
+    echo_engine_information(rm, engine, bool(raw_config_options["json"]))
 
 
 @command()
@@ -529,7 +529,9 @@ def list(**raw_config_options: str) -> None:
                     data=[
                         [
                             engine.name,
-                            engine.current_status_summary.name,
+                            engine.current_status_summary.name
+                            if engine.current_status_summary
+                            else EngineStatusSummary.ENGINE_STATUS_SUMMARY_UNSPECIFIED,
                             rm.regions.get_by_key(engine.compute_region_key).name,
                         ]
                         for engine in engines

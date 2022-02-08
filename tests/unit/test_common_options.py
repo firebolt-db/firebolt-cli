@@ -184,7 +184,7 @@ def test_parameters_missing(fs: FakeFilesystem):
             result.exit_code == MissingParameter.exit_code
         ), f"invalid return code for missing {option_name}"
         assert (
-            f"Missing option {option_name}" in result.stdout
+            f"Missing option --{option_name}" in result.stdout
         ), "invalid missing parameter message"
 
     for opt, option_name in zip(

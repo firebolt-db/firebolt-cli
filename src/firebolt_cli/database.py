@@ -84,7 +84,7 @@ def create(**raw_config_options: str) -> None:
         if not raw_config_options["json"]:
             echo(f"Database {database.name} is successfully created")
 
-        print_db_full_information(rm, database, raw_config_options["json"])
+        print_db_full_information(rm, database, bool(raw_config_options["json"]))
 
     except (RuntimeError, ValidationError) as err:
         echo(err, err=True)

@@ -6,8 +6,7 @@ from click import UsageError, command, echo, option, prompt
 from firebolt_cli.common_options import (
     config_file,
     config_section,
-    option_engine_name,
-    option_engine_url,
+    option_engine_name_url,
 )
 
 
@@ -40,8 +39,7 @@ def update_config_file(**kwargs: str) -> None:
 @option("--account-name", help="Name of Firebolt account")
 @option("--database-name", help="Database to use for SQL queries")
 @option("--api-endpoint", hidden=True)
-@option_engine_name
-@option_engine_url
+@option_engine_name_url(read_from_config=False)
 def configure(**raw_config_options: str) -> None:
     """
     Store firebolt configuration parameters in config file
