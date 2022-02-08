@@ -138,12 +138,13 @@ def test_engine_restart_stopped(
 
 def test_engine_restart_running(engine_name: str, cli_runner: CliRunner) -> None:
     """
-    Test restart engine, which is running should fail
+    Test restart engine, which is running should
+    restart an engine and wait until it is running
     """
     result = cli_runner.invoke(main, f"engine restart --name {engine_name}".split())
 
-    assert result.stderr != ""
-    assert result.exit_code != 0
+    assert result.stderr == ""
+    assert result.exit_code == 0
 
     # Check that engine actually running after restart
     result = CliRunner(mix_stderr=False).invoke(
@@ -157,14 +158,14 @@ def test_engine_create_minimal(engine_name: str, database_name: str):
     """
     test engine create/drop with minimum amount of parameters
     """
-    engine_name = f"{engine_name}_test_engine_create_minimal"
+    engine_name = f"{engine_name}_test"
 
     result = CliRunner(mix_stderr=False).invoke(
         main,
         f"engine create --json "
         f"--name {engine_name} "
-        f"--database_name {database_name} "
-        f" --spec i3.large "
+        f"--database-name {database_name} "
+        f"--spec i3.large "
         f"--region us-east-1".split(),
     )
     assert result.exit_code == 0
@@ -186,7 +187,7 @@ def test_engine_create_existing(engine_name: str, database_name: str):
         main,
         f"engine create --json "
         f"--name {engine_name} "
-        f"--database_name {database_name} "
+        f"--database-name {database_name} "
         f" --spec i3.large "
         f"--region us-east-1".split(),
     )
