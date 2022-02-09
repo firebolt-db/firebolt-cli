@@ -22,6 +22,10 @@ from firebolt_cli.common_options import (
     option_engine_name_url,
 )
 
+EXIT_COMMANDS = [".exit", ".quit", ".q"]
+HELP_COMMANDS = [".help"]
+INTERNAL_COMMANDS = EXIT_COMMANDS + HELP_COMMANDS + [".tables"]
+
 
 def read_from_file(fpath: Optional[str]) -> Optional[str]:
     """
@@ -73,7 +77,39 @@ def is_multilne_needed() -> bool:
         return True
 
     text = buffer.text.strip()
-    return len(text) != 0 and not text.endswith(";")
+    return not (len(text) == 0 or text.endswith(";") or text in INTERNAL_COMMANDS)
+
+
+def show_help() -> None:
+    """
+    Print help message with internal commands of interactive sql execution
+    """
+    rows = [
+        [".exit", "Exit firebolt-cli"],
+        [".help", "Show this help message"],
+        [".quit", "Exit firebolt-cli"],
+        [".tables", "Show tables in current database"],
+    ]
+
+    for internal_command, help_message in rows:
+        echo("{:<10s}".format(internal_command), nl=False)
+        echo(help_message)
+
+
+def process_internal_command(internal_command: str) -> str:
+    """
+    process internal command, execute an internal command
+    or make an sql query from internal_command
+    """
+    if internal_command in EXIT_COMMANDS:
+        raise EOFError()
+    elif internal_command == ".help":
+        show_help()
+        return ""
+    elif internal_command == ".tables":
+        return "SHOW tables;"
+
+    raise ValueError(f"Not known internal command: {internal_command}")
 
 
 def enter_interactive_session(cursor: Cursor, use_csv: bool) -> None:
@@ -93,6 +129,10 @@ def enter_interactive_session(cursor: Cursor, use_csv: bool) -> None:
         try:
             sql_query = session.prompt()
             sql_query = sql_query.strip().rstrip(";")
+
+            if sql_query in INTERNAL_COMMANDS:
+                sql_query = process_internal_command(sql_query)
+
             if len(sql_query) == 0:
                 continue
 

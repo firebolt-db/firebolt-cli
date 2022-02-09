@@ -1,13 +1,17 @@
-import os
 import unittest
 from unittest import mock
 
+import pytest
 from firebolt.common.exception import FireboltError
 from prompt_toolkit.application import create_app_session
 from prompt_toolkit.input import create_pipe_input
 from prompt_toolkit.output import DummyOutput
 
-from firebolt_cli.query import enter_interactive_session
+from firebolt_cli.query import (
+    INTERNAL_COMMANDS,
+    enter_interactive_session,
+    process_internal_command,
+)
 
 
 def test_interactive_immediate_stop() -> None:
@@ -16,12 +20,12 @@ def test_interactive_immediate_stop() -> None:
     """
     inp = create_pipe_input()
     cursor_mock = unittest.mock.MagicMock()
-
-    os.close(inp._w)
+    inp.send_text(".quit\n")
 
     with create_app_session(input=inp, output=DummyOutput()):
         enter_interactive_session(cursor_mock, False)
 
+    inp.close()
     cursor_mock.execute.assert_not_called()
 
 
@@ -37,13 +41,13 @@ def test_interactive_send_empty() -> None:
     inp.send_text("   ;;;;   \n")
     inp.send_text(";\n")
     inp.send_text(";;\n")
-
-    os.close(inp._w)
+    inp.send_text(".quit\n")
 
     with create_app_session(input=inp, output=DummyOutput()):
         enter_interactive_session(cursor_mock, False)
 
     cursor_mock.execute.assert_not_called()
+    inp.close()
 
 
 def test_interactive_multiple_requests() -> None:
@@ -58,8 +62,7 @@ def test_interactive_multiple_requests() -> None:
     inp.send_text("SELECT 2;\n")
     inp.send_text("SELECT 3;\n")
     inp.send_text("SELECT 4;\n")
-
-    os.close(inp._w)
+    inp.send_text(".quit\n")
 
     with create_app_session(input=inp, output=DummyOutput()):
         enter_interactive_session(cursor_mock, False)
@@ -74,6 +77,7 @@ def test_interactive_multiple_requests() -> None:
         any_order=False,
     )
 
+    inp.close()
     assert cursor_mock.execute.call_count == 4
 
 
@@ -81,18 +85,46 @@ def test_interactive_raise_error() -> None:
     """
     Test wrong sql, raise an error, but the execution continues
     """
-    inp = create_pipe_input()
     cursor_mock = unittest.mock.MagicMock()
 
     cursor_mock.attach_mock(
         unittest.mock.Mock(side_effect=FireboltError("sql execution failed")), "execute"
     )
 
+    inp = create_pipe_input()
     inp.send_text("wrong sql;\n")
-
-    os.close(inp._w)
+    inp.send_text(".quit\n")
 
     with create_app_session(input=inp, output=DummyOutput()):
         enter_interactive_session(cursor_mock, False)
 
+    inp.close()
     cursor_mock.execute.assert_called_once_with("wrong sql")
+
+
+def test_process_internal_command():
+    """
+    test process internal command exit or tables
+    """
+    with pytest.raises(EOFError):
+        process_internal_command(".quit")
+
+    with pytest.raises(EOFError):
+        process_internal_command(".exit")
+
+    with pytest.raises(ValueError):
+        process_internal_command(".make")
+
+    assert "show tables;" == process_internal_command(".tables").lower()
+
+
+def test_process_internal_command_help(capsys):
+    """
+    test process .help
+    """
+    process_internal_command(".help")
+    captured = capsys.readouterr()
+
+    assert len(captured.out.split("\n")) >= 3
+    for command in INTERNAL_COMMANDS:
+        assert command in captured.out
