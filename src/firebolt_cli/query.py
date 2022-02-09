@@ -48,18 +48,24 @@ def print_result_if_any(cursor: Cursor, use_csv: bool) -> None:
     """
     Fetch the data from cursor and print it in csv or tabular format
     """
-    if not cursor.description:
-        return
+    while 1:
+        if not cursor.description:
+            if not cursor.nextset():
+                return
+            continue
 
-    data = cursor.fetchall()
+        data = cursor.fetchall()
 
-    headers = [i.name for i in cursor.description]
-    if use_csv:
-        writer = csv.writer(sys.stdout)
-        writer.writerow(headers)
-        writer.writerows(data)
-    else:
-        echo(tabulate(data, headers=headers, tablefmt="grid"))
+        headers = [i.name for i in cursor.description]
+        if use_csv:
+            writer = csv.writer(sys.stdout)
+            writer.writerow(headers)
+            writer.writerows(data)
+        else:
+            echo(tabulate(data, headers=headers, tablefmt="grid"))
+
+        if not cursor.nextset():
+            return
 
 
 @Condition
