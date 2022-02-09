@@ -2,6 +2,7 @@ import json
 import time
 from collections import namedtuple
 
+import pytest
 from click.testing import CliRunner
 
 from firebolt_cli.main import main
@@ -30,6 +31,7 @@ def test_engine_stop_stopped(stopped_engine_name: str, cli_runner: CliRunner) ->
     assert result.exit_code != 0
 
 
+@pytest.mark.slow
 def test_engine_start_stop(stopped_engine_name: str, cli_runner: CliRunner) -> None:
     """
     Test engine start/stop happy path
@@ -136,6 +138,7 @@ def test_engine_restart_stopped(
     assert result.exit_code != 0
 
 
+@pytest.mark.slow
 def test_engine_restart_running(engine_name: str, cli_runner: CliRunner) -> None:
     """
     Test restart engine, which is running should

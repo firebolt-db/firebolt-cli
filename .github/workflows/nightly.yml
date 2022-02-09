@@ -2,7 +2,7 @@ name: Nightly code check
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 3 * * *' # 3 am UTC every day
+    - cron: '0 5 * * *' # 5 am UTC every day
 jobs:
   tests:
     runs-on: ${{ matrix.os }}
@@ -10,8 +10,8 @@ jobs:
       fail-fast: false # finish all jobs even if one fails
       max-parallel: 2
       matrix: 
-        os: ['ubuntu-latest', 'macos-latest', 'windows-latest']
-        python-version: ['3.7', '3.8', '3.9', '3.10']
+        os: ['ubuntu-latest', 'windows-latest']
+        python-version: ['3.7']
     steps:
       - name: Check out code
         uses: actions/checkout@v2
@@ -50,5 +50,5 @@ jobs:
           ACCOUNT_NAME: "firebolt"
           API_ENDPOINT: "api.dev.firebolt.io"
         run: |
-          pytest -o log_cli=false -o log_cli_level=INFO tests/integration
+          pytest -m "not slow" -o log_cli=false -o log_cli_level=INFO tests/integration
         
