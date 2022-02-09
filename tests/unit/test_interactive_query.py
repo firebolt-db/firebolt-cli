@@ -1,5 +1,4 @@
 import os
-import sys
 import unittest
 from unittest import mock
 
@@ -18,10 +17,7 @@ def test_interactive_immediate_stop() -> None:
     inp = create_pipe_input()
     cursor_mock = unittest.mock.MagicMock()
 
-    if sys.platform.startswith("win"):
-        inp.close()
-    else:
-        os.close(inp._w)
+    os.close(inp._w)
 
     with create_app_session(input=inp, output=DummyOutput()):
         enter_interactive_session(cursor_mock, False)
@@ -42,10 +38,7 @@ def test_interactive_send_empty() -> None:
     inp.send_text(";\n")
     inp.send_text(";;\n")
 
-    if sys.platform.startswith("win"):
-        inp.close()
-    else:
-        os.close(inp._w)
+    os.close(inp._w)
 
     with create_app_session(input=inp, output=DummyOutput()):
         enter_interactive_session(cursor_mock, False)
@@ -66,10 +59,7 @@ def test_interactive_multiple_requests() -> None:
     inp.send_text("SELECT 3;\n")
     inp.send_text("SELECT 4;\n")
 
-    if sys.platform.startswith("win"):
-        inp.close()
-    else:
-        os.close(inp._w)
+    os.close(inp._w)
 
     with create_app_session(input=inp, output=DummyOutput()):
         enter_interactive_session(cursor_mock, False)
@@ -100,10 +90,7 @@ def test_interactive_raise_error() -> None:
 
     inp.send_text("wrong sql;\n")
 
-    if sys.platform.startswith("win"):
-        inp.close()
-    else:
-        os.close(inp._w)
+    os.close(inp._w)
 
     with create_app_session(input=inp, output=DummyOutput()):
         enter_interactive_session(cursor_mock, False)
