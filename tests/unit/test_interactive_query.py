@@ -37,6 +37,7 @@ def test_interactive_send_empty() -> None:
     inp.send_text("   ;;;;   \n")
     inp.send_text(";\n")
     inp.send_text(";;\n")
+
     os.close(inp._w)
 
     with create_app_session(input=inp, output=DummyOutput()):
@@ -57,6 +58,7 @@ def test_interactive_multiple_requests() -> None:
     inp.send_text("SELECT 2;\n")
     inp.send_text("SELECT 3;\n")
     inp.send_text("SELECT 4;\n")
+
     os.close(inp._w)
 
     with create_app_session(input=inp, output=DummyOutput()):
@@ -87,6 +89,7 @@ def test_interactive_raise_error() -> None:
     )
 
     inp.send_text("wrong sql;\n")
+
     os.close(inp._w)
 
     with create_app_session(input=inp, output=DummyOutput()):
