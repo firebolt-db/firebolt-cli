@@ -20,6 +20,9 @@ def validate_file_config(config):
 
 def test_configure_happy_path(fs: FakeFilesystem) -> None:
     fs.create_dir(user_config_dir())
+    test_password = "pasword523%@!$$@#%@#!"
+    fs.create_file("pswd", contents=test_password)
+
     runner = CliRunner()
     result = runner.invoke(
         configure,
@@ -34,8 +37,9 @@ def test_configure_happy_path(fs: FakeFilesystem) -> None:
             "engine_name",
             "--api-endpoint",
             "api_endpoint",
+            "--password-file",
+            "pswd",
         ],
-        input="password",
     )
     assert result.exit_code == 0, "non-zero exit code for configure"
     assert "Created new config file" in result.stdout, "Invalid result message"
@@ -43,7 +47,7 @@ def test_configure_happy_path(fs: FakeFilesystem) -> None:
     validate_file_config(
         {
             "username": "username",
-            "password": "password",
+            "password": test_password,
             "account_name": "account_name",
             "database_name": "database_name",
             "engine_name": "engine_name",
@@ -101,7 +105,13 @@ def test_configure_prompt(fs: FakeFilesystem) -> None:
         configure,
         [],
         input="\n".join(
-            ["username", "password", "account_name", "database_name", "", "engine_url"]
+            [
+                "username",
+                "password",
+                "account_name",
+                "database_name",
+                "engine_url.firebolt.io",
+            ]
         ),
     )
     assert result.exit_code == 0, "non-zero exit code for configure"
@@ -113,7 +123,7 @@ def test_configure_prompt(fs: FakeFilesystem) -> None:
             "password": "password",
             "account_name": "account_name",
             "database_name": "database_name",
-            "engine_url": "engine_url",
+            "engine_url": "engine_url.firebolt.io",
         }
     )
 

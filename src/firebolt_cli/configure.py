@@ -1,6 +1,7 @@
 from configparser import ConfigParser
 from os import path
 
+import click
 from click import UsageError, command, echo, option, prompt
 
 from firebolt_cli.common_options import (
@@ -8,6 +9,20 @@ from firebolt_cli.common_options import (
     config_section,
     option_engine_name_url,
 )
+from firebolt_cli.utils import read_from_file
+
+
+def read_config_file() -> dict:
+    """
+    :return: dict with parameters from config file, or empty dict if no parameters found
+    """
+    config = ConfigParser(interpolation=None)
+    if path.exists(config_file):
+        config.read(config_file)
+        if config.has_section(config_section):
+            return dict((k, v) for k, v in config[config_section].items())
+
+    return {}
 
 
 def update_config_file(**kwargs: str) -> None:
@@ -38,6 +53,12 @@ def update_config_file(**kwargs: str) -> None:
 @option("-u", "--username", help="Firebolt username")
 @option("--account-name", help="Name of Firebolt account")
 @option("--database-name", help="Database to use for SQL queries")
+@option(
+    "--password-file",
+    help="Path to the file, where password is stored",
+    default=None,
+    type=click.Path(exists=True),
+)
 @option("--api-endpoint", hidden=True)
 @option_engine_name_url(read_from_config=False)
 def configure(**raw_config_options: str) -> None:
@@ -52,33 +73,47 @@ def configure(**raw_config_options: str) -> None:
             "Provide only one"
         )
 
-    keys = ("username", "password", "account_name", "database_name")
-    skip_message = " (press Enter to skip)"
+    if config:
+        if "password_file" in config:
+            password = read_from_file(config["password_file"])
+            config["password"] = password if password else ""
+            config.pop("password_file")
+    else:
+        prev_config = read_config_file()
 
-    for k in keys:
-        if k not in config:
+        keys = ("username", "password", "account_name", "database_name")
+        skip_message = (
+            prev_config.get("username", None),
+            "************" if "password" in prev_config else None,
+            prev_config.get("account_name", None),
+            prev_config.get("database_name", None),
+        )
+
+        for k, message in zip(keys, skip_message):
             value = prompt(
-                k.capitalize().replace("_", " ") + skip_message,
+                f'{k.capitalize().replace("_", " ")} [{message}]',
                 hide_input=k == "password",
-                default="",
+                default=prev_config.get(k, ""),
                 show_default=False,
             )
-            if value:
-                config[k] = value
+            config[k] = value
 
-    if "engine_name" not in config and "engine_url" not in config:
-        engine_name = prompt(
-            "Engine name (press Enter if you want to enter engine url instead)",
-            default="",
+        # Prompt for engine name or url
+        prev_engine_name_or_url = prev_config.get(
+            "engine_name", None
+        ) or prev_config.get("engine_url", None)
+        value = prompt(
+            f"Engine name or url [{prev_engine_name_or_url}]",
+            hide_input=False,
+            default=prev_engine_name_or_url,
             show_default=False,
         )
-        if engine_name:
-            config["engine_name"] = engine_name
+
+        # Decide whether to store the value as engine_name or engine_url
+        # '.' symbol should always be in url and cannot be in engine_name
+        if "." in value:
+            config["engine_url"] = value
         else:
-            engine_url = prompt(
-                "Engine URL" + skip_message, default="", show_default=False
-            )
-            if engine_url:
-                config["engine_url"] = engine_url
+            config["engine_name"] = value
 
     update_config_file(**config)

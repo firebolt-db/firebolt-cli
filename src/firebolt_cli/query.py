@@ -1,7 +1,6 @@
 import csv
 import os
 import sys
-from typing import Optional
 
 import click
 from click import command, echo, option
@@ -21,27 +20,7 @@ from firebolt_cli.common_options import (
     default_from_config_file,
     option_engine_name_url,
 )
-
-
-def read_from_file(fpath: Optional[str]) -> Optional[str]:
-    """
-    read from file, if fpath is not None, otherwise return empty string
-    """
-    if fpath is None:
-        return None
-
-    with open(fpath, "r") as f:
-        return f.read() or None
-
-
-def read_from_stdin_buffer() -> Optional[str]:
-    """
-    read from buffer if stdin file descriptor is open, otherwise return empty string
-    """
-    if sys.stdin.isatty():
-        return None
-
-    return sys.stdin.buffer.read().decode("utf-8") or None
+from firebolt_cli.utils import read_from_file, read_from_stdin_buffer
 
 
 def print_result_if_any(cursor: Cursor, use_csv: bool) -> None:

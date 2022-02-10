@@ -1,4 +1,5 @@
 import json
+import sys
 from typing import Optional, Sequence
 
 from firebolt.common import Settings
@@ -82,3 +83,24 @@ def convert_bytes(num: Optional[float]) -> str:
 
 def string_to_int_or_none(val: Optional[str]) -> Optional[int]:
     return int(val) if val else None
+
+
+def read_from_file(fpath: Optional[str]) -> Optional[str]:
+    """
+    read from file, if fpath is not None, otherwise return empty string
+    """
+    if fpath is None:
+        return None
+
+    with open(fpath, "r") as f:
+        return f.read() or None
+
+
+def read_from_stdin_buffer() -> Optional[str]:
+    """
+    read from buffer if stdin file descriptor is open, otherwise return empty string
+    """
+    if sys.stdin.isatty():
+        return None
+
+    return sys.stdin.buffer.read().decode("utf-8") or None
