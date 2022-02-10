@@ -26,6 +26,11 @@ def read_config_file() -> dict:
 
 
 def update_config_file(**kwargs: str) -> None:
+    """
+
+    :param kwargs:
+    :return:
+    """
     config = ConfigParser(interpolation=None)
     if path.exists(config_file):
         config.read(config_file)
@@ -65,7 +70,7 @@ def configure(**raw_config_options: str) -> None:
     """
     Store firebolt configuration parameters in config file
     """
-    config = {k: v for k, v in raw_config_options.items() if v}
+    config = {k: v for k, v in raw_config_options.items() if v is not None}
 
     if "engine_name" in config and "engine_url" in config:
         raise UsageError(
@@ -91,7 +96,7 @@ def configure(**raw_config_options: str) -> None:
 
         for k, message in zip(keys, skip_message):
             value = prompt(
-                f'{k.capitalize().replace("_", " ")} [{message}]',
+                f'{k.capitalize().replace("_", " ")} [{message if message else None}]',
                 hide_input=k == "password",
                 default=prev_config.get(k, ""),
                 show_default=False,
@@ -103,9 +108,10 @@ def configure(**raw_config_options: str) -> None:
             "engine_name", None
         ) or prev_config.get("engine_url", None)
         value = prompt(
-            f"Engine name or url [{prev_engine_name_or_url}]",
+            f"Engine name or url "
+            f"[{prev_engine_name_or_url if prev_engine_name_or_url else None}]",
             hide_input=False,
-            default=prev_engine_name_or_url,
+            default=prev_engine_name_or_url if prev_engine_name_or_url else "",
             show_default=False,
         )
 
