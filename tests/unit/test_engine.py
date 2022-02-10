@@ -743,29 +743,18 @@ def test_engine_drop_not_found(configure_resource_manager: Sequence) -> None:
     assert result.exit_code != 0, "non-zero exit code"
 
 
-def test_engine_describe_happy_path(configure_resource_manager: Sequence) -> None:
-    """ """
-    rm, _, _, _, engine_mock = configure_resource_manager
-
-    result = CliRunner(mix_stderr=False).invoke(
-        describe, ["--name", "to_describe_engine"]
-    )
-
-    assert result.stderr == ""
-    assert result.exit_code == 0
-
-
 def test_engine_describe_json(configure_resource_manager: Sequence) -> None:
     """ """
-    rm, _, _, _, engine_mock = configure_resource_manager
+    rm, _, database_mock, _, engine_mock = configure_resource_manager
 
     engine_mock.name = "to_describe_engine"
     engine_mock.description = "engine description"
     engine_mock.latest_revision_key = None
-    engine_mock.settings.preset = "preset"
+    engine_mock.settings.preset = "ENGINE_SETTINGS_PRESET_GENERAL_PURPOSE"
+    engine_mock.settings.auto_stop_delay_duration = "4800s"
     engine_mock.settings.warm_up = "index"
     engine_mock.create_time = ""
-    engine_mock.database = None
+    engine_mock.database = database_mock
 
     result = CliRunner(mix_stderr=False).invoke(
         describe, ["--name", "to_describe_engine", "--json"]
@@ -780,12 +769,17 @@ def test_engine_describe_json(configure_resource_manager: Sequence) -> None:
         "warm_up",
         "attached_to_database",
         "instance_type",
+        "preset",
         "scale",
     ]:
         assert param in engine_description
 
     assert engine_description["name"] == "to_describe_engine"
     assert engine_description["description"] == "engine description"
+    assert engine_description["preset"] == "ENGINE_SETTINGS_PRESET_GENERAL_PURPOSE"
+    assert engine_description["warm_up"] == "index"
+    assert engine_description["auto_stop"] == "1:20:00"
+    assert engine_description["attached_to_database"] == database_mock.name
 
     assert result.stderr == ""
     assert result.exit_code == 0
