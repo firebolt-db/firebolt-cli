@@ -73,6 +73,7 @@ def configure_resource_manager(mocker: MockerFixture) -> ResourceManager:
     regions_mock.get_by_key.return_value = Region("us-east-1")
 
     database_mock = unittest.mock.MagicMock()
+    database_mock.name = "mock_db_name"
     database_mock.data_size_full = 2048
 
     databases_mock.create.return_value = database_mock

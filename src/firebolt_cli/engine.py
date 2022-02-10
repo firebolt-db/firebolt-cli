@@ -291,7 +291,6 @@ def echo_engine_information(
             data=[
                 engine.name,
                 engine.description,
-                engine.settings.is_read_only,
                 # TODO: auto delay could also be off or set to str
                 str(
                     timedelta(
@@ -308,7 +307,6 @@ def echo_engine_information(
             header=[
                 "name",
                 "description",
-                "is_read_only",
                 "auto_stop",
                 "preset",
                 "warm_up",
@@ -576,7 +574,31 @@ def drop(**raw_config_options: str) -> None:
         sys.exit(os.EX_DATAERR)
 
 
+@command()
+@common_options
+@option(
+    "--name",
+    help="Engine name, that should be described",
+    required=True,
+    type=str,
+)
+@json_option
+def describe(**raw_config_options: str) -> None:
+    """
+    Describe specified engine
+    """
+    try:
+        rm = construct_resource_manager(**raw_config_options)
+        engine = rm.engines.get_by_name(name=raw_config_options["name"])
+        echo_engine_information(rm, engine, bool(raw_config_options["json"]))
+
+    except (RuntimeError, FireboltError) as err:
+        echo(err, err=True)
+        sys.exit(os.EX_DATAERR)
+
+
 engine.add_command(create)
+engine.add_command(describe)
 engine.add_command(drop)
 engine.add_command(start)
 engine.add_command(restart)
