@@ -57,6 +57,7 @@ def test_interactive_multiple_requests() -> None:
     """
     inp = create_pipe_input()
     cursor_mock = unittest.mock.MagicMock()
+    cursor_mock.nextset.return_value = None
 
     inp.send_text("SELECT 1;\n")
     inp.send_text("SELECT 2;\n")
@@ -128,3 +129,25 @@ def test_process_internal_command_help(capsys):
     assert len(captured.out.split("\n")) >= 3
     for command in INTERNAL_COMMANDS:
         assert command in captured.out
+
+
+def test_interactive_multi_statement() -> None:
+    """
+    Test interactive sql happy path,
+    multistatement is passed
+    """
+    inp = create_pipe_input()
+    cursor_mock = unittest.mock.MagicMock()
+    cursor_mock.nextset.side_effect = [True, None]
+    cursor_mock.description = None
+
+    inp.send_text("SELECT 1; SELECT 2;\n")
+    inp.send_text(".exit\n")
+
+    with create_app_session(input=inp, output=DummyOutput()):
+        enter_interactive_session(cursor_mock, False)
+    inp.close()
+
+    cursor_mock.execute.assert_called_once_with("SELECT 1; SELECT 2")
+
+    assert cursor_mock.nextset.call_count == 2
