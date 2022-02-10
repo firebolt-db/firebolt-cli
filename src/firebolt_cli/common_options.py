@@ -122,30 +122,19 @@ def json_option(command: Callable) -> Callable:
     )(command)
 
 
-def option_engine_name_url(read_from_config: bool = False) -> Callable:
-    def option_engine_name_url_inner(command: Callable) -> Callable:
-        command = option(
-            "--engine-name",
-            help="Name of engine to use for SQL queries. "
-            "Incompatible with --engine-url",
-            required=False,
-            default=None,
-            callback=default_from_config_file(required=False)
-            if read_from_config
-            else None,
-        )(command)
+def option_engine_name_url(command: Callable) -> Callable:
+    command = option(
+        "--engine-name",
+        help="Name of engine to use for SQL queries. " "Incompatible with --engine-url",
+        required=False,
+        default=None,
+    )(command)
 
-        command = option(
-            "--engine-url",
-            help="Url of engine to use for SQL queries. "
-            "Incompatible with --engine-name",
-            required=False,
-            default=None,
-            callback=default_from_config_file(required=False)
-            if read_from_config
-            else None,
-        )(command)
+    command = option(
+        "--engine-url",
+        help="Url of engine to use for SQL queries. " "Incompatible with --engine-name",
+        required=False,
+        default=None,
+    )(command)
 
-        return command
-
-    return option_engine_name_url_inner
+    return command

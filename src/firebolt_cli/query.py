@@ -20,6 +20,7 @@ from firebolt_cli.common_options import (
     common_options,
     default_from_config_file,
     option_engine_name_url,
+    read_config_key,
 )
 
 EXIT_COMMANDS = [".exit", ".quit", ".q"]
@@ -152,7 +153,7 @@ def enter_interactive_session(cursor: Cursor, use_csv: bool) -> None:
 
 @command()
 @common_options
-@option_engine_name_url(read_from_config=True)
+@option_engine_name_url
 @option("--csv", help="Provide query output in csv format", is_flag=True, default=False)
 @option(
     "--database-name",
@@ -169,6 +170,13 @@ def query(**raw_config_options: str) -> None:
     """
     Execute sql queries
     """
+    if (
+        raw_config_options["engine_name"] is None
+        and raw_config_options["engine_url"] is None
+    ):
+        raw_config_options["engine_name"] = read_config_key("engine_name")
+        raw_config_options["engine_url"] = read_config_key("engine_url")
+
     stdin_query = read_from_stdin_buffer()
     file_query = read_from_file(raw_config_options["file"])
 

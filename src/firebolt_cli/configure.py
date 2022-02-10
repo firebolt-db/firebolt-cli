@@ -39,7 +39,7 @@ def update_config_file(**kwargs: str) -> None:
 @option("--account-name", help="Name of Firebolt account")
 @option("--database-name", help="Database to use for SQL queries")
 @option("--api-endpoint", hidden=True)
-@option_engine_name_url(read_from_config=False)
+@option_engine_name_url
 def configure(**raw_config_options: str) -> None:
     """
     Store firebolt configuration parameters in config file
