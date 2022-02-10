@@ -53,6 +53,7 @@ def test_interactive_multiple_requests() -> None:
     """
     inp = create_pipe_input()
     cursor_mock = unittest.mock.MagicMock()
+    cursor_mock.nextset.return_value = None
 
     inp.send_text("SELECT 1;\n")
     inp.send_text("SELECT 2;\n")
@@ -96,3 +97,25 @@ def test_interactive_raise_error() -> None:
         enter_interactive_session(cursor_mock, False)
 
     cursor_mock.execute.assert_called_once_with("wrong sql")
+
+
+def test_interactive_multi_statement() -> None:
+    """
+    Test interactive sql happy path,
+    multistatement is passed
+    """
+    inp = create_pipe_input()
+    cursor_mock = unittest.mock.MagicMock()
+    cursor_mock.nextset.side_effect = [True, None]
+    cursor_mock.description = None
+
+    inp.send_text("SELECT 1; SELECT 2;\n")
+
+    os.close(inp._w)
+
+    with create_app_session(input=inp, output=DummyOutput()):
+        enter_interactive_session(cursor_mock, False)
+
+    cursor_mock.execute.assert_called_once_with("SELECT 1; SELECT 2")
+
+    assert cursor_mock.nextset.call_count == 2

@@ -66,6 +66,7 @@ def query_generic_test(
     test sql execution, either sql read from input or from parameters
     """
 
+    cursor_mock.nextset.return_value = None
     cursor_mock.fetchall.return_value = [
         ["test", "test1"],
         ["test2", "test3"],
@@ -214,3 +215,40 @@ def test_sql_execution_error(
     assert (
         result.exit_code != 0
     ), "the execution should fail, but cli returned success code"
+
+
+def test_sql_execution_multiline(cursor_mock: unittest.mock.Mock, configure_cli: None):
+    """
+
+    :param cursor_mock:
+    :param configure_cli:
+    :return:
+    """
+    configure_cli()
+
+    cursor_mock.nextset.side_effect = [True, None]
+
+    cursor_mock.fetchall.return_value = [
+        ["test", "test1"],
+        ["test2", "test3"],
+        ["data1", "data2"],
+    ]
+
+    headers = [mock.Mock(), mock.Mock()]
+    for header_mock, header_name in zip(headers, ["name1", "name2"]):
+        header_mock.name = header_name
+
+    cursor_mock.description = headers
+    expected_sql = "SELECT * FROM t1; SELECT * FROM t2"
+
+    result = CliRunner().invoke(
+        query,
+        "--engine-name engine-name".split(),
+        input=expected_sql,
+    )
+    assert result.exit_code == 0
+
+    assert cursor_mock.nextset.call_count == 2
+    assert cursor_mock.fetchall.call_count == 2
+
+    cursor_mock.execute.assert_called_once_with(expected_sql)
