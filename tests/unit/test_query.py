@@ -1,18 +1,14 @@
 import csv
-import os
 import unittest.mock
 from typing import Callable, Optional
 from unittest import mock
 
 from click.testing import CliRunner
 from firebolt.common.exception import FireboltError
-from prompt_toolkit.application import create_app_session
-from prompt_toolkit.input import create_pipe_input
-from prompt_toolkit.output import DummyOutput
 from pyfakefs.fake_filesystem import FakeFilesystem
 from pytest_mock import MockerFixture
 
-from firebolt_cli.query import enter_interactive_session, query
+from firebolt_cli.query import query
 
 
 def test_query_stdin_file_ambiguity(
@@ -70,6 +66,7 @@ def query_generic_test(
     test sql execution, either sql read from input or from parameters
     """
 
+    cursor_mock.nextset.return_value = None
     cursor_mock.fetchall.return_value = [
         ["test", "test1"],
         ["test2", "test3"],
@@ -220,110 +217,38 @@ def test_sql_execution_error(
     ), "the execution should fail, but cli returned success code"
 
 
-def test_interactive_immediate_stop(mocker: MockerFixture) -> None:
+def test_sql_execution_multiline(cursor_mock: unittest.mock.Mock, configure_cli: None):
     """
-    Enter interactive shell and send EOF immediately
+
+    :param cursor_mock:
+    :param configure_cli:
+    :return:
     """
-    inp = create_pipe_input()
-    cursor_mock = unittest.mock.MagicMock()
+    configure_cli()
 
-    os.close(inp._w)
+    cursor_mock.nextset.side_effect = [True, None]
 
-    with create_app_session(input=inp, output=DummyOutput()):
-        enter_interactive_session(cursor_mock, False)
+    cursor_mock.fetchall.return_value = [
+        ["test", "test1"],
+        ["test2", "test3"],
+        ["data1", "data2"],
+    ]
 
-    cursor_mock.execute.assert_not_called()
+    headers = [mock.Mock(), mock.Mock()]
+    for header_mock, header_name in zip(headers, ["name1", "name2"]):
+        header_mock.name = header_name
 
+    cursor_mock.description = headers
+    expected_sql = "SELECT * FROM t1; SELECT * FROM t2"
 
-def test_interactive_send_empty(mocker: MockerFixture) -> None:
-    """
-    Empty strings should not be sent to the cursor
-    """
-    inp = create_pipe_input()
-    cursor_mock = unittest.mock.MagicMock()
-
-    inp.send_text(" \n")
-    inp.send_text("\t \n")
-    inp.send_text("   ;;;;   \n")
-    inp.send_text(";\n")
-    inp.send_text(";;\n")
-    os.close(inp._w)
-
-    with create_app_session(input=inp, output=DummyOutput()):
-        enter_interactive_session(cursor_mock, False)
-
-    cursor_mock.execute.assert_not_called()
-
-
-def test_interactive_multiple_requests(mocker: MockerFixture) -> None:
-    """
-    Test interactive sql happy path,
-    multiple requests are passed one by one to the cursor
-    """
-    inp = create_pipe_input()
-    cursor_mock = unittest.mock.MagicMock()
-
-    inp.send_text("SELECT 1;\n")
-    inp.send_text("SELECT 2;\n")
-    inp.send_text("SELECT 3;\n")
-    inp.send_text("SELECT 4;\n")
-    os.close(inp._w)
-
-    with create_app_session(input=inp, output=DummyOutput()):
-        enter_interactive_session(cursor_mock, False)
-
-    cursor_mock.execute.assert_has_calls(
-        [
-            mock.call("SELECT 1"),
-            mock.call("SELECT 2"),
-            mock.call("SELECT 3"),
-            mock.call("SELECT 4"),
-        ],
-        any_order=False,
+    result = CliRunner().invoke(
+        query,
+        "--engine-name engine-name".split(),
+        input=expected_sql,
     )
+    assert result.exit_code == 0
 
-    assert cursor_mock.execute.call_count == 4
+    assert cursor_mock.nextset.call_count == 2
+    assert cursor_mock.fetchall.call_count == 2
 
-
-def test_interactive_raise_error(capsys, mocker: MockerFixture) -> None:
-    """
-    Test wrong sql, raise an error, but the execution continues
-    """
-    inp = create_pipe_input()
-    cursor_mock = unittest.mock.MagicMock()
-
-    error_message = "sql execution failed"
-    cursor_mock.attach_mock(
-        unittest.mock.Mock(side_effect=FireboltError(error_message)), "execute"
-    )
-
-    inp.send_text("wrong sql;\n")
-    os.close(inp._w)
-
-    with create_app_session(input=inp, output=DummyOutput()):
-        enter_interactive_session(cursor_mock, False)
-
-    cursor_mock.execute.assert_called_once_with("wrong sql")
-    captured = capsys.readouterr()
-    assert error_message in captured.out
-
-
-def test_interactive_multiline(mocker: MockerFixture) -> None:
-    """
-    Test interactive sql happy path,
-    multiple requests are passed one by one to the cursor
-    """
-    inp = create_pipe_input()
-    cursor_mock = unittest.mock.MagicMock()
-
-    inp.send_text("SELECT\n")
-    inp.send_text("col\n")
-    inp.send_text("FROM\n")
-    inp.send_text("table;\n")
-
-    os.close(inp._w)
-
-    with create_app_session(input=inp, output=DummyOutput()):
-        enter_interactive_session(cursor_mock, True)
-
-    cursor_mock.execute.assert_called_once_with("SELECT\ncol\nFROM\ntable")
+    cursor_mock.execute.assert_called_once_with(expected_sql)

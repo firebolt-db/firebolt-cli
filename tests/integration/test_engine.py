@@ -2,6 +2,7 @@ import json
 import time
 from collections import namedtuple
 
+import pytest
 from click.testing import CliRunner
 
 from firebolt_cli.main import main
@@ -30,6 +31,7 @@ def test_engine_stop_stopped(stopped_engine_name: str, cli_runner: CliRunner) ->
     assert result.exit_code != 0
 
 
+@pytest.mark.slow
 def test_engine_start_stop(stopped_engine_name: str, cli_runner: CliRunner) -> None:
     """
     Test engine start/stop happy path
@@ -90,7 +92,7 @@ def test_engine_update_single_parameter(database_name: str) -> None:
     engine_name = f"cli_integration_test_engine{int(time.time())}"
     result = runner.invoke(
         main,
-        f"engine create --name {engine_name} --spec i3.2xlarge "
+        f"engine create --name {engine_name} --spec S1 "
         f"--database-name {database_name} --region us-east-1".split(),
     )
     assert result.exit_code == 0
@@ -99,7 +101,7 @@ def test_engine_update_single_parameter(database_name: str) -> None:
     ENGINE_UPDATE_PARAMS = {
         "type": ParamValue("ro", "ENGINE_SETTINGS_PRESET_DATA_ANALYTICS", "preset"),
         "scale": ParamValue(23, 23, "scale"),
-        "spec": ParamValue("i3.xlarge", "i3.xlarge", "instance_type"),
+        "spec": ParamValue("S1", "S1", "instance_type"),
         "auto-stop": ParamValue("1233", "20:33:00", "auto_stop"),
         "warmup": ParamValue("all", "ENGINE_SETTINGS_WARM_UP_ALL", "warm_up"),
         "description": ParamValue(
@@ -136,6 +138,7 @@ def test_engine_restart_stopped(
     assert result.exit_code != 0
 
 
+@pytest.mark.slow
 def test_engine_restart_running(engine_name: str, cli_runner: CliRunner) -> None:
     """
     Test restart engine, which is running should
@@ -165,7 +168,7 @@ def test_engine_create_minimal(engine_name: str, database_name: str):
         f"engine create --json "
         f"--name {engine_name} "
         f"--database-name {database_name} "
-        f"--spec i3.large "
+        f"--spec C1 "
         f"--region us-east-1".split(),
     )
     assert result.exit_code == 0
@@ -196,7 +199,7 @@ def test_engine_create_existing(engine_name: str, database_name: str):
         f"engine create --json "
         f"--name {engine_name} "
         f"--database-name {database_name} "
-        f" --spec i3.large "
+        f" --spec B1 "
         f"--region us-east-1".split(),
     )
     assert "not unique" in result.stderr
