@@ -1,8 +1,6 @@
 # Firebolt-CLI
 Firebolt cli is a tool for connecting to firebolt, managing firebolt resources, and executing queries from the command line.
 
-Table of content 
-
 ## Quickstart
 
 ### Prerequisites
