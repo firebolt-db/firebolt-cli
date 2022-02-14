@@ -172,9 +172,17 @@ def test_engine_create_minimal(engine_name: str, database_name: str):
         f"--region us-east-1".split(),
     )
     assert result.exit_code == 0
-    output = json.loads(result.stdout)
-    assert output["name"] == engine_name
-    assert output["attached_to_database"] == database_name
+    create_output = json.loads(result.stdout)
+    assert create_output["name"] == engine_name
+    assert create_output["attached_to_database"] == database_name
+
+    result = CliRunner(mix_stderr=False).invoke(
+        main,
+        f"engine describe --json " f"--name {engine_name} ".split(),
+    )
+    assert result.exit_code == 0
+    update_output = json.loads(result.stdout)
+    assert update_output == create_output
 
     result = CliRunner(mix_stderr=False).invoke(
         main, f"engine drop --name {engine_name} --yes".split()
