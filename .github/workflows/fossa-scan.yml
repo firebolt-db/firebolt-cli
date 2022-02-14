@@ -1,0 +1,22 @@
+name: FOSSA Scan
+
+on:
+  workflow_dispatch:
+  workflow_call:
+    secrets:
+      FOSSA_TOKEN:
+        required: true
+
+jobs:
+  security-scan:
+    runs-on: ubuntu-latest
+    steps:
+    - name: "Run FOSSA Scan"
+      uses: fossas/fossa-action@v1
+      with:
+        api-key: ${{ inputs.fossa-key }}
+    - name: "Run FOSSA Test"
+      uses: fossas/fossa-action@v1
+      with:
+        api-key: ${{ secrets.FOSSA_TOKEN }}
+        run-tests: true
