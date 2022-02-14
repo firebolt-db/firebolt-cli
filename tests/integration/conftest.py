@@ -27,6 +27,11 @@ def must_env(var_name: str) -> str:
 
 
 @fixture(scope="session")
+def default_region() -> str:
+    return "eu-west-1"
+
+
+@fixture(scope="session")
 def engine_url() -> str:
     return must_env(ENGINE_URL_ENV)
 

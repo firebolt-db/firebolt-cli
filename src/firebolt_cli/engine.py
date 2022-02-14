@@ -378,7 +378,6 @@ def restart(**raw_config_options: str) -> None:
     type=str,
     required=True,
 )
-@option("--region", help="Region, where the engine should be created", required=True)
 @json_option
 def create(**raw_config_options: str) -> None:
     """
@@ -388,11 +387,12 @@ def create(**raw_config_options: str) -> None:
 
     try:
         database = rm.databases.get_by_name(name=raw_config_options["database_name"])
+        region = rm.regions.get_by_key(database.compute_region_key)
 
         engine = rm.engines.create(
             name=raw_config_options["name"],
             spec=raw_config_options["spec"],
-            region=raw_config_options["region"],
+            region=region.name,
             engine_type=ENGINE_TYPES[raw_config_options["type"]],
             scale=int(raw_config_options["scale"]),
             auto_stop=int(raw_config_options["auto_stop"]),
