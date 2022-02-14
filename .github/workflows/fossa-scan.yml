@@ -9,6 +9,11 @@ jobs:
     steps:
     - name: "Checkout Code"
       uses: actions/checkout@v2
+    - name: "Build"
+      run: |
+        python3 -m pip install pipenv
+        python3 -m pipenv install -e .
+      shell: bash
     - name: "Run FOSSA Scan"
       uses: fossas/fossa-action@v1
       with:
