@@ -1,0 +1,9 @@
+version: 3
+
+project:
+  id: git+github.com/firebolt-db/firebolt-cli
+  name: firebolt-cli
+
+targets:
+  only:
+    - type: pipenv
