@@ -2,10 +2,6 @@ name: FOSSA Scan
 
 on:
   workflow_dispatch:
-  workflow_call:
-    secrets:
-      FOSSA_TOKEN:
-        required: true
 
 jobs:
   security-scan:
@@ -16,7 +12,7 @@ jobs:
     - name: "Run FOSSA Scan"
       uses: fossas/fossa-action@v1
       with:
-        api-key: ${{ inputs.fossa-key }}
+        api-key: ${{ secrets.FOSSA_TOKEN }}
     - name: "Run FOSSA Test"
       uses: fossas/fossa-action@v1
       with:
