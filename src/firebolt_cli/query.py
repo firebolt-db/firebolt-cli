@@ -18,7 +18,6 @@ from tabulate import tabulate
 from firebolt_cli.common_options import (
     common_options,
     default_from_config_file,
-    option_engine_name_url,
 )
 from firebolt_cli.utils import read_from_file, read_from_stdin_buffer
 
@@ -131,10 +130,16 @@ def enter_interactive_session(cursor: Cursor, use_csv: bool) -> None:
 
 @command()
 @common_options
-@option_engine_name_url(read_from_config=True)
+@option(
+    "--engine-name",
+    help="Name or url of the engine to use for SQL queries",
+    envvar="FIREBOLT_ENGINE_NAME",
+    callback=default_from_config_file(),
+)
 @option("--csv", help="Provide query output in csv format", is_flag=True, default=False)
 @option(
     "--database-name",
+    envvar="FIREBOLT_DATABASE_NAME",
     help="Database name to use for SQL queries",
     callback=default_from_config_file(),
 )
@@ -160,10 +165,18 @@ def query(**raw_config_options: str) -> None:
 
     sql_query = stdin_query or file_query
 
+    # Decide whether to store the value as engine_name or engine_url
+    # '.' symbol should always be in url and cannot be in engine_name
+    engine_name, engine_url = None, None
+    if "." in raw_config_options["engine_name"]:
+        engine_url = raw_config_options["engine_name"]
+    else:
+        engine_name = raw_config_options["engine_name"]
+
     try:
         with connect(
-            engine_url=raw_config_options["engine_url"],
-            engine_name=raw_config_options["engine_name"],
+            engine_url=engine_url,
+            engine_name=engine_name,
             database=raw_config_options["database_name"],
             username=raw_config_options["username"],
             password=raw_config_options["password"],
