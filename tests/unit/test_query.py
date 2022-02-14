@@ -20,7 +20,7 @@ def test_query_stdin_file_ambiguity(
     """
     configure_cli()
 
-    fs.create_file("path_to_file.sql")
+    fs.create_file("path_to_file.sql", contents="SELECT 1")
     result = CliRunner(mix_stderr=False).invoke(
         query,
         [
@@ -30,16 +30,18 @@ def test_query_stdin_file_ambiguity(
         input="query from stdin",
     )
 
-    assert result.stderr != "", "error message is missing"
+    assert "both are specified" in result.stderr, "error message is incorrect"
     assert (
         result.exit_code != 0
     ), "the execution should fail, but cli returned success code"
 
 
-def test_query_file_missing() -> None:
+def test_query_file_missing(configure_cli: Callable) -> None:
     """
     If sql file doesn't exist, the cli should return an error
     """
+
+    configure_cli()
     result = CliRunner(mix_stderr=False).invoke(
         query,
         [

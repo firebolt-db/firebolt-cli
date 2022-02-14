@@ -43,7 +43,7 @@ def test_query_inputs(
     configure_cli: None, engine_name: str, engine_url: str, read_from_stdin: bool
 ):
     """
-    Execute simple from either stdin or file using engine-name/engine-url
+    Execute simple from either stdin or file using both engine-name and engine-url
     """
     query_simple_generic(
         additional_parameters=["--engine-name", engine_name],
@@ -52,7 +52,7 @@ def test_query_inputs(
     )
 
     query_simple_generic(
-        additional_parameters=["--engine-url", engine_url],
+        additional_parameters=["--engine-name", engine_url],
         read_from_stdin=read_from_stdin,
         query="SELECT 1;",
     )
@@ -66,7 +66,7 @@ def test_query_inputs_multiline(
     Execute a multiline query
     """
     query_simple_generic(
-        additional_parameters=["--engine-url", engine_url],
+        additional_parameters=["--engine-name", engine_url],
         read_from_stdin=read_from_stdin,
         query="SELECT\n1;",
     )
@@ -81,7 +81,7 @@ def query_select_csv_table_configuration(engine_url: str):
     table_name = "test_table_query_select"
 
     query_simple_generic(
-        additional_parameters=["--engine-url", engine_url],
+        additional_parameters=["--engine-name", engine_url],
         read_from_stdin=False,
         query=f"CREATE FACT TABLE {table_name} "
         "(c_id INT, c_name INT) PRIMARY INDEX c_id;",
@@ -90,7 +90,7 @@ def query_select_csv_table_configuration(engine_url: str):
     yield
 
     query_simple_generic(
-        additional_parameters=["--engine-url", engine_url],
+        additional_parameters=["--engine-name", engine_url],
         read_from_stdin=False,
         query=f"DROP TABLE {table_name};",
     )
@@ -110,7 +110,7 @@ def test_query_select_csv(
     table_name = "test_table_query_select"
 
     query_simple_generic(
-        additional_parameters=["--engine-url", engine_url],
+        additional_parameters=["--engine-name", engine_url],
         read_from_stdin=True,
         query=f"INSERT INTO {table_name} (c_id, c_name) VALUES (1, 213);",
     )
@@ -141,7 +141,7 @@ def test_query_incorrect(configure_cli: None, engine_url: str, read_from_stdin: 
     Test incorrect query
     """
     result = query_simple_generic(
-        additional_parameters=["--engine-url", engine_url],
+        additional_parameters=["--engine-name", engine_url],
         read_from_stdin=read_from_stdin,
         query="SELECT select;",
         check_result=False,

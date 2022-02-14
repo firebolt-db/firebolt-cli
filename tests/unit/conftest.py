@@ -18,19 +18,8 @@ def configure_cli(fs: FakeFilesystem) -> None:
         runner = CliRunner()
         result = runner.invoke(
             configure,
-            [
-                "--username",
-                "username",
-                "--account-name",
-                "account_name",
-                "--engine-name",
-                "engine_name",
-                "--api-endpoint",
-                "api_endpoint",
-                "--database-name",
-                "default",
-            ],
-            input="password",
+            [],
+            input="username\npassword\naccount_name\ndatabase_name\nengine_name\n",
         )
 
         assert result.exit_code == 0, "configuration of cli failed"

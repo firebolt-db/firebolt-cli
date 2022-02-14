@@ -79,20 +79,21 @@ def configure_cli(
     username: str,
     database_name: str,
 ) -> None:
+    result = CliRunner().invoke(
+        configure,
+        [],
+        input=f"{username}\n{password}\n{account_name}\n{database_name}\n\n",
+    )
+    assert result.exit_code == 0
+
     CliRunner().invoke(
         configure,
         [
-            "--username",
-            username,
-            "--account-name",
-            account_name,
-            "--database-name",
-            database_name,
             "--api-endpoint",
             api_endpoint,
         ],
-        input=password,
     )
+    assert result.exit_code == 0
 
 
 @pytest.fixture
