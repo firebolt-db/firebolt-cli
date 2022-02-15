@@ -133,7 +133,7 @@ def test_query_tabular_output(
     configure_cli()
 
     def check_tabular_correctness(output: str) -> None:
-        assert len(output) != ""
+        assert len(output) != 0
 
     query_generic_test(
         [],
