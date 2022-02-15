@@ -22,7 +22,7 @@ jobs:
           name: pytest-coverage-report
 
       - name: Override Coverage Source Path for Sonar
-        run: sed -i "s/<source>\/home\/runner\/work\/firebolt-cli\/firebolt-cli\/src<\/source>/<source>\/github\/workspace\/firebolt-cli\/src<\/source>/g" /github/workspace/coverage.xml
+        run: sed -i "s/<source>\/home\/runner\/work\/firebolt-cli\/firebolt-cli\/src<\/source>/<source>\/github\/workspace\/firebolt-cli\/src<\/source>/g" /home/runner/work/firebolt-cli/firebolt-cli/coverage.xml
 
       - name: "Security Scan"
         uses: firebolt-db/action-security-scan@main
