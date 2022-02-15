@@ -1,7 +1,9 @@
-name: Pull request
+name: Pull request/Push
 
 on:
   pull_request:
+    branches: [ main ]
+  push:
     branches: [ main ]
 
 jobs:
