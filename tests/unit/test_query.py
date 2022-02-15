@@ -1,6 +1,6 @@
 import csv
 import unittest.mock
-from typing import Callable, Optional
+from typing import Callable, Optional, Sequence
 from unittest import mock
 
 from click.testing import CliRunner
@@ -58,7 +58,7 @@ def test_query_file_missing(configure_cli: Callable) -> None:
 
 
 def query_generic_test(
-    additional_parameter: str,
+    additional_parameter: Sequence[str],
     check_output_callback: Callable[[str], None],
     expected_sql: str,
     input: Optional[str],
@@ -219,7 +219,9 @@ def test_sql_execution_error(
     ), "the execution should fail, but cli returned success code"
 
 
-def test_sql_execution_multiline(cursor_mock: unittest.mock.Mock, configure_cli: None):
+def test_sql_execution_multiline(
+    cursor_mock: unittest.mock.Mock, configure_cli: Callable
+):
     """
 
     :param cursor_mock:
