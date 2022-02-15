@@ -131,10 +131,14 @@ def get_password() -> Optional[str]:
     if unavailable tries to get it from the config file
     """
     try:
-        return keyring.get_password("firebolt-cli", "firebolt-cli")
+        password = keyring.get_password("firebolt-cli", "firebolt-cli")
+        if password:
+            return password
     except KeyringError:
-        password = read_config_file().get("password", None)
-        return password if password else None
+        pass
+
+    password = read_config_file().get("password", None)
+    return password if password else None
 
 
 def delete_password() -> None:
