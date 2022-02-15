@@ -117,8 +117,15 @@ def list(**raw_config_options: str) -> None:
         if raw_config_options["json"] or databases:
             echo(
                 prepare_execution_result_table(
-                    data=[[db.name, db.description] for db in databases],
-                    header=["name", "description"],
+                    data=[
+                        [
+                            db.name,
+                            str(rm.regions.get_by_key(db.compute_region_key).name),
+                            db.description,
+                        ]
+                        for db in databases
+                    ],
+                    header=["name", "region", "description"],
                     use_json=bool(raw_config_options["json"]),
                 )
             )
