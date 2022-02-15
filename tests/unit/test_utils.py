@@ -4,8 +4,11 @@ import pytest
 
 from firebolt_cli.utils import (
     convert_bytes,
+    delete_password,
+    get_password,
     prepare_execution_result_line,
     prepare_execution_result_table,
+    set_password,
 )
 
 
@@ -78,3 +81,27 @@ def test_convert_bytes() -> None:
     assert "1.2 GB" == convert_bytes(1.2 * 2 ** 30)
     assert "9.99 GB" == convert_bytes(9.99 * 2 ** 30)
     assert "19.99 EB" == convert_bytes(19.99 * 2 ** 60)
+
+
+def test_password_set_get() -> None:
+    """
+    Test get/set/delete _password commands
+    """
+    delete_password()
+    assert get_password() is None
+
+    # Set password
+    set_password("Some_password21r$%")
+    assert get_password() == "Some_password21r$%"
+
+    # Set new password
+    set_password("Some_new_password21r$%")
+    assert get_password() == "Some_new_password21r$%"
+
+    # delete password
+    delete_password()
+    assert get_password() is None
+
+    # delete deleted password
+    delete_password()
+    assert get_password() is None

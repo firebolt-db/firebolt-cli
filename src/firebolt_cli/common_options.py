@@ -1,13 +1,11 @@
 from configparser import ConfigParser
-from os import environ, path
+from os import path
 from typing import Callable, List, Optional
 
-from appdirs import user_config_dir
 from click import Context, MissingParameter, Parameter, option, prompt
 from firebolt.client import DEFAULT_API_URL
 
-config_file = path.join(user_config_dir(), "firebolt.ini")
-config_section = "firebolt-cli"
+from firebolt_cli.utils import config_file, config_section, get_password
 
 _config: Optional[ConfigParser] = None
 
@@ -47,9 +45,11 @@ def password_from_config_file(
     # user asked to prompt for password
     if value:
         return prompt("Password", type=str, hide_input=True)
-    pw_value = environ.get("FIREBOLT_PASSWORD") or read_config_key(param.name)
+
+    pw_value = get_password()
     if not pw_value:
         raise MissingParameter(ctx=ctx, param=param, param_hint=f"--{param.name}")
+
     return pw_value
 
 

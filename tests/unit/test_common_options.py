@@ -16,6 +16,7 @@ from firebolt_cli.common_options import (
     config_file,
     config_section,
 )
+from firebolt_cli.utils import delete_password, set_password
 
 
 @contextmanager
@@ -118,7 +119,7 @@ def test_password_priority(fs: FakeFilesystem):
     def validate_command(
         command: Tuple, input: Optional[str], expected_value: str, err_msg: str
     ):
-        result = runner.invoke(*command, input=input)
+        result = CliRunner().invoke(*command, input=input)
         if result.exit_code != 0:
             print(result.__dict__)
         assert result.exit_code == 0, "non-zero exit code for "
@@ -130,45 +131,34 @@ def test_password_priority(fs: FakeFilesystem):
         assert "password" in config, "missing password command option"
         assert config["password"] == expected_value, err_msg
 
-    with create_config_file(fs, {"password": "pw_file" + SPECIAL_CHARACTERS}):
-        runner = CliRunner()
+    with create_config_file(fs, {}):
+        set_password("pw_config" + SPECIAL_CHARACTERS)
 
-        with mock.patch.dict(
-            environ, {"FIREBOLT_PASSWORD": "pw_env" + SPECIAL_CHARACTERS}
-        ):
-            # username is provided as option, env variable and in config file,
-            # option should be chosen
-            validate_command(
-                (test, ["--password"]),
-                "pw_option" + SPECIAL_CHARACTERS,
-                "pw_option" + SPECIAL_CHARACTERS,
-                "invalid password from option",
-            )
+        # username is provided as option, env variable and in config file,
+        # option should be chosen
+        validate_command(
+            (test, ["--password"]),
+            "pw_option" + SPECIAL_CHARACTERS,
+            "pw_option" + SPECIAL_CHARACTERS,
+            "invalid password from option",
+        )
 
-            validate_command(
-                (test, ["-p"]),
-                "pw_option" + SPECIAL_CHARACTERS,
-                "pw_option" + SPECIAL_CHARACTERS,
-                "invalid password from option",
-            )
+        validate_command(
+            (test, ["-p"]),
+            "pw_option" + SPECIAL_CHARACTERS,
+            "pw_option" + SPECIAL_CHARACTERS,
+            "invalid password from option",
+        )
 
-            # username is provided as env variable and in config file,
-            # env variable should be chosen
-            validate_command(
-                (test,),
-                None,
-                "pw_env" + SPECIAL_CHARACTERS,
-                "invalid password from env",
-            )
-
-        # username is provided in config file,
-        # it should be read correctly
+        # username is provided as env variable and in config file,
+        # env variable should be chosen
         validate_command(
             (test,),
             None,
-            "pw_file" + SPECIAL_CHARACTERS,
-            "invalid password from file",
+            "pw_config" + SPECIAL_CHARACTERS,
+            "invalid password from env",
         )
+        delete_password()
 
 
 def test_parameters_missing(fs: FakeFilesystem):

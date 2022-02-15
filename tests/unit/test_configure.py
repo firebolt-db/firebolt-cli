@@ -4,7 +4,13 @@ from appdirs import user_config_dir
 from click.testing import CliRunner
 from pyfakefs.fake_filesystem import FakeFilesystem
 
-from firebolt_cli.configure import config_file, config_section, configure
+from firebolt_cli.configure import configure
+from firebolt_cli.utils import (
+    config_file,
+    config_section,
+    delete_password,
+    get_password,
+)
 
 
 def validate_file_config(config):
@@ -12,7 +18,8 @@ def validate_file_config(config):
     cp.read(config_file)
 
     cli_config = cp[config_section]
-    assert set(list(cli_config.keys())) == set(config.keys()) and [
+
+    assert set(config.keys()).issubset(set(cli_config.keys())) and [
         cli_config[k] == config[k] for k in config.keys()
     ], "Invalid config written with configure command"
 
@@ -46,13 +53,14 @@ def test_configure_happy_path(fs: FakeFilesystem) -> None:
     validate_file_config(
         {
             "username": "username",
-            "password": test_password,
             "account_name": "account_name",
             "database_name": "database_name",
             "engine_name": "engine_name",
             "api_endpoint": "api_endpoint",
         }
     )
+
+    assert get_password() == test_password
 
     fs.remove(config_file)
 
@@ -76,8 +84,11 @@ def test_configure_happy_path(fs: FakeFilesystem) -> None:
         }
     )
 
+    delete_password()
+
 
 def test_configure_prompt(fs: FakeFilesystem) -> None:
+
     fs.create_dir(user_config_dir())
     runner = CliRunner()
     result = runner.invoke(
@@ -93,12 +104,12 @@ def test_configure_prompt(fs: FakeFilesystem) -> None:
     validate_file_config(
         {
             "username": "username",
-            "password": "password",
             "account_name": "account_name",
             "database_name": "database_name",
             "engine_name": "engine_name",
         }
     )
+    assert get_password() == "password"
 
     result = runner.invoke(
         configure,
@@ -119,12 +130,14 @@ def test_configure_prompt(fs: FakeFilesystem) -> None:
     validate_file_config(
         {
             "username": "username",
-            "password": "password",
             "account_name": "account_name",
             "database_name": "database_name",
             "engine_name": "engine_url.firebolt.io",
         }
     )
+    assert get_password() == "password"
+
+    delete_password()
 
 
 def test_configure_overrides(fs: FakeFilesystem) -> None:
