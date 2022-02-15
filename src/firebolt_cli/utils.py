@@ -113,7 +113,7 @@ def exit_on_firebolt_exception(func: Callable) -> Callable:
     Decorator which catches FireboltError and RuntimeError and exits the programms
     """
 
-    def decorator(*args, **kwargs):
+    def decorator(*args: str, **kwargs: str) -> None:
         try:
             func(*args, **kwargs)
         except (FireboltError, RuntimeError) as err:
