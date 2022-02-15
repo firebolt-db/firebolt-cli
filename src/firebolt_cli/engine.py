@@ -493,7 +493,7 @@ def status(**raw_config_options: str) -> None:
         current_status_name = (
             engine.current_status_summary.name if engine.current_status_summary else ""
         )
-        echo(f"Engine {engine.name} current " f"status is: {current_status_name}")
+        echo(f"Engine {engine.name} current status is: {current_status_name}")
     except (FireboltError, RuntimeError) as err:
         echo(err, err=True)
         sys.exit(os.EX_DATAERR)

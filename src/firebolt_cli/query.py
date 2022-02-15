@@ -22,8 +22,9 @@ from firebolt_cli.common_options import (
 from firebolt_cli.utils import read_from_file, read_from_stdin_buffer
 
 EXIT_COMMANDS = [".exit", ".quit", ".q"]
-HELP_COMMANDS = [".help"]
-INTERNAL_COMMANDS = EXIT_COMMANDS + HELP_COMMANDS + [".tables"]
+HELP_COMMANDS = [".help", ".h"]
+TABLES_COMMAND = ".tables"
+INTERNAL_COMMANDS = EXIT_COMMANDS + HELP_COMMANDS + [TABLES_COMMAND]
 
 
 def print_result_if_any(cursor: Cursor, use_csv: bool) -> None:
@@ -65,10 +66,9 @@ def show_help() -> None:
     Print help message with internal commands of interactive sql execution
     """
     rows = [
-        [".exit", "Exit firebolt-cli"],
-        [".help", "Show this help message"],
-        [".quit", "Exit firebolt-cli"],
-        [".tables", "Show tables in current database"],
+        ["/".join(HELP_COMMANDS), "Show this help message"],
+        ["/".join(EXIT_COMMANDS), "Exit firebolt-cli"],
+        [TABLES_COMMAND, "Show tables in current database"],
     ]
 
     for internal_command, help_message in rows:
@@ -86,7 +86,7 @@ def process_internal_command(internal_command: str) -> str:
     elif internal_command in HELP_COMMANDS:
         show_help()
         return ""
-    elif internal_command == ".tables":
+    elif internal_command == TABLES_COMMAND:
         return "SHOW tables;"
 
     raise ValueError(f"Not known internal command: {internal_command}")

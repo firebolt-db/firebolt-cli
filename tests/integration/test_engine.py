@@ -97,14 +97,14 @@ def test_engine_update_single_parameter(database_name: str) -> None:
     )
     assert result.exit_code == 0
 
-    ParamValue = namedtuple("ParamValue", "set expected output_name")
+    _ParamValue = namedtuple("ParamValue", "set expected output_name")
     ENGINE_UPDATE_PARAMS = {
-        "type": ParamValue("ro", "ENGINE_SETTINGS_PRESET_DATA_ANALYTICS", "preset"),
-        "scale": ParamValue(2, 2, "scale"),
-        "spec": ParamValue("S1", "S1", "instance_type"),
-        "auto-stop": ParamValue("1233", "20:33:00", "auto_stop"),
-        "warmup": ParamValue("all", "ENGINE_SETTINGS_WARM_UP_ALL", "warm_up"),
-        "description": ParamValue(
+        "type": _ParamValue("ro", "ENGINE_SETTINGS_PRESET_DATA_ANALYTICS", "preset"),
+        "scale": _ParamValue(2, 2, "scale"),
+        "spec": _ParamValue("S1", "S1", "instance_type"),
+        "auto-stop": _ParamValue("1233", "20:33:00", "auto_stop"),
+        "warmup": _ParamValue("all", "ENGINE_SETTINGS_WARM_UP_ALL", "warm_up"),
+        "description": _ParamValue(
             "new_engine_description", "new_engine_description", "description"
         ),
     }

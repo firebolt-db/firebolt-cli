@@ -1,0 +1,32 @@
+name: Firebolt Security Scan
+
+on:
+  workflow_dispatch:
+  workflow_call:
+    secrets:
+      FOSSA_TOKEN:
+        required: true
+      SONARCLOUD_TOKEN:
+        required: true
+
+jobs:
+  security-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Checkout Code"
+        uses: actions/checkout@v2
+
+      - name: "Download coverage report"
+        uses: actions/download-artifact@v2
+        with:
+          name: pytest-coverage-report
+
+      - name: Override Coverage Source Path for Sonar
+        run: sed -i "s/<source>\/home\/runner\/work\/firebolt-cli\/firebolt-cli\/src<\/source>/<source>\/github\/workspace\/src<\/source>/g" /home/runner/work/firebolt-cli/firebolt-cli/coverage.xml || echo "Coverage file doesn't exist, still we continue"
+
+      - name: "Security Scan"
+        uses: firebolt-db/action-security-scan@main
+        with:
+          github-key: ${{ secrets.GITHUB_TOKEN }}
+          fossa-key: ${{ secrets.FOSSA_TOKEN }}
+          sonar-key: ${{ secrets.SONARCLOUD_TOKEN }}
