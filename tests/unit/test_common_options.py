@@ -11,12 +11,8 @@ from click.testing import CliRunner
 from firebolt.client import DEFAULT_API_URL
 from pyfakefs.fake_filesystem import FakeFilesystem
 
-from firebolt_cli.common_options import (
-    _common_options,
-    config_file,
-    config_section,
-)
-from firebolt_cli.utils import delete_password, set_password
+from firebolt_cli.common_options import _common_options
+from firebolt_cli.utils import config_file, config_section, update_config
 
 
 @contextmanager
@@ -132,7 +128,7 @@ def test_password_priority(fs: FakeFilesystem):
         assert config["password"] == expected_value, err_msg
 
     with create_config_file(fs, {}):
-        set_password("pw_config" + SPECIAL_CHARACTERS)
+        update_config(password="pw_config" + SPECIAL_CHARACTERS)
 
         # username is provided as option, env variable and in config file,
         # option should be chosen
@@ -158,7 +154,6 @@ def test_password_priority(fs: FakeFilesystem):
             "pw_config" + SPECIAL_CHARACTERS,
             "invalid password from env",
         )
-        delete_password()
 
 
 def test_parameters_missing(fs: FakeFilesystem):

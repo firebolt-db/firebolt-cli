@@ -1,26 +1,12 @@
 from configparser import ConfigParser
-from os import path
 from typing import Callable, List, Optional
 
 from click import Context, MissingParameter, Parameter, option, prompt
 from firebolt.client import DEFAULT_API_URL
 
-from firebolt_cli.utils import config_file, config_section, get_password
+from firebolt_cli.utils import read_config
 
 _config: Optional[ConfigParser] = None
-
-
-def read_config_key(key: str) -> Optional[str]:
-    global _config
-    # read config once
-    if not _config:
-        # return None if there is no config file
-        if not path.exists(config_file):
-            return None
-        _config = ConfigParser(interpolation=None)
-        _config.read(config_file)
-
-    return _config.get(config_section, key, fallback=None)
 
 
 def default_from_config_file(
@@ -29,7 +15,7 @@ def default_from_config_file(
     def inner(ctx: Context, param: Parameter, value: Optional[str]) -> Optional[str]:
         # type check
         assert param.name
-        value = value or read_config_key(param.name) or default
+        value = value or read_config().get(param.name, None) or default
         if required and not value:
             raise MissingParameter(ctx=ctx, param=param, param_hint=f"--{param.name}")
         return value
@@ -46,11 +32,11 @@ def password_from_config_file(
     if value:
         return prompt("Password", type=str, hide_input=True)
 
-    pw_value = get_password()
-    if not pw_value:
+    password = read_config().get("password", None)
+    if not password:
         raise MissingParameter(ctx=ctx, param=param, param_hint=f"--{param.name}")
 
-    return pw_value
+    return password
 
 
 _common_options: List[Callable] = [

@@ -5,12 +5,7 @@ from click.testing import CliRunner
 from pyfakefs.fake_filesystem import FakeFilesystem
 
 from firebolt_cli.configure import configure
-from firebolt_cli.utils import (
-    config_file,
-    config_section,
-    delete_password,
-    get_password,
-)
+from firebolt_cli.utils import config_file, config_section, read_config
 
 
 def validate_file_config(config):
@@ -43,12 +38,12 @@ def test_configure_happy_path(fs: FakeFilesystem) -> None:
             "engine_name",
             "--api-endpoint",
             "api_endpoint",
-            "--password-file",
-            "pswd",
+            "--password",
         ],
+        input=test_password,
     )
     assert result.exit_code == 0, "non-zero exit code for configure"
-    assert "Created new config file" in result.stdout, "Invalid result message"
+    assert "Successfully" in result.stdout, "Invalid result message"
 
     validate_file_config(
         {
@@ -60,7 +55,7 @@ def test_configure_happy_path(fs: FakeFilesystem) -> None:
         }
     )
 
-    assert get_password() == test_password
+    assert read_config().get("password") == test_password
 
     fs.remove(config_file)
 
@@ -75,7 +70,7 @@ def test_configure_happy_path(fs: FakeFilesystem) -> None:
         ],
     )
     assert result.exit_code == 0, "non-zero exit code for configure"
-    assert "Created new config file" in result.stdout, "Invalid result message"
+    assert "Successfully" in result.stdout, "Invalid result message"
 
     validate_file_config(
         {
@@ -83,8 +78,6 @@ def test_configure_happy_path(fs: FakeFilesystem) -> None:
             "engine_name": "engine_url",
         }
     )
-
-    delete_password()
 
 
 def test_configure_prompt(fs: FakeFilesystem) -> None:
@@ -99,17 +92,15 @@ def test_configure_prompt(fs: FakeFilesystem) -> None:
         ),
     )
     assert result.exit_code == 0, "non-zero exit code for configure"
-    assert "Created new config file" in result.stdout, "Invalid result message"
+    assert "Successfully" in result.stdout, "Invalid result message"
 
-    validate_file_config(
-        {
-            "username": "username",
-            "account_name": "account_name",
-            "database_name": "database_name",
-            "engine_name": "engine_name",
-        }
-    )
-    assert get_password() == "password"
+    assert read_config() == {
+        "username": "username",
+        "account_name": "account_name",
+        "database_name": "database_name",
+        "engine_name": "engine_name",
+        "password": "password",
+    }
 
     result = runner.invoke(
         configure,
@@ -125,19 +116,15 @@ def test_configure_prompt(fs: FakeFilesystem) -> None:
         ),
     )
     assert result.exit_code == 0, "non-zero exit code for configure"
-    assert "Updated existing config file" in result.stdout, "Invalid result message"
+    assert "Successfully" in result.stdout, "Invalid result message"
 
-    validate_file_config(
-        {
-            "username": "username",
-            "account_name": "account_name",
-            "database_name": "database_name",
-            "engine_name": "engine_url.firebolt.io",
-        }
-    )
-    assert get_password() == "password"
-
-    delete_password()
+    assert read_config() == {
+        "username": "username",
+        "account_name": "account_name",
+        "database_name": "database_name",
+        "engine_name": "engine_url.firebolt.io",
+        "password": "password",
+    }
 
 
 def test_configure_overrides(fs: FakeFilesystem) -> None:
@@ -153,14 +140,12 @@ def test_configure_overrides(fs: FakeFilesystem) -> None:
         ],
     )
     assert result.exit_code == 0, "non-zero exit code for configure"
-    assert "Created new config file" in result.stdout, "Invalid result message"
+    assert "Successfully" in result.stdout, "Invalid result message"
 
-    validate_file_config(
-        {
-            "username": "username",
-            "database_name": "database_name",
-        }
-    )
+    assert read_config() == {
+        "username": "username",
+        "database_name": "database_name",
+    }
 
     result = runner.invoke(
         configure,
@@ -172,12 +157,10 @@ def test_configure_overrides(fs: FakeFilesystem) -> None:
         ],
     )
     assert result.exit_code == 0, "non-zero exit code for configure"
-    assert "Updated existing config file" in result.stdout, "Invalid result message"
+    assert "Successfully" in result.stdout, "Invalid result message"
 
-    validate_file_config(
-        {
-            "username": "username2",
-            "database_name": "database_name",
-            "account_name": "account_name",
-        }
-    )
+    assert read_config() == {
+        "username": "username2",
+        "database_name": "database_name",
+        "account_name": "account_name",
+    }

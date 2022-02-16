@@ -51,6 +51,9 @@ def configure_resource_manager(mocker: MockerFixture) -> ResourceManager:
     Configure resource manager mock
     """
     rm = mocker.patch.object(ResourceManager, "__init__", return_value=None)
+    client_mock = mocker.patch.object(ResourceManager, "client", create=True)
+    client_mock.auth.token = "some_token"
+
     databases_mock = mocker.patch.object(ResourceManager, "databases", create=True)
     engines_mock = mocker.patch.object(ResourceManager, "engines", create=True)
     mocker.patch.object(ResourceManager, "bindings", create=True)

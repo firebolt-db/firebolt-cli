@@ -7,6 +7,7 @@ from typing import Optional, Sequence
 import keyring
 from appdirs import user_config_dir
 from firebolt.common import Settings
+from firebolt.common.exception import FireboltError
 from firebolt.service.manager import ResourceManager
 from keyring.errors import KeyringError
 from tabulate import tabulate
@@ -56,14 +57,26 @@ def construct_resource_manager(**raw_config_options: str) -> ResourceManager:
     Propagate raw_config_options to the settings and construct a resource manager
     """
 
-    settings = Settings(
-        server=raw_config_options["api_endpoint"],
-        user=raw_config_options["username"],
-        password=raw_config_options["password"],
-        default_region=raw_config_options.get("region", ""),
-    )
+    settings_dict = {
+        "server": raw_config_options["api_endpoint"],
+        "default_region": raw_config_options.get("region", ""),
+    }
 
-    return ResourceManager(settings)
+    token = read_config().get("token", None)
+    if token is not None:
+        settings_dict["access_token"] = token
+        settings = Settings(**settings_dict)
+        try:
+            return ResourceManager(settings)
+        except (FireboltError, RuntimeError):
+            del settings_dict["access_token"]
+
+    settings_dict["user"] = raw_config_options["username"]
+    settings_dict["password"] = raw_config_options["password"]
+
+    rm = ResourceManager(Settings(**settings_dict))
+    update_config(token=rm.client.auth.token)
+    return rm
 
 
 def convert_bytes(num: Optional[float]) -> str:
@@ -114,77 +127,75 @@ def read_from_stdin_buffer() -> Optional[str]:
     return sys.stdin.buffer.read().decode("utf-8") or None
 
 
-def set_password(password: str) -> None:
-    """
-    Set the password using keyring,
-    if unavailable uses the config file as a fallback option
-    """
-    try:
-        keyring.set_password("firebolt-cli", "firebolt-cli", password)
-    except KeyringError:
-        update_config_file(password=password)
-
-
-def get_password() -> Optional[str]:
-    """
-    Get the password from keyring,
-    if unavailable tries to get it from the config file
-    """
-    try:
-        password = keyring.get_password("firebolt-cli", "firebolt-cli")
-        if password:
-            return password
-    except KeyringError:
-        pass
-
-    password = read_config_file().get("password", None)
-    return password if password else None
-
-
-def delete_password() -> None:
-    """
-    Delete the password from keyring and the config file
-    """
-    try:
-        keyring.delete_password("firebolt-cli", "firebolt-cli")
-    except KeyringError:
-        pass
-
-    update_config_file(password="")
-
-
-def read_config_file() -> dict:
+def read_config() -> dict:
     """
     :return: dict with parameters from config file, or empty dict if no parameters found
     """
+    config_dict = {}
+
     config = ConfigParser(interpolation=None)
     if os.path.exists(config_file):
         config.read(config_file)
         if config.has_section(config_section):
-            return dict((k, v) for k, v in config[config_section].items())
+            config_dict = dict((k, v) for k, v in config[config_section].items())
 
-    return {}
+    for param in ["token", "password"]:
+        try:
+            value = keyring.get_password("firebolt-cli", param)
+            if value and len(value) != 0:
+                config_dict[param] = value
+        except KeyringError:
+            pass
+
+    return dict({(k, v) for k, v in config_dict.items() if v and len(v) != 0})
 
 
-def update_config_file(**kwargs: str) -> str:
+def update_config(**kwargs: str) -> None:
     """
+    Update the config file (or use the keyring for updating token and password)
+    if a parameter set to None, the parameter will not be updates
+    To delete the parameter, it should be set to empty string
+
+    Note: token cannot be updated if other parameters are not None
 
     :param kwargs:
     :return:
     """
-    config = ConfigParser(interpolation=None)
-    if os.path.exists(config_file):
-        config.read(config_file)
-        message = "Updated existing config file"
-    else:
-        message = "Created new config file"
 
-    if config.has_section(config_section):
-        config[config_section].update(kwargs)
-    else:
-        config[config_section] = kwargs
+    # Invalidate the current token if one of the parameters is set
+    if any(
+        [i in kwargs for i in ["password", "username", "account_name", "api_endpoint"]]
+    ):
+        try:
+            keyring.delete_password("firebolt-cli", "token")
+        except KeyringError:
+            pass
 
-    with open(config_file, "w") as cf:
-        config.write(cf)
+        kwargs["token"] = ""
 
-    return message
+    # Try to update token and password in keyring first, and only if failed in config
+    for param in ["token", "password"]:
+        if param in kwargs and kwargs[param] is not None:
+            try:
+                if kwargs[param] == "":
+                    keyring.delete_password("firebolt-cli", param)
+                else:
+                    keyring.set_password("firebolt-cli", param, kwargs[param])
+            except KeyringError:
+                # Will update it in config file then
+                pass
+            else:
+                del kwargs[param]
+
+    if len(kwargs):
+        config = ConfigParser(interpolation=None)
+        if os.path.exists(config_file):
+            config.read(config_file)
+
+        if config.has_section(config_section):
+            config[config_section].update(**kwargs)
+        else:
+            config[config_section] = kwargs
+
+        with open(config_file, "w") as cf:
+            config.write(cf)
