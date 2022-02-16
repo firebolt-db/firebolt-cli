@@ -32,11 +32,11 @@ def password_from_config_file(
     if value:
         return prompt("Password", type=str, hide_input=True)
 
-    password = read_config().get("password", None)
-    if not password:
+    pw_value = read_config().get("password", None)
+    if not pw_value:
         raise MissingParameter(ctx=ctx, param=param, param_hint=f"--{param.name}")
 
-    return password
+    return pw_value
 
 
 _common_options: List[Callable] = [

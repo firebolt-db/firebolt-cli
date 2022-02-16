@@ -34,13 +34,20 @@ def configure(**raw_config_options: str) -> None:
             "Database name",
             "Engine name or URL",
         )
+        skip_message = (
+            prev_config.get("username", None),
+            "************" if "password" in prev_config else None,
+            prev_config.get("account_name", None),
+            prev_config.get("database_name", None),
+            prev_config.get("engine_name", None),
+        )
 
-        for key, key_readable in zip(keys, keys_readable):
+        for key, key_readable, message in zip(keys, keys_readable, skip_message):
             value = prompt(
-                f"{key_readable}",
+                f"{key_readable} [{message if message else None}]",
                 hide_input=key == "password",
                 default=prev_config.get(key, ""),
-                show_default=key != "password",
+                show_default=False,
             )
             config[key] = value
 

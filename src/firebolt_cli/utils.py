@@ -55,6 +55,9 @@ def prepare_execution_result_table(
 def construct_resource_manager(**raw_config_options: str) -> ResourceManager:
     """
     Propagate raw_config_options to the settings and construct a resource manager
+
+    If access_token could be extracted from the config, try to access using it,
+    use username, password as fallback option
     """
 
     settings_dict = {
@@ -65,9 +68,8 @@ def construct_resource_manager(**raw_config_options: str) -> ResourceManager:
     token = read_config().get("token", None)
     if token is not None:
         settings_dict["access_token"] = token
-        settings = Settings(**settings_dict)
         try:
-            return ResourceManager(settings)
+            return ResourceManager(Settings(**settings_dict))
         except (FireboltError, RuntimeError):
             del settings_dict["access_token"]
 
@@ -145,9 +147,27 @@ def read_config() -> dict:
             if value and len(value) != 0:
                 config_dict[param] = value
         except KeyringError:
-            pass
+            continue
 
     return dict({(k, v) for k, v in config_dict.items() if v and len(v) != 0})
+
+
+def set_keyring_param(param: str, value: str) -> bool:
+    """
+    Set keyring param to value, if value is an empty string, delete the param
+
+    :return: True if operation was successful
+    """
+
+    try:
+        if value == "":
+            keyring.delete_password("firebolt-cli", param)
+        else:
+            keyring.set_password("firebolt-cli", param, value)
+    except KeyringError:
+        return False
+
+    return True
 
 
 def update_config(**kwargs: str) -> None:
@@ -166,26 +186,17 @@ def update_config(**kwargs: str) -> None:
     if any(
         [i in kwargs for i in ["password", "username", "account_name", "api_endpoint"]]
     ):
-        try:
-            keyring.delete_password("firebolt-cli", "token")
-        except KeyringError:
-            pass
-
+        set_keyring_param("token", "")
         kwargs["token"] = ""
 
     # Try to update token and password in keyring first, and only if failed in config
     for param in ["token", "password"]:
-        if param in kwargs and kwargs[param] is not None:
-            try:
-                if kwargs[param] == "":
-                    keyring.delete_password("firebolt-cli", param)
-                else:
-                    keyring.set_password("firebolt-cli", param, kwargs[param])
-            except KeyringError:
-                # Will update it in config file then
-                pass
-            else:
-                del kwargs[param]
+        if (
+            param in kwargs
+            and kwargs[param] is not None
+            and set_keyring_param(param, kwargs[param])
+        ):
+            del kwargs[param]
 
     if len(kwargs):
         config = ConfigParser(interpolation=None)
