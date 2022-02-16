@@ -1,7 +1,6 @@
 import csv
 import os
 import sys
-from typing import Optional
 
 import click
 from click import command, echo, option
@@ -19,33 +18,13 @@ from tabulate import tabulate
 from firebolt_cli.common_options import (
     common_options,
     default_from_config_file,
-    option_engine_name_url,
 )
+from firebolt_cli.utils import read_from_file, read_from_stdin_buffer
 
 EXIT_COMMANDS = [".exit", ".quit", ".q"]
-HELP_COMMANDS = [".help"]
-INTERNAL_COMMANDS = EXIT_COMMANDS + HELP_COMMANDS + [".tables"]
-
-
-def read_from_file(fpath: Optional[str]) -> Optional[str]:
-    """
-    read from file, if fpath is not None, otherwise return empty string
-    """
-    if fpath is None:
-        return None
-
-    with open(fpath, "r") as f:
-        return f.read() or None
-
-
-def read_from_stdin_buffer() -> Optional[str]:
-    """
-    read from buffer if stdin file descriptor is open, otherwise return empty string
-    """
-    if sys.stdin.isatty():
-        return None
-
-    return sys.stdin.buffer.read().decode("utf-8") or None
+HELP_COMMANDS = [".help", ".h"]
+TABLES_COMMAND = ".tables"
+INTERNAL_COMMANDS = EXIT_COMMANDS + HELP_COMMANDS + [TABLES_COMMAND]
 
 
 def print_result_if_any(cursor: Cursor, use_csv: bool) -> None:
@@ -87,10 +66,9 @@ def show_help() -> None:
     Print help message with internal commands of interactive sql execution
     """
     rows = [
-        [".exit", "Exit firebolt-cli"],
-        [".help", "Show this help message"],
-        [".quit", "Exit firebolt-cli"],
-        [".tables", "Show tables in current database"],
+        ["/".join(HELP_COMMANDS), "Show this help message"],
+        ["/".join(EXIT_COMMANDS), "Exit firebolt-cli"],
+        [TABLES_COMMAND, "Show tables in current database"],
     ]
 
     for internal_command, help_message in rows:
@@ -108,7 +86,7 @@ def process_internal_command(internal_command: str) -> str:
     elif internal_command in HELP_COMMANDS:
         show_help()
         return ""
-    elif internal_command == ".tables":
+    elif internal_command == TABLES_COMMAND:
         return "SHOW tables;"
 
     raise ValueError(f"Not known internal command: {internal_command}")
@@ -152,10 +130,16 @@ def enter_interactive_session(cursor: Cursor, use_csv: bool) -> None:
 
 @command()
 @common_options
-@option_engine_name_url(read_from_config=True)
+@option(
+    "--engine-name",
+    help="Name or url of the engine to use for SQL queries",
+    envvar="FIREBOLT_ENGINE_NAME",
+    callback=default_from_config_file(),
+)
 @option("--csv", help="Provide query output in csv format", is_flag=True, default=False)
 @option(
     "--database-name",
+    envvar="FIREBOLT_DATABASE_NAME",
     help="Database name to use for SQL queries",
     callback=default_from_config_file(),
 )
@@ -181,10 +165,18 @@ def query(**raw_config_options: str) -> None:
 
     sql_query = stdin_query or file_query
 
+    # Decide whether to store the value as engine_name or engine_url
+    # '.' symbol should always be in url and cannot be in engine_name
+    engine_name, engine_url = None, None
+    if "." in raw_config_options["engine_name"]:
+        engine_url = raw_config_options["engine_name"]
+    else:
+        engine_name = raw_config_options["engine_name"]
+
     try:
         with connect(
-            engine_url=raw_config_options["engine_url"],
-            engine_name=raw_config_options["engine_name"],
+            engine_url=engine_url,
+            engine_name=engine_name,
             database=raw_config_options["database_name"],
             username=raw_config_options["username"],
             password=raw_config_options["password"],

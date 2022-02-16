@@ -10,7 +10,7 @@ from pyfakefs.fake_filesystem import FakeFilesystem
 
 from firebolt_cli.database import create, describe, drop, list, update
 
-Database = namedtuple("Database", "name description")
+Database = namedtuple("Database", "name compute_region_key description")
 
 
 @pytest.fixture(autouse=True)
@@ -116,7 +116,10 @@ def test_databases_list_happy_path(
     """
     Test common workflow with some databases and json output
     """
-    databases = [Database("db_name1", ""), Database("db_name2", "")]
+    databases = [
+        Database("db_name1", "eu-east-1", ""),
+        Database("db_name2", "eu-west-1", ""),
+    ]
 
     databases_list_generic_workflow(
         configure_resource_manager=configure_resource_manager,
@@ -133,7 +136,10 @@ def test_databases_list_happy_path_json(
     """
     Test common workflow with some databases and json output
     """
-    databases = [Database("db_name1", ""), Database("db_name2", "")]
+    databases = [
+        Database("db_name1", "eu-east-1", ""),
+        Database("db_name2", "eu-west-1", ""),
+    ]
 
     def json_validator(output: str) -> None:
         try:
@@ -157,7 +163,10 @@ def test_databases_list_happy_path_name_contains(
     """
     Test common workflow with some databases and tabular output
     """
-    databases = [Database("db_name1", ""), Database("db_name2", "")]
+    databases = [
+        Database("db_name1", "eu-east-1", ""),
+        Database("db_name2", "eu-west-1", ""),
+    ]
 
     def tabular_validator(output: str) -> None:
         assert "db_name1" in output

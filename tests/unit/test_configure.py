@@ -1,5 +1,4 @@
 from configparser import ConfigParser
-from os import path
 
 from appdirs import user_config_dir
 from click.testing import CliRunner
@@ -20,6 +19,9 @@ def validate_file_config(config):
 
 def test_configure_happy_path(fs: FakeFilesystem) -> None:
     fs.create_dir(user_config_dir())
+    test_password = "pasword523%@!$$@#%@#!"
+    fs.create_file("pswd", contents=test_password)
+
     runner = CliRunner()
     result = runner.invoke(
         configure,
@@ -34,8 +36,9 @@ def test_configure_happy_path(fs: FakeFilesystem) -> None:
             "engine_name",
             "--api-endpoint",
             "api_endpoint",
+            "--password-file",
+            "pswd",
         ],
-        input="password",
     )
     assert result.exit_code == 0, "non-zero exit code for configure"
     assert "Created new config file" in result.stdout, "Invalid result message"
@@ -43,7 +46,7 @@ def test_configure_happy_path(fs: FakeFilesystem) -> None:
     validate_file_config(
         {
             "username": "username",
-            "password": "password",
+            "password": test_password,
             "account_name": "account_name",
             "database_name": "database_name",
             "engine_name": "engine_name",
@@ -53,14 +56,14 @@ def test_configure_happy_path(fs: FakeFilesystem) -> None:
 
     fs.remove(config_file)
 
-    # test some parameters missing, only -u and --engine-url
+    # test some parameters missing, only -u and --engine-name
     result = runner.invoke(
         configure,
         [
             "-u",
             "username",
-            "--engine-url",
-            "engine_url",
+            "--engine-name",
+            "engine_url.firebolt.io",
         ],
     )
     assert result.exit_code == 0, "non-zero exit code for configure"
@@ -69,7 +72,7 @@ def test_configure_happy_path(fs: FakeFilesystem) -> None:
     validate_file_config(
         {
             "username": "username",
-            "engine_url": "engine_url",
+            "engine_name": "engine_url",
         }
     )
 
@@ -101,7 +104,13 @@ def test_configure_prompt(fs: FakeFilesystem) -> None:
         configure,
         [],
         input="\n".join(
-            ["username", "password", "account_name", "database_name", "", "engine_url"]
+            [
+                "username",
+                "password",
+                "account_name",
+                "database_name",
+                "engine_url.firebolt.io",
+            ]
         ),
     )
     assert result.exit_code == 0, "non-zero exit code for configure"
@@ -113,7 +122,7 @@ def test_configure_prompt(fs: FakeFilesystem) -> None:
             "password": "password",
             "account_name": "account_name",
             "database_name": "database_name",
-            "engine_url": "engine_url",
+            "engine_name": "engine_url.firebolt.io",
         }
     )
 
@@ -159,54 +168,3 @@ def test_configure_overrides(fs: FakeFilesystem) -> None:
             "account_name": "account_name",
         }
     )
-
-
-def test_engine_name_url_together(fs: FakeFilesystem) -> None:
-    fs.create_dir(user_config_dir())
-    runner = CliRunner()
-    result = runner.invoke(
-        configure,
-        [
-            "--engine-name",
-            "engine_name",
-            "--engine-url",
-            "engine_url",
-        ],
-    )
-    assert result.exit_code == 2, "invalid exit code for configure usage error"
-    assert (
-        "engine-name and engine-url are mutually exclusive options" in result.stdout
-    ), "Invalid result message"
-
-    # no config file created on error
-    assert not path.exists(config_file)
-
-
-def test_engine_name_url_overrides(fs: FakeFilesystem) -> None:
-    fs.create_dir(user_config_dir())
-    runner = CliRunner()
-    result = runner.invoke(
-        configure,
-        [
-            "--engine-name",
-            "engine_name",
-        ],
-    )
-    assert result.exit_code == 0, "non-zero exit code for configure"
-    assert "Created new config file" in result.stdout, "Invalid result message"
-
-    validate_file_config({"engine_name": "engine_name"})
-
-    # override name with url
-    result = runner.invoke(
-        configure,
-        [
-            "--engine-url",
-            "engine_url",
-        ],
-    )
-    assert result.exit_code == 0, "non-zero exit code for configure"
-    assert "Updated existing config file" in result.stdout, "Invalid result message"
-
-    # name replaced with url
-    validate_file_config({"engine_url": "engine_url"})

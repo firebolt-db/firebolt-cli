@@ -1,18 +1,9 @@
 from configparser import ConfigParser
-from functools import update_wrapper
 from os import environ, path
-from typing import Any, Callable, List, Optional, TypeVar, cast
+from typing import Callable, List, Optional
 
 from appdirs import user_config_dir
-from click import (
-    BadOptionUsage,
-    Context,
-    MissingParameter,
-    Parameter,
-    get_current_context,
-    option,
-    prompt,
-)
+from click import Context, MissingParameter, Parameter, option, prompt
 from firebolt.client import DEFAULT_API_URL
 
 config_file = path.join(user_config_dir(), "firebolt.ini")
@@ -62,20 +53,6 @@ def password_from_config_file(
     return pw_value
 
 
-F = TypeVar("F", bound=Callable[..., Any])
-
-
-def validate_json_option(f: F) -> F:
-    def inner(*args: Any, **kwargs: Any) -> Any:
-        if kwargs.get("json", False) and not kwargs.get("yes", False):
-            raise BadOptionUsage(
-                "json", "--json should be used with -y", get_current_context()
-            )
-        return f(*args, **kwargs)
-
-    return update_wrapper(cast(F, inner), f)
-
-
 _common_options: List[Callable] = [
     option(
         "-u",
@@ -120,32 +97,3 @@ def json_option(command: Callable) -> Callable:
         is_flag=True,
         multiple=False,
     )(command)
-
-
-def option_engine_name_url(read_from_config: bool = False) -> Callable:
-    def option_engine_name_url_inner(command: Callable) -> Callable:
-        command = option(
-            "--engine-name",
-            help="Name of engine to use for SQL queries. "
-            "Incompatible with --engine-url",
-            required=False,
-            default=None,
-            callback=default_from_config_file(required=False)
-            if read_from_config
-            else None,
-        )(command)
-
-        command = option(
-            "--engine-url",
-            help="Url of engine to use for SQL queries. "
-            "Incompatible with --engine-name",
-            required=False,
-            default=None,
-            callback=default_from_config_file(required=False)
-            if read_from_config
-            else None,
-        )(command)
-
-        return command
-
-    return option_engine_name_url_inner
