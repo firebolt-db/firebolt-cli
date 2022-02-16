@@ -1,8 +1,11 @@
 import json
 import sys
-from typing import Optional, Sequence
+from functools import wraps
+from typing import Callable, Optional, Sequence
 
+from click import echo
 from firebolt.common import Settings
+from firebolt.common.exception import FireboltError
 from firebolt.service.manager import ResourceManager
 from tabulate import tabulate
 
@@ -104,3 +107,19 @@ def read_from_stdin_buffer() -> Optional[str]:
         return None
 
     return sys.stdin.buffer.read().decode("utf-8") or None
+
+
+def exit_on_firebolt_exception(func: Callable) -> Callable:
+    """
+    Decorator which catches FireboltError and RuntimeError and exits the programms
+    """
+
+    @wraps(func)
+    def decorator(*args: str, **kwargs: str) -> None:
+        try:
+            func(*args, **kwargs)
+        except (FireboltError, RuntimeError) as err:
+            echo(err, err=True)
+            sys.exit(1)
+
+    return decorator

@@ -19,7 +19,11 @@ from firebolt_cli.common_options import (
     common_options,
     default_from_config_file,
 )
-from firebolt_cli.utils import read_from_file, read_from_stdin_buffer
+from firebolt_cli.utils import (
+    exit_on_firebolt_exception,
+    read_from_file,
+    read_from_stdin_buffer,
+)
 
 EXIT_COMMANDS = [".exit", ".quit", ".q"]
 HELP_COMMANDS = [".help", ".h"]
@@ -149,6 +153,7 @@ def enter_interactive_session(cursor: Cursor, use_csv: bool) -> None:
     default=None,
     type=click.Path(exists=True),
 )
+@exit_on_firebolt_exception
 def query(**raw_config_options: str) -> None:
     """
     Execute sql queries
@@ -173,26 +178,21 @@ def query(**raw_config_options: str) -> None:
     else:
         engine_name = raw_config_options["engine_name"]
 
-    try:
-        with connect(
-            engine_url=engine_url,
-            engine_name=engine_name,
-            database=raw_config_options["database_name"],
-            username=raw_config_options["username"],
-            password=raw_config_options["password"],
-            api_endpoint=raw_config_options["api_endpoint"],
-        ) as connection:
+    with connect(
+        engine_url=engine_url,
+        engine_name=engine_name,
+        database=raw_config_options["database_name"],
+        username=raw_config_options["username"],
+        password=raw_config_options["password"],
+        api_endpoint=raw_config_options["api_endpoint"],
+    ) as connection:
 
-            cursor = connection.cursor()
+        cursor = connection.cursor()
 
-            if sql_query:
-                # if query is available, then execute, print result and exit
-                cursor.execute(sql_query)
-                print_result_if_any(cursor, bool(raw_config_options["csv"]))
-            else:
-                # otherwise start the interactive session
-                enter_interactive_session(cursor, bool(raw_config_options["csv"]))
-
-    except FireboltError as err:
-        echo(err, err=True)
-        sys.exit(os.EX_UNAVAILABLE)
+        if sql_query:
+            # if query is available, then execute, print result and exit
+            cursor.execute(sql_query)
+            print_result_if_any(cursor, bool(raw_config_options["csv"]))
+        else:
+            # otherwise start the interactive session
+            enter_interactive_session(cursor, bool(raw_config_options["csv"]))
