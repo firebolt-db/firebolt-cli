@@ -286,17 +286,37 @@ def echo_engine_information(
             revision.specification.db_compute_instances_type_key
         ]
 
+    def _format_auto_stop(auto_stop: str) -> str:
+        """
+        auto_stop could be set either 0 or to a value with ending with m or s
+        if it is the case then we print its timedelta or "off"
+        if not the original auto_stop parameter is returned
+        """
+        if auto_stop == "0":
+            return "off"
+
+        try:
+            if auto_stop[-1] not in {"m", "s"}:
+                raise ValueError("expected to end with m or s")
+
+            val = int(auto_stop[:-1])
+            if auto_stop[-1] == "m":
+                return str(timedelta(minutes=val))
+            else:
+                return str(timedelta(seconds=val))
+
+        except ValueError:
+            return auto_stop
+
     echo(
         prepare_execution_result_line(
             data=[
                 engine.name,
                 engine.description,
-                # TODO: auto delay could also be off or set to str
-                str(
-                    timedelta(
-                        seconds=int(engine.settings.auto_stop_delay_duration[:-1])
-                    )
-                ),
+                engine.current_status_summary.name
+                if engine.current_status_summary
+                else None,
+                _format_auto_stop(engine.settings.auto_stop_delay_duration),
                 engine.settings.preset,
                 engine.settings.warm_up,
                 str(engine.create_time),
@@ -307,6 +327,7 @@ def echo_engine_information(
             header=[
                 "name",
                 "description",
+                "status",
                 "auto_stop",
                 "preset",
                 "warm_up",

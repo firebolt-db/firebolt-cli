@@ -749,6 +749,9 @@ def test_engine_describe_json(configure_resource_manager: Sequence) -> None:
 
     engine_mock.name = "to_describe_engine"
     engine_mock.description = "engine description"
+    engine_mock.current_status_summary = (
+        EngineStatusSummary.ENGINE_STATUS_SUMMARY_RUNNING
+    )
     engine_mock.latest_revision_key = None
     engine_mock.settings.preset = "ENGINE_SETTINGS_PRESET_GENERAL_PURPOSE"
     engine_mock.settings.auto_stop_delay_duration = "4800s"
@@ -771,6 +774,7 @@ def test_engine_describe_json(configure_resource_manager: Sequence) -> None:
         "instance_type",
         "preset",
         "scale",
+        "status",
     ]:
         assert param in engine_description
 
@@ -780,6 +784,7 @@ def test_engine_describe_json(configure_resource_manager: Sequence) -> None:
     assert engine_description["warm_up"] == "index"
     assert engine_description["auto_stop"] == "1:20:00"
     assert engine_description["attached_to_database"] == database_mock.name
+    assert engine_description["status"] == "ENGINE_STATUS_SUMMARY_RUNNING"
 
     assert result.stderr == ""
     assert result.exit_code == 0
