@@ -1,5 +1,6 @@
 import json
 import sys
+from functools import wraps
 from typing import Callable, Optional, Sequence
 
 from click import echo
@@ -113,6 +114,7 @@ def exit_on_firebolt_exception(func: Callable) -> Callable:
     Decorator which catches FireboltError and RuntimeError and exits the programms
     """
 
+    @wraps(func)
     def decorator(*args: str, **kwargs: str) -> None:
         try:
             func(*args, **kwargs)
@@ -120,6 +122,4 @@ def exit_on_firebolt_exception(func: Callable) -> Callable:
             echo(err, err=True)
             sys.exit(1)
 
-    decorator.__name__ = func.__name__
-    decorator.__doc__ = func.__doc__
     return decorator
