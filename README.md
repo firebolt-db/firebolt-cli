@@ -4,7 +4,7 @@ Firebolt cli is a tool for connecting to firebolt, managing firebolt resources, 
 ## Quickstart
 
 ### Prerequisites
-`python>=3.6` and `pip` should be installed beforehand. For this go to [Python official page](https://www.python.org/downloads/). 
+`python>=3.7` and `pip` should be installed beforehand. For this go to [Python official page](https://www.python.org/downloads/). 
 
 Also, you will need a firebolt account with information about username, password, database, and engine. For more information go to [Firebolt](https://firebolt.io).
 
@@ -30,8 +30,8 @@ Username [None]: your_username
 Password [None]: ********
 Account name [None]: your_firebolt_account_name
 Database name [None]: your_database
-Engine name or url [None]: your_engine_name_or_url
-Created new config file
+Engine name or URL [None]: your_engine_name_or_url
+Successfully updated firebolt-cli configuration
 ```
 
 To run your first query, the engine has to be running. Check the status of the engine by executing the following command:
@@ -43,7 +43,7 @@ Engine your_engine_name current status is: ENGINE_STATUS_SUMMARY_STOPPED
 
 If the engine is stopped, you have to start the engine by executing the following command:
 ```
-$ firebolt engine start --name your_engine_name
+$ firebolt engine start --name your_engine_name --wait
 
 Engine your_engine_name is successfully started
 ```
@@ -99,13 +99,13 @@ There are three ways to configure firebolt cli:
 
 Or you can set particular parameters by running configure with additional command-line arguments:
 ```
-firebolt configure --username your_user_name --password-file /path/to/pswd
+firebolt configure --username your_user_name --account-name firebolt
 ```
 
 2. Pass additional command-line arguments to each command.
 
 ```
-firebolt query --username your_user_name --password-file /path/to/pswd
+firebolt query --username your_user_name --engine-name your_running_engine
 ```
 
 3. Use environment variable
@@ -116,7 +116,7 @@ $ export FIREBOLT_API_ENDPOINT=api_endpoint
 $ export FIREBOLT_ENGINE_NAME_URL=your_engine_name_or_url
 $ firebolt query
 ```
-Note, that it is not possible to set the password via the environment variables directly.
+Note, that it is not possible to set the password via the environment variables.
 
 ### Interactive SQL
 To enter interactive SQL, firebolt CLI has to be configured using one of three methods from [configuration section](#configure).
@@ -162,8 +162,4 @@ firebolt>
 ```
 
 ### Managing resources
-With firebolt cli it is also possible to manage databases and engines, for the full set of available features please see `firebolt engine --help` and `firebolt database --help`.  
-
-
-## Docker 
-TODO: Add docker description
+With firebolt cli it is also possible to manage databases and engines, for the full set of available features please see `firebolt engine --help` and `firebolt database --help`.
