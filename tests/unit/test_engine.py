@@ -374,7 +374,7 @@ def test_engine_create_happy_path_optional_parameters(
     engines_mock.create.assert_called_once_with(
         name="engine_name",
         spec="C1",
-        region=mock.ANY,
+        region="us-east-1",
         engine_type=EngineType.GENERAL_PURPOSE,
         scale=23,
         auto_stop=893,

@@ -28,7 +28,7 @@ def test_database_create(
     )
 
     databases_mock.create.assert_called_once_with(
-        name="test_database", description="", region=mock.ANY
+        name="test_database", description="", region="us-east-1"
     )
     assert result.exit_code == 0, "non-zero exit code"
 
