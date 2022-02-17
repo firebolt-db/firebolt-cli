@@ -71,12 +71,13 @@ def start_stop_generic(
     rm = construct_resource_manager(**raw_config_options)
 
     engine = rm.engines.get_by_name(name=raw_config_options["name"])
+    current_status_name = (
+        engine.current_status_summary.name
+        if engine.current_status_summary
+        else EngineStatusSummary.ENGINE_STATUS_SUMMARY_UNSPECIFIED.name
+    )
+
     if engine.current_status_summary not in accepted_initial_states:
-
-        current_status_name = (
-            engine.current_status_summary.name if engine.current_status_summary else ""
-        )
-
         raise FireboltError(
             wrong_initial_state_error.format(
                 name=engine.name,
@@ -85,28 +86,22 @@ def start_stop_generic(
         )
 
     if action == "start":
-        engine = engine.start(wait_for_startup=not raw_config_options["nowait"])
+        engine = engine.start(wait_for_startup=raw_config_options["wait"])
     elif action == "stop":
-        engine = engine.stop(wait_for_stop=not raw_config_options["nowait"])
+        engine = engine.stop(wait_for_stop=raw_config_options["wait"])
     elif action == "restart":
-        engine = engine.restart(wait_for_startup=not raw_config_options["nowait"])
+        engine = engine.restart(wait_for_startup=raw_config_options["wait"])
     else:
         assert False, "not available action"
 
     if (
         engine.current_status_summary in accepted_final_nowait_states
-        and raw_config_options["nowait"]
+        and not raw_config_options["wait"]
     ):
         echo(success_message_nowait.format(name=engine.name))
     elif engine.current_status_summary in accepted_final_states:
         echo(success_message.format(name=engine.name))
     else:
-        current_status_name = (
-            engine.current_status_summary.name
-            if engine.current_status_summary
-            else EngineStatusSummary.ENGINE_STATUS_SUMMARY_UNSPECIFIED.name
-        )
-
         raise FireboltError(
             failure_message.format(name=engine.name, status=current_status_name)
         )
@@ -121,9 +116,8 @@ def start_stop_generic(
     required=True,
 )
 @option(
-    "--nowait",
-    help="If the flag is set, the command will finish"
-    " immediately after sending the start request",
+    "--wait/--no-wait",
+    help="Wait until the engine is started",
     is_flag=True,
     default=False,
 )
@@ -160,9 +154,8 @@ def start(**raw_config_options: str) -> None:
     required=True,
 )
 @option(
-    "--nowait",
-    help="If the flag is set, the command will finish"
-    " immediately after sending the stop request",
+    "--wait/--no-wait",
+    help="Wait until the engine is stopped",
     is_flag=True,
     default=False,
 )
@@ -332,9 +325,8 @@ WARMUP_METHODS = {
     required=True,
 )
 @option(
-    "--nowait",
-    help="If the flag is set, the command will finish"
-    " immediately after sending the restart request",
+    "--wait/--no-wait",
+    help="Wait until the engine is restarted",
     is_flag=True,
     default=False,
 )
