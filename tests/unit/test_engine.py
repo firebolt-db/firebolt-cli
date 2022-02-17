@@ -160,6 +160,28 @@ def test_engine_start_happy_path_nowait(configure_resource_manager: Sequence) ->
     assert result.exit_code == 0, "cli was expected to execute correctly, but it failed"
 
 
+def test_engine_start_from_failed(configure_resource_manager: Sequence) -> None:
+    """
+    Engine was in failed state before starting, start is not possible,
+    suggest the user to restart the engine
+    """
+    rm, _, _, engines_mock, engine_mock = configure_resource_manager
+
+    result = engine_start_stop_generic(
+        start,
+        configure_resource_manager,
+        state_before_call=EngineStatusSummary.ENGINE_STATUS_SUMMARY_FAILED,
+        state_after_call=EngineStatusSummary.ENGINE_STATUS_SUMMARY_FAILED,
+        nowait=False,
+        check_engine_stop_call=False,
+    )
+
+    engine_mock.start.assert_not_called()
+
+    assert "restart an engine first" in result.stderr != ""
+    assert result.exit_code != 0, "cli was expected to fail, but it didn't"
+
+
 def test_engine_start_wrong_state(configure_resource_manager: Sequence) -> None:
     """
     Name of a non-existing engine is provided to the start engine command
