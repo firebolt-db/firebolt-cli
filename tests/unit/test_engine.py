@@ -241,16 +241,7 @@ def test_engine_create_happy_path(configure_resource_manager: Sequence) -> None:
 
     result = CliRunner(mix_stderr=False).invoke(
         create,
-        [
-            "--name",
-            "engine_name",
-            "--database-name",
-            "database_name",
-            "--spec",
-            "C1",
-            "--region",
-            "us-east-1",
-        ],
+        ["--name", "engine_name", "--database-name", "database_name", "--spec", "C1"],
     )
 
     databases_mock.get_by_name.assert_called_once()
@@ -280,8 +271,6 @@ def test_engine_create_database_not_found(configure_resource_manager: Sequence) 
             "database_name",
             "--spec",
             "C1",
-            "--region",
-            "us-east-1",
         ],
     )
 
@@ -303,16 +292,7 @@ def test_engine_create_name_taken(configure_resource_manager: Sequence) -> None:
 
     result = CliRunner(mix_stderr=False).invoke(
         create,
-        [
-            "--name",
-            "engine_name",
-            "--database-name",
-            "database_name",
-            "--spec",
-            "C1",
-            "--region",
-            "us-east-1",
-        ],
+        ["--name", "engine_name", "--database-name", "database_name", "--spec", "C1"],
     )
 
     databases_mock.get_by_name.assert_called_once()
@@ -341,16 +321,7 @@ def test_engine_create_binding_failed(configure_resource_manager: Sequence) -> N
 
     result = CliRunner(mix_stderr=False).invoke(
         create,
-        [
-            "--name",
-            "engine_name",
-            "--database-name",
-            "database_name",
-            "--spec",
-            "C1",
-            "--region",
-            "us-east-1",
-        ],
+        ["--name", "engine_name", "--database-name", "database_name", "--spec", "C1"],
     )
 
     databases_mock.get_by_name.assert_called_once()
@@ -386,8 +357,6 @@ def test_engine_create_happy_path_optional_parameters(
             "database_name",
             "--spec",
             "C1",
-            "--region",
-            "us-east-2",
             "--description",
             "test_description",
             "--type",
@@ -405,7 +374,7 @@ def test_engine_create_happy_path_optional_parameters(
     engines_mock.create.assert_called_once_with(
         name="engine_name",
         spec="C1",
-        region="us-east-2",
+        region="us-east-1",
         engine_type=EngineType.GENERAL_PURPOSE,
         scale=23,
         auto_stop=893,

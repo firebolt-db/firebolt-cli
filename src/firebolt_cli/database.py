@@ -62,7 +62,7 @@ def database() -> None:
     default="",
 )
 @json_option
-@option("--region", help="Region for the new database", default="us-east-1", type=str)
+@option("--region", help="Region for the new database", required=True, type=str)
 @exit_on_firebolt_exception
 def create(**raw_config_options: str) -> None:
     """

@@ -365,7 +365,6 @@ def restart(**raw_config_options: str) -> None:
     type=str,
     required=True,
 )
-@option("--region", help="Region, where the engine should be created", required=True)
 @json_option
 @exit_on_firebolt_exception
 def create(**raw_config_options: str) -> None:
@@ -375,11 +374,12 @@ def create(**raw_config_options: str) -> None:
     rm = construct_resource_manager(**raw_config_options)
 
     database = rm.databases.get_by_name(name=raw_config_options["database_name"])
+    region = rm.regions.get_by_key(database.compute_region_key)
 
     engine = rm.engines.create(
         name=raw_config_options["name"],
         spec=raw_config_options["spec"],
-        region=raw_config_options["region"],
+        region=region.name,
         engine_type=ENGINE_TYPES[raw_config_options["type"]],
         scale=int(raw_config_options["scale"]),
         auto_stop=int(raw_config_options["auto_stop"]),
@@ -395,8 +395,8 @@ def create(**raw_config_options: str) -> None:
 
     if not raw_config_options["json"]:
         echo(
-            f"Engine {engine.name} is successfully created"
-            f" and attached to the {database.name}"
+            f"Engine {engine.name} is successfully created "
+            f"and attached to the {database.name}"
         )
 
     echo_engine_information(rm, engine, bool(raw_config_options["json"]))

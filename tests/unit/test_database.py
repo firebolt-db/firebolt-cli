@@ -24,15 +24,11 @@ def test_database_create(
     rm, databases_mock, _, _, _ = configure_resource_manager
 
     result = CliRunner().invoke(
-        create,
-        [
-            "--name",
-            "test_database",
-        ],
+        create, "--name test_database --region us-east-1".split()
     )
 
     databases_mock.create.assert_called_once_with(
-        name="test_database", description="", region=mock.ANY
+        name="test_database", description="", region="us-east-1"
     )
     assert result.exit_code == 0, "non-zero exit code"
 
@@ -42,11 +38,7 @@ def test_database_create_wrong_name(configure_resource_manager: Sequence) -> Non
     databases_mock.create.side_effect = RuntimeError("database already exists")
 
     result = CliRunner(mix_stderr=False).invoke(
-        create,
-        [
-            "--name",
-            "test_database",
-        ],
+        create, "--name test_database --region us-east-1".split()
     )
 
     databases_mock.create.assert_called_once_with(
@@ -73,6 +65,8 @@ def test_database_create_json_output(configure_resource_manager: Sequence) -> No
             "--description",
             database_mock.description,
             "--json",
+            "--region",
+            "us-west-1",
         ],
     )
 

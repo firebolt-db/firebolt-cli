@@ -93,7 +93,7 @@ def test_engine_update_single_parameter(database_name: str) -> None:
     result = runner.invoke(
         main,
         f"engine create --name {engine_name} --spec S1 "
-        f"--database-name {database_name} --region us-east-1".split(),
+        f"--database-name {database_name}".split(),
     )
     assert result.exit_code == 0
 
@@ -170,8 +170,7 @@ def test_engine_create_minimal(engine_name: str, database_name: str):
         f"engine create --json "
         f"--name {engine_name} "
         f"--database-name {database_name} "
-        f"--spec C1 "
-        f"--region us-east-1".split(),
+        f"--spec C1 ".split(),
     )
     assert result.exit_code == 0
     create_output = json.loads(result.stdout)
@@ -201,8 +200,7 @@ def test_engine_create_existing(engine_name: str, database_name: str):
         f"engine create --json "
         f"--name {engine_name} "
         f"--database-name {database_name} "
-        f" --spec B1 "
-        f"--region us-east-1".split(),
+        f" --spec B1 ".split(),
     )
     assert "not unique" in result.stderr
     assert result.exit_code != 0
