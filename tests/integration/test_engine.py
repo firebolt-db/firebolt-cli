@@ -38,7 +38,7 @@ def test_engine_start_stop(stopped_engine_name: str, cli_runner: CliRunner) -> N
     """
 
     result = cli_runner.invoke(
-        main, f"engine start --name {stopped_engine_name}".split()
+        main, f"engine start --name {stopped_engine_name} --wait".split()
     )
     assert result.exit_code == 0
 
@@ -49,7 +49,7 @@ def test_engine_start_stop(stopped_engine_name: str, cli_runner: CliRunner) -> N
     assert "running" in result.stdout.lower()
 
     result = cli_runner.invoke(
-        main, f"engine stop --name {stopped_engine_name}".split()
+        main, f"engine stop --name {stopped_engine_name} --wait".split()
     )
     assert result.exit_code == 0
 
@@ -144,7 +144,9 @@ def test_engine_restart_running(engine_name: str, cli_runner: CliRunner) -> None
     Test restart engine, which is running should
     restart an engine and wait until it is running
     """
-    result = cli_runner.invoke(main, f"engine restart --name {engine_name}".split())
+    result = cli_runner.invoke(
+        main, f"engine restart --name {engine_name} --wait".split()
+    )
 
     assert result.stderr == ""
     assert result.exit_code == 0

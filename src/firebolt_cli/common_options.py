@@ -1,28 +1,9 @@
-from configparser import ConfigParser
-from os import environ, path
 from typing import Callable, List, Optional
 
-from appdirs import user_config_dir
 from click import Context, MissingParameter, Parameter, option, prompt
 from firebolt.client import DEFAULT_API_URL
 
-config_file = path.join(user_config_dir(), "firebolt.ini")
-config_section = "firebolt-cli"
-
-_config: Optional[ConfigParser] = None
-
-
-def read_config_key(key: str) -> Optional[str]:
-    global _config
-    # read config once
-    if not _config:
-        # return None if there is no config file
-        if not path.exists(config_file):
-            return None
-        _config = ConfigParser(interpolation=None)
-        _config.read(config_file)
-
-    return _config.get(config_section, key, fallback=None)
+from firebolt_cli.utils import read_config
 
 
 def default_from_config_file(
@@ -31,7 +12,7 @@ def default_from_config_file(
     def inner(ctx: Context, param: Parameter, value: Optional[str]) -> Optional[str]:
         # type check
         assert param.name
-        value = value or read_config_key(param.name) or default
+        value = value or read_config().get(param.name, None) or default
         if required and not value:
             raise MissingParameter(ctx=ctx, param=param, param_hint=f"--{param.name}")
         return value
@@ -47,9 +28,11 @@ def password_from_config_file(
     # user asked to prompt for password
     if value:
         return prompt("Password", type=str, hide_input=True)
-    pw_value = environ.get("FIREBOLT_PASSWORD") or read_config_key(param.name)
+
+    pw_value = read_config().get("password", None)
     if not pw_value:
         raise MissingParameter(ctx=ctx, param=param, param_hint=f"--{param.name}")
+
     return pw_value
 
 

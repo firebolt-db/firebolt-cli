@@ -1,16 +1,12 @@
-import os
-import sys
-
 from click import command, confirm, echo, group, option
-from firebolt.common.exception import FireboltError
 from firebolt.model.database import Database
 from firebolt.service.manager import ResourceManager
-from pydantic import ValidationError
 
 from firebolt_cli.common_options import common_options, json_option
 from firebolt_cli.utils import (
     construct_resource_manager,
     convert_bytes,
+    exit_on_firebolt_exception,
     prepare_execution_result_line,
     prepare_execution_result_table,
 )
@@ -67,28 +63,24 @@ def database() -> None:
 )
 @json_option
 @option("--region", help="Region for the new database", required=True, type=str)
+@exit_on_firebolt_exception
 def create(**raw_config_options: str) -> None:
     """
     Create a new database
     """
 
-    try:
-        rm = construct_resource_manager(**raw_config_options)
+    rm = construct_resource_manager(**raw_config_options)
 
-        database = rm.databases.create(
-            name=raw_config_options["name"],
-            description=raw_config_options["description"],
-            region=raw_config_options["region"],
-        )
+    database = rm.databases.create(
+        name=raw_config_options["name"],
+        description=raw_config_options["description"],
+        region=raw_config_options["region"],
+    )
 
-        if not raw_config_options["json"]:
-            echo(f"Database {database.name} is successfully created")
+    if not raw_config_options["json"]:
+        echo(f"Database {database.name} is successfully created")
 
-        print_db_full_information(rm, database, bool(raw_config_options["json"]))
-
-    except (RuntimeError, ValidationError) as err:
-        echo(err, err=True)
-        sys.exit(os.EX_DATAERR)
+    print_db_full_information(rm, database, bool(raw_config_options["json"]))
 
 
 @command()
@@ -100,39 +92,33 @@ def create(**raw_config_options: str) -> None:
     type=str,
 )
 @json_option
+@exit_on_firebolt_exception
 def list(**raw_config_options: str) -> None:
     """
     List existing databases
     """
-    try:
-        rm = construct_resource_manager(**raw_config_options)
+    rm = construct_resource_manager(**raw_config_options)
 
-        databases = rm.databases.get_many(
-            name_contains=raw_config_options["name_contains"]
-        )
+    databases = rm.databases.get_many(name_contains=raw_config_options["name_contains"])
 
-        if not raw_config_options["json"]:
-            echo(f"Found {len(databases)} databases")
+    if not raw_config_options["json"]:
+        echo(f"Found {len(databases)} databases")
 
-        if raw_config_options["json"] or databases:
-            echo(
-                prepare_execution_result_table(
-                    data=[
-                        [
-                            db.name,
-                            str(rm.regions.get_by_key(db.compute_region_key).name),
-                            db.description,
-                        ]
-                        for db in databases
-                    ],
-                    header=["name", "region", "description"],
-                    use_json=bool(raw_config_options["json"]),
-                )
+    if raw_config_options["json"] or databases:
+        echo(
+            prepare_execution_result_table(
+                data=[
+                    [
+                        db.name,
+                        str(rm.regions.get_by_key(db.compute_region_key).name),
+                        db.description,
+                    ]
+                    for db in databases
+                ],
+                header=["name", "region", "description"],
+                use_json=bool(raw_config_options["json"]),
             )
-
-    except (RuntimeError, FireboltError) as err:
-        echo(err, err=True)
-        sys.exit(os.EX_DATAERR)
+        )
 
 
 @command()
@@ -143,27 +129,23 @@ def list(**raw_config_options: str) -> None:
     help="Automatic yes on confirmation prompt",
     is_flag=True,
 )
+@exit_on_firebolt_exception
 def drop(**raw_config_options: str) -> None:
     """
     Drop specified database
     """
-    try:
-        rm = construct_resource_manager(**raw_config_options)
-        database = rm.databases.get_by_name(name=raw_config_options["name"])
+    rm = construct_resource_manager(**raw_config_options)
+    database = rm.databases.get_by_name(name=raw_config_options["name"])
 
-        if raw_config_options["yes"] or confirm(
-            "Do you really want to drop the database {name}?".format(
-                name=raw_config_options["name"]
-            )
-        ):
-            database.delete()
-            echo(f"Drop request for database {database.name} is successfully sent")
-        else:
-            echo("Drop request is aborted")
-
-    except (RuntimeError, FireboltError) as err:
-        echo(err, err=True)
-        sys.exit(os.EX_DATAERR)
+    if raw_config_options["yes"] or confirm(
+        "Do you really want to drop the database {name}?".format(
+            name=raw_config_options["name"]
+        )
+    ):
+        database.delete()
+        echo(f"Drop request for database {database.name} is successfully sent")
+    else:
+        echo("Drop request is aborted")
 
 
 @command()
@@ -175,18 +157,14 @@ def drop(**raw_config_options: str) -> None:
     type=str,
 )
 @json_option
+@exit_on_firebolt_exception
 def describe(**raw_config_options: str) -> None:
     """
     Describe specified database
     """
-    try:
-        rm = construct_resource_manager(**raw_config_options)
-        database = rm.databases.get_by_name(name=raw_config_options["name"])
-        print_db_full_information(rm, database, bool(raw_config_options["json"]))
-
-    except (RuntimeError, FireboltError) as err:
-        echo(err, err=True)
-        sys.exit(os.EX_DATAERR)
+    rm = construct_resource_manager(**raw_config_options)
+    database = rm.databases.get_by_name(name=raw_config_options["name"])
+    print_db_full_information(rm, database, bool(raw_config_options["json"]))
 
 
 @command()
@@ -204,24 +182,20 @@ def describe(**raw_config_options: str) -> None:
     required=True,
 )
 @json_option
+@exit_on_firebolt_exception
 def update(**raw_config_options: str) -> None:
     """
     Update specified database description
     """
-    try:
-        rm = construct_resource_manager(**raw_config_options)
-        database = rm.databases.get_by_name(name=raw_config_options["name"])
+    rm = construct_resource_manager(**raw_config_options)
+    database = rm.databases.get_by_name(name=raw_config_options["name"])
 
-        database = database.update(description=raw_config_options["description"])
+    database = database.update(description=raw_config_options["description"])
 
-        if not raw_config_options["json"]:
-            echo(f"The database {database.name} was successfully updated")
+    if not raw_config_options["json"]:
+        echo(f"The database {database.name} was successfully updated")
 
-        print_db_full_information(rm, database, bool(raw_config_options["json"]))
-
-    except (RuntimeError, FireboltError) as err:
-        echo(err, err=True)
-        sys.exit(os.EX_DATAERR)
+    print_db_full_information(rm, database, bool(raw_config_options["json"]))
 
 
 database.add_command(create)
