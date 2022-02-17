@@ -2,6 +2,12 @@ name: Firebolt CLI Integration tests
 
 on:
   workflow_dispatch:
+  workflow_call:
+    secrets:
+      FIREBOLT_USERNAME:
+        required: true
+      FIREBOLT_PASSWORD:
+        required: true
 
 jobs:
   integration-tests:

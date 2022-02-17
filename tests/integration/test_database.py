@@ -6,7 +6,9 @@ from click.testing import CliRunner
 from firebolt_cli.main import main
 
 
-def test_database_create_drop(configure_cli: None, database_name: str):
+def test_database_create_drop(
+    configure_cli: None, database_name: str, default_region: str
+):
     """
     1. Create the database with json output
     2. Check the output is correct
@@ -20,7 +22,7 @@ def test_database_create_drop(configure_cli: None, database_name: str):
     result = CliRunner(mix_stderr=False).invoke(
         main,
         f"database create --name {database_name} "
-        f"--description database_description --json".split(),
+        f"--description database_description --region {default_region} --json".split(),
     )
     assert result.exit_code == 0
 
@@ -49,10 +51,13 @@ def test_database_create_drop(configure_cli: None, database_name: str):
     assert database_description["name"] == database_name
     assert database_description["description"] == "database_description"
     assert database_description["attached_engine_names"] == []
+    assert database_description["region"] == default_region
 
     # Trying to create a database with the same name
     result = CliRunner(mix_stderr=False).invoke(
-        main, f"database create --name {database_name} --json".split()
+        main,
+        f"database create --region {default_region} "
+        f"--name {database_name} --json".split(),
     )
     assert result.exit_code != 0
 
@@ -88,16 +93,18 @@ def test_database_drop_non_existing(configure_cli: None):
 
 
 @pytest.fixture()
-def test_database_list_setup(database_name: str) -> None:
+def test_database_list_setup(database_name: str, default_region: str) -> None:
     # Setup the test
     CliRunner(mix_stderr=False).invoke(
         main,
-        f"database create --name {database_name}_list_integration_test1 --json".split(),
+        f"database create --region {default_region} "
+        f"--name {database_name}_list_integration_test1 --json".split(),
     )
 
     CliRunner(mix_stderr=False).invoke(
         main,
-        f"database create --name {database_name}_list_integration_test2 --json".split(),
+        f"database create --region {default_region} "
+        f"--name {database_name}_list_integration_test2 --json".split(),
     )
 
     yield

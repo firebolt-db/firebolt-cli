@@ -1,59 +1,15 @@
-from configparser import ConfigParser
-from os import path
-
-import click
 from click import command, echo, option, prompt
 
-from firebolt_cli.common_options import config_file, config_section
-from firebolt_cli.utils import read_from_file
-
-
-def read_config_file() -> dict:
-    """
-    :return: dict with parameters from config file, or empty dict if no parameters found
-    """
-    config = ConfigParser(interpolation=None)
-    if path.exists(config_file):
-        config.read(config_file)
-        if config.has_section(config_section):
-            return dict((k, v) for k, v in config[config_section].items())
-
-    return {}
-
-
-def update_config_file(**kwargs: str) -> None:
-    """
-
-    :param kwargs:
-    :return:
-    """
-    config = ConfigParser(interpolation=None)
-    if path.exists(config_file):
-        config.read(config_file)
-        message = "Updated existing config file"
-    else:
-        message = "Created new config file"
-
-    if config.has_section(config_section):
-        config[config_section].update(kwargs)
-    else:
-        config[config_section] = kwargs
-
-    with open(config_file, "w") as cf:
-        config.write(cf)
-    echo(message)
+from firebolt_cli.utils import read_config, update_config
 
 
 @command()
 @option("-u", "--username", help="Firebolt username")
+@option(
+    "-p", "--password", is_flag=True, default=False, help="Prompt to enter the password"
+)
 @option("--account-name", help="Name of Firebolt account")
 @option("--database-name", help="Database to use for SQL queries")
-@option(
-    "--password-file",
-    help="Path to the file, where password is stored",
-    default=None,
-    type=click.Path(exists=True),
-)
 @option("--api-endpoint", hidden=True)
 @option("--engine-name", help="Name or url of the engine to use for SQL queries")
 def configure(**raw_config_options: str) -> None:
@@ -62,13 +18,13 @@ def configure(**raw_config_options: str) -> None:
     """
     config = {k: v for k, v in raw_config_options.items() if v is not None}
 
-    if config:
-        if "password_file" in config:
-            password = read_from_file(config["password_file"])
-            config["password"] = password if password else ""
-            config.pop("password_file")
+    if config["password"]:
+        config["password"] = prompt("Password", type=str, hide_input=True)
     else:
-        prev_config = read_config_file()
+        del config["password"]
+
+    if len(config) == 0:
+        prev_config = read_config()
 
         keys = ("username", "password", "account_name", "database_name", "engine_name")
         keys_readable = (
@@ -95,4 +51,5 @@ def configure(**raw_config_options: str) -> None:
             )
             config[key] = value
 
-    update_config_file(**config)
+    update_config(**config)
+    echo("Successfully updated firebolt-cli configuration")
