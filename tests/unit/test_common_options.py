@@ -11,27 +11,23 @@ from click.testing import CliRunner
 from firebolt.client import DEFAULT_API_URL
 from pyfakefs.fake_filesystem import FakeFilesystem
 
-from firebolt_cli.common_options import (
-    _common_options,
-    config_file,
-    config_section,
-)
+from firebolt_cli.common_options import _common_options
+from firebolt_cli.utils import config_file, config_section, update_config
 
 
 @contextmanager
 def create_config_file(fs: FakeFilesystem, config: dict) -> None:
     # make sure config will be flushed not to be reused in other tests
-    with mock.patch("firebolt_cli.common_options._config", None):
-        cp = ConfigParser(interpolation=None)
-        cp[config_section] = config
-        content = StringIO()
-        cp.write(content)
+    cp = ConfigParser(interpolation=None)
+    cp[config_section] = config
+    content = StringIO()
+    cp.write(content)
 
-        fs.create_file(config_file, contents=content.getvalue())
+    fs.create_file(config_file, contents=content.getvalue())
 
-        yield
+    yield
 
-        fs.remove(config_file)
+    fs.remove(config_file)
 
 
 def generic_test_parameter_priority(
@@ -118,7 +114,7 @@ def test_password_priority(fs: FakeFilesystem):
     def validate_command(
         command: Tuple, input: Optional[str], expected_value: str, err_msg: str
     ):
-        result = runner.invoke(*command, input=input)
+        result = CliRunner().invoke(*command, input=input)
         if result.exit_code != 0:
             print(result.__dict__)
         assert result.exit_code == 0, "non-zero exit code for "
@@ -130,44 +126,31 @@ def test_password_priority(fs: FakeFilesystem):
         assert "password" in config, "missing password command option"
         assert config["password"] == expected_value, err_msg
 
-    with create_config_file(fs, {"password": "pw_file" + SPECIAL_CHARACTERS}):
-        runner = CliRunner()
+    with create_config_file(fs, {}):
+        update_config(password="pw_config" + SPECIAL_CHARACTERS)
+        # password is provided as option and in config file,
+        # option should be chosen
+        validate_command(
+            (test, ["--password"]),
+            "pw_option" + SPECIAL_CHARACTERS,
+            "pw_option" + SPECIAL_CHARACTERS,
+            "invalid password from option",
+        )
 
-        with mock.patch.dict(
-            environ, {"FIREBOLT_PASSWORD": "pw_env" + SPECIAL_CHARACTERS}
-        ):
-            # username is provided as option, env variable and in config file,
-            # option should be chosen
-            validate_command(
-                (test, ["--password"]),
-                "pw_option" + SPECIAL_CHARACTERS,
-                "pw_option" + SPECIAL_CHARACTERS,
-                "invalid password from option",
-            )
+        validate_command(
+            (test, ["-p"]),
+            "pw_option" + SPECIAL_CHARACTERS,
+            "pw_option" + SPECIAL_CHARACTERS,
+            "invalid password from option",
+        )
 
-            validate_command(
-                (test, ["-p"]),
-                "pw_option" + SPECIAL_CHARACTERS,
-                "pw_option" + SPECIAL_CHARACTERS,
-                "invalid password from option",
-            )
-
-            # username is provided as env variable and in config file,
-            # env variable should be chosen
-            validate_command(
-                (test,),
-                None,
-                "pw_env" + SPECIAL_CHARACTERS,
-                "invalid password from env",
-            )
-
-        # username is provided in config file,
-        # it should be read correctly
+        # password is provided in config file,
+        # config file should be chosen
         validate_command(
             (test,),
             None,
-            "pw_file" + SPECIAL_CHARACTERS,
-            "invalid password from file",
+            "pw_config" + SPECIAL_CHARACTERS,
+            "invalid password from config file",
         )
 
 
