@@ -76,7 +76,7 @@ def show_help() -> None:
     ]
 
     for internal_command, help_message in rows:
-        echo("{:<10s}".format(internal_command), nl=False)
+        echo("{:<15s}".format(internal_command), nl=False)
         echo(help_message)
 
 
