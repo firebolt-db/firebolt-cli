@@ -2,11 +2,14 @@ import json
 import os
 import sys
 from configparser import ConfigParser
-from typing import Dict, Optional, Sequence
+from functools import wraps
+from typing import Callable, Dict, Optional, Sequence
 
 import keyring
 from appdirs import user_config_dir
+from click import echo
 from firebolt.common import Settings
+from firebolt.common.exception import FireboltError
 from firebolt.service.manager import ResourceManager
 from httpx import HTTPStatusError
 from keyring.errors import KeyringError
@@ -212,3 +215,19 @@ def update_config(**kwargs: str) -> None:
 
         with open(config_file, "w") as cf:
             config.write(cf)
+
+
+def exit_on_firebolt_exception(func: Callable) -> Callable:
+    """
+    Decorator which catches FireboltError and RuntimeError and exits the programms
+    """
+
+    @wraps(func)
+    def decorator(*args: str, **kwargs: str) -> None:
+        try:
+            func(*args, **kwargs)
+        except (FireboltError, RuntimeError) as err:
+            echo(err, err=True)
+            sys.exit(1)
+
+    return decorator
