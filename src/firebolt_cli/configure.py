@@ -1,4 +1,4 @@
-from click import command, option, prompt
+from click import command, echo, option, prompt
 
 from firebolt_cli.utils import read_config, update_config
 
@@ -52,4 +52,4 @@ def configure(**raw_config_options: str) -> None:
             config[key] = value
 
     update_config(**config)
-    print("Successfully updated firebolt-cli configuration")
+    echo("Successfully updated firebolt-cli configuration")

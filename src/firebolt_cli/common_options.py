@@ -1,12 +1,9 @@
-from configparser import ConfigParser
 from typing import Callable, List, Optional
 
 from click import Context, MissingParameter, Parameter, option, prompt
 from firebolt.client import DEFAULT_API_URL
 
 from firebolt_cli.utils import read_config
-
-_config: Optional[ConfigParser] = None
 
 
 def default_from_config_file(

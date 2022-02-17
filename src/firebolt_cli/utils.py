@@ -2,13 +2,13 @@ import json
 import os
 import sys
 from configparser import ConfigParser
-from typing import Optional, Sequence
+from typing import Dict, Optional, Sequence
 
 import keyring
 from appdirs import user_config_dir
 from firebolt.common import Settings
-from firebolt.common.exception import FireboltError
 from firebolt.service.manager import ResourceManager
+from httpx import HTTPStatusError
 from keyring.errors import KeyringError
 from tabulate import tabulate
 
@@ -67,16 +67,18 @@ def construct_resource_manager(**raw_config_options: str) -> ResourceManager:
 
     token = read_config().get("token", None)
     if token is not None:
-        settings_dict["access_token"] = token
         try:
-            return ResourceManager(Settings(**settings_dict))
-        except (FireboltError, RuntimeError):
-            del settings_dict["access_token"]
+            return ResourceManager(Settings(**settings_dict, access_token=token))
+        except HTTPStatusError:
+            pass
 
-    settings_dict["user"] = raw_config_options["username"]
-    settings_dict["password"] = raw_config_options["password"]
-
-    rm = ResourceManager(Settings(**settings_dict))
+    rm = ResourceManager(
+        Settings(
+            **settings_dict,
+            user=raw_config_options["username"],
+            password=raw_config_options["password"],
+        )
+    )
     update_config(token=rm.client.auth.token)
     return rm
 
@@ -129,11 +131,11 @@ def read_from_stdin_buffer() -> Optional[str]:
     return sys.stdin.buffer.read().decode("utf-8") or None
 
 
-def read_config() -> dict:
+def read_config() -> Dict[str, str]:
     """
     :return: dict with parameters from config file, or empty dict if no parameters found
     """
-    config_dict = {}
+    config_dict: Dict[str, Optional[str]] = {}
 
     config = ConfigParser(interpolation=None)
     if os.path.exists(config_file):
@@ -149,7 +151,7 @@ def read_config() -> dict:
         except KeyringError:
             continue
 
-    return dict({(k, v) for k, v in config_dict.items() if v and len(v) != 0})
+    return dict({(k, v) for k, v in config_dict.items() if v and len(v)})
 
 
 def set_keyring_param(param: str, value: str) -> bool:

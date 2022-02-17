@@ -18,17 +18,16 @@ from firebolt_cli.utils import config_file, config_section, update_config
 @contextmanager
 def create_config_file(fs: FakeFilesystem, config: dict) -> None:
     # make sure config will be flushed not to be reused in other tests
-    with mock.patch("firebolt_cli.common_options._config", None):
-        cp = ConfigParser(interpolation=None)
-        cp[config_section] = config
-        content = StringIO()
-        cp.write(content)
+    cp = ConfigParser(interpolation=None)
+    cp[config_section] = config
+    content = StringIO()
+    cp.write(content)
 
-        fs.create_file(config_file, contents=content.getvalue())
+    fs.create_file(config_file, contents=content.getvalue())
 
-        yield
+    yield
 
-        fs.remove(config_file)
+    fs.remove(config_file)
 
 
 def generic_test_parameter_priority(
@@ -129,8 +128,7 @@ def test_password_priority(fs: FakeFilesystem):
 
     with create_config_file(fs, {}):
         update_config(password="pw_config" + SPECIAL_CHARACTERS)
-
-        # username is provided as option, env variable and in config file,
+        # password is provided as option and in config file,
         # option should be chosen
         validate_command(
             (test, ["--password"]),
@@ -146,13 +144,13 @@ def test_password_priority(fs: FakeFilesystem):
             "invalid password from option",
         )
 
-        # username is provided as env variable and in config file,
-        # env variable should be chosen
+        # password is provided in config file,
+        # config file should be chosen
         validate_command(
             (test,),
             None,
             "pw_config" + SPECIAL_CHARACTERS,
-            "invalid password from env",
+            "invalid password from config file",
         )
 
 
