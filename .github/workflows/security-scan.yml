@@ -16,6 +16,14 @@ jobs:
       - name: "Checkout Code"
         uses: actions/checkout@v2
 
+      - name: "Download coverage report"
+        uses: actions/download-artifact@v2
+        with:
+          name: pytest-coverage-report
+
+      - name: Override Coverage Source Path for Sonar
+        run: sed -i "s/<source>\/home\/runner\/work\/firebolt-cli\/firebolt-cli\/src<\/source>/<source>\/github\/workspace\/src<\/source>/g" /home/runner/work/firebolt-cli/firebolt-cli/coverage.xml || echo "Coverage file doesn't exist, still we continue"
+
       - name: "Security Scan"
         uses: firebolt-db/action-security-scan@main
         with:
