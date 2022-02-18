@@ -28,7 +28,10 @@ def test_construct_resource_manager(
     assert len(read_config().get("token", "")) != 0, "token is empty"
 
     # Token is provided, should use it for connection
-    rm = construct_resource_manager(api_endpoint=api_endpoint)
+    rm = construct_resource_manager(
+        api_endpoint=api_endpoint,
+        account_name=account_name,
+    )
     assert isinstance(
         rm, ResourceManager
     ), "failed to construct resource manager with a token"

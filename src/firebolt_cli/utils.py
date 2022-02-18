@@ -66,6 +66,7 @@ def construct_resource_manager(**raw_config_options: str) -> ResourceManager:
     settings_dict = {
         "server": raw_config_options["api_endpoint"],
         "default_region": raw_config_options.get("region", ""),
+        "account_name": raw_config_options["account_name"],
     }
 
     token = read_config().get("token", None)
