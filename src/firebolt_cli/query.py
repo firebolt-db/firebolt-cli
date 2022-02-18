@@ -185,6 +185,7 @@ def query(**raw_config_options: str) -> None:
         username=raw_config_options["username"],
         password=raw_config_options["password"],
         api_endpoint=raw_config_options["api_endpoint"],
+        account_name=raw_config_options["account_name"],
     ) as connection:
 
         cursor = connection.cursor()
