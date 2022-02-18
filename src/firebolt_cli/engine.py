@@ -56,8 +56,8 @@ def engine() -> None:
     """
 
 
-@exit_on_firebolt_exception
 def start_stop_generic(
+    engine: Engine,
     action: str,
     accepted_initial_states: set,
     accepted_final_states: set,
@@ -68,9 +68,7 @@ def start_stop_generic(
     success_message_nowait: str,
     **raw_config_options: str,
 ) -> None:
-    rm = construct_resource_manager(**raw_config_options)
 
-    engine = rm.engines.get_by_name(name=raw_config_options["name"])
     current_status_name = (
         engine.current_status_summary.name
         if engine.current_status_summary
@@ -121,16 +119,32 @@ def start_stop_generic(
     is_flag=True,
     default=False,
 )
+@exit_on_firebolt_exception
 def start(**raw_config_options: str) -> None:
     """
     Start an existing engine
     """
+
+    rm = construct_resource_manager(**raw_config_options)
+    engine = rm.engines.get_by_name(name=raw_config_options["name"])
+    if (
+        engine.current_status_summary
+        == EngineStatusSummary.ENGINE_STATUS_SUMMARY_FAILED
+    ):
+        echo(
+            f"Engine {engine.name} is in a failed state.\n"
+            f"You need to restart an engine first:\n"
+            f"$ firebolt restart --engine-name {engine.name}",
+            err=True,
+        )
+        sys.exit(1)
+
     start_stop_generic(
+        engine=engine,
         action="start",
         accepted_initial_states={
             EngineStatusSummary.ENGINE_STATUS_SUMMARY_STOPPED,
             EngineStatusSummary.ENGINE_STATUS_SUMMARY_STOPPING,
-            EngineStatusSummary.ENGINE_STATUS_SUMMARY_FAILED,
         },
         accepted_final_states={EngineStatusSummary.ENGINE_STATUS_SUMMARY_RUNNING},
         accepted_final_nowait_states={
@@ -159,12 +173,17 @@ def start(**raw_config_options: str) -> None:
     is_flag=True,
     default=False,
 )
+@exit_on_firebolt_exception
 def stop(**raw_config_options: str) -> None:
     """
     Stop an existing engine
     """
 
+    rm = construct_resource_manager(**raw_config_options)
+    engine = rm.engines.get_by_name(name=raw_config_options["name"])
+
     start_stop_generic(
+        engine=engine,
         action="stop",
         accepted_initial_states={
             EngineStatusSummary.ENGINE_STATUS_SUMMARY_RUNNING,
@@ -330,12 +349,17 @@ WARMUP_METHODS = {
     is_flag=True,
     default=False,
 )
+@exit_on_firebolt_exception
 def restart(**raw_config_options: str) -> None:
     """
     Restart an existing engine
     """
 
+    rm = construct_resource_manager(**raw_config_options)
+    engine = rm.engines.get_by_name(name=raw_config_options["name"])
+
     start_stop_generic(
+        engine=engine,
         action="restart",
         accepted_initial_states={
             EngineStatusSummary.ENGINE_STATUS_SUMMARY_RUNNING,
