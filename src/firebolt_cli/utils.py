@@ -83,6 +83,7 @@ def construct_resource_manager(**raw_config_options: str) -> ResourceManager:
             password=raw_config_options["password"],
         )
     )
+
     update_config(token=rm.client.auth.token)
     return rm
 
@@ -227,7 +228,7 @@ def exit_on_firebolt_exception(func: Callable) -> Callable:
     def decorator(*args: str, **kwargs: str) -> None:
         try:
             func(*args, **kwargs)
-        except (FireboltError, RuntimeError) as err:
+        except (FireboltError, RuntimeError, HTTPStatusError) as err:
             echo(err, err=True)
             sys.exit(1)
 

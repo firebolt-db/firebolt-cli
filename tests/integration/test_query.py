@@ -149,3 +149,19 @@ def test_query_incorrect(configure_cli: None, engine_url: str, read_from_stdin: 
 
     assert result.stderr != ""
     assert result.exit_code != 0
+
+
+def test_incorrect_credentials(configure_cli: None, engine_name: str):
+    """
+    Test incorrect credentials on query
+    """
+
+    result = CliRunner(mix_stderr=False).invoke(
+        main,
+        f"query --engine-name {engine_name} --username incorrect_username".split(),
+        input="SELECT 1;",
+    )
+
+    assert "403 Forbidden" in result.stderr
+    assert "Traceback" not in result.stderr
+    assert result.exit_code != 0
