@@ -302,17 +302,12 @@ def echo_engine_information(
         if auto_stop == "0":
             return "off"
 
-        try:
-            if auto_stop[-1] not in {"m", "s"}:
-                raise ValueError("expected to end with m or s")
-
-            val = int(auto_stop[:-1])
-            if auto_stop[-1] == "m":
-                return str(timedelta(minutes=val))
-            else:
-                return str(timedelta(seconds=val))
-
-        except ValueError:
+        val = int(auto_stop[:-1])
+        if auto_stop[-1] == "m":
+            return str(timedelta(minutes=val))
+        elif auto_stop[-1] == "s":
+            return str(timedelta(seconds=val))
+        else:
             return auto_stop
 
     echo(
