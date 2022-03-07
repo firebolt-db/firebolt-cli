@@ -65,7 +65,7 @@ def engine_start_stop_generic(
     configure_resource_manager: Sequence,
     state_before_call: EngineStatusSummary,
     state_after_call: EngineStatusSummary,
-    nowait: bool,
+    wait: bool,
     check_engine_start_call: bool = False,
     check_engine_restart_call: bool = False,
     check_engine_stop_call: bool = False,
@@ -86,7 +86,7 @@ def engine_start_stop_generic(
     engine_mock.start.return_value = engine_mock_after_call
     engine_mock.stop.return_value = engine_mock_after_call
 
-    additional_parameters = ["--nowait"] if nowait else []
+    additional_parameters = ["--wait"] if wait else ["--no-wait"]
 
     result = CliRunner(mix_stderr=False).invoke(
         command,
@@ -96,14 +96,14 @@ def engine_start_stop_generic(
     engines_mock.get_by_name.assert_called_once_with(name="engine_name")
 
     if check_engine_start_call:
-        engine_mock.start.assert_called_once_with(wait_for_startup=not nowait)
+        engine_mock.start.assert_called_once_with(wait_for_startup=wait)
     if check_engine_stop_call:
-        engine_mock.stop.assert_called_once_with(wait_for_stop=not nowait)
+        engine_mock.stop.assert_called_once_with(wait_for_stop=wait)
     if check_engine_restart_call:
-        engine_mock.restart.assert_called_once_with(wait_for_startup=not nowait)
+        engine_mock.restart.assert_called_once_with(wait_for_startup=wait)
 
     if check_engine_restart_call:
-        engine_mock.restart.assert_called_once_with(wait_for_startup=not nowait)
+        engine_mock.restart.assert_called_once_with(wait_for_startup=wait)
 
     return result
 
@@ -119,7 +119,7 @@ def test_engine_start_failed(configure_resource_manager: Sequence) -> None:
         configure_resource_manager,
         state_before_call=EngineStatusSummary.ENGINE_STATUS_SUMMARY_STOPPED,
         state_after_call=EngineStatusSummary.ENGINE_STATUS_SUMMARY_FAILED,
-        nowait=False,
+        wait=True,
         check_engine_start_call=True,
     )
 
@@ -137,7 +137,7 @@ def test_engine_start_happy_path(configure_resource_manager: Sequence) -> None:
         configure_resource_manager,
         state_before_call=EngineStatusSummary.ENGINE_STATUS_SUMMARY_STOPPED,
         state_after_call=EngineStatusSummary.ENGINE_STATUS_SUMMARY_RUNNING,
-        nowait=False,
+        wait=True,
         check_engine_start_call=True,
     )
 
@@ -153,11 +153,33 @@ def test_engine_start_happy_path_nowait(configure_resource_manager: Sequence) ->
         configure_resource_manager,
         state_before_call=EngineStatusSummary.ENGINE_STATUS_SUMMARY_STOPPED,
         state_after_call=EngineStatusSummary.ENGINE_STATUS_SUMMARY_STARTING,
-        nowait=True,
+        wait=False,
         check_engine_start_call=True,
     )
 
     assert result.exit_code == 0, "cli was expected to execute correctly, but it failed"
+
+
+def test_engine_start_from_failed(configure_resource_manager: Sequence) -> None:
+    """
+    Engine was in failed state before starting, start is not possible,
+    suggest the user to restart the engine
+    """
+    rm, _, _, engines_mock, engine_mock = configure_resource_manager
+
+    result = engine_start_stop_generic(
+        start,
+        configure_resource_manager,
+        state_before_call=EngineStatusSummary.ENGINE_STATUS_SUMMARY_FAILED,
+        state_after_call=EngineStatusSummary.ENGINE_STATUS_SUMMARY_FAILED,
+        wait=True,
+        check_engine_stop_call=False,
+    )
+
+    engine_mock.start.assert_not_called()
+
+    assert "restart an engine first" in result.stderr != ""
+    assert result.exit_code != 0, "cli was expected to fail, but it didn't"
 
 
 def test_engine_start_wrong_state(configure_resource_manager: Sequence) -> None:
@@ -169,7 +191,7 @@ def test_engine_start_wrong_state(configure_resource_manager: Sequence) -> None:
         configure_resource_manager,
         state_before_call=EngineStatusSummary.ENGINE_STATUS_SUMMARY_STARTING,
         state_after_call=EngineStatusSummary.ENGINE_STATUS_SUMMARY_STARTING,
-        nowait=True,
+        wait=False,
         check_engine_start_call=False,
     )
 
@@ -188,7 +210,7 @@ def test_engine_stop_failed(configure_resource_manager: Sequence) -> None:
         configure_resource_manager,
         state_before_call=EngineStatusSummary.ENGINE_STATUS_SUMMARY_RUNNING,
         state_after_call=EngineStatusSummary.ENGINE_STATUS_SUMMARY_FAILED,
-        nowait=False,
+        wait=True,
         check_engine_stop_call=True,
     )
 
@@ -206,7 +228,7 @@ def test_engine_stop_happy_path(configure_resource_manager: Sequence) -> None:
         configure_resource_manager,
         state_before_call=EngineStatusSummary.ENGINE_STATUS_SUMMARY_RUNNING,
         state_after_call=EngineStatusSummary.ENGINE_STATUS_SUMMARY_STOPPED,
-        nowait=False,
+        wait=True,
         check_engine_stop_call=True,
     )
 
@@ -241,16 +263,7 @@ def test_engine_create_happy_path(configure_resource_manager: Sequence) -> None:
 
     result = CliRunner(mix_stderr=False).invoke(
         create,
-        [
-            "--name",
-            "engine_name",
-            "--database-name",
-            "database_name",
-            "--spec",
-            "C1",
-            "--region",
-            "us-east-1",
-        ],
+        ["--name", "engine_name", "--database-name", "database_name", "--spec", "C1"],
     )
 
     databases_mock.get_by_name.assert_called_once()
@@ -280,8 +293,6 @@ def test_engine_create_database_not_found(configure_resource_manager: Sequence) 
             "database_name",
             "--spec",
             "C1",
-            "--region",
-            "us-east-1",
         ],
     )
 
@@ -303,16 +314,7 @@ def test_engine_create_name_taken(configure_resource_manager: Sequence) -> None:
 
     result = CliRunner(mix_stderr=False).invoke(
         create,
-        [
-            "--name",
-            "engine_name",
-            "--database-name",
-            "database_name",
-            "--spec",
-            "C1",
-            "--region",
-            "us-east-1",
-        ],
+        ["--name", "engine_name", "--database-name", "database_name", "--spec", "C1"],
     )
 
     databases_mock.get_by_name.assert_called_once()
@@ -341,16 +343,7 @@ def test_engine_create_binding_failed(configure_resource_manager: Sequence) -> N
 
     result = CliRunner(mix_stderr=False).invoke(
         create,
-        [
-            "--name",
-            "engine_name",
-            "--database-name",
-            "database_name",
-            "--spec",
-            "C1",
-            "--region",
-            "us-east-1",
-        ],
+        ["--name", "engine_name", "--database-name", "database_name", "--spec", "C1"],
     )
 
     databases_mock.get_by_name.assert_called_once()
@@ -386,8 +379,6 @@ def test_engine_create_happy_path_optional_parameters(
             "database_name",
             "--spec",
             "C1",
-            "--region",
-            "us-east-2",
             "--description",
             "test_description",
             "--type",
@@ -405,7 +396,7 @@ def test_engine_create_happy_path_optional_parameters(
     engines_mock.create.assert_called_once_with(
         name="engine_name",
         spec="C1",
-        region="us-east-2",
+        region="us-east-1",
         engine_type=EngineType.GENERAL_PURPOSE,
         scale=23,
         auto_stop=893,
@@ -447,7 +438,7 @@ def test_engine_restart(configure_resource_manager: Sequence) -> None:
         configure_resource_manager,
         state_before_call=EngineStatusSummary.ENGINE_STATUS_SUMMARY_FAILED,
         state_after_call=EngineStatusSummary.ENGINE_STATUS_SUMMARY_RUNNING,
-        nowait=False,
+        wait=True,
         check_engine_restart_call=True,
     )
 
@@ -463,7 +454,7 @@ def test_engine_restart_failed(configure_resource_manager: Sequence) -> None:
         configure_resource_manager,
         state_before_call=EngineStatusSummary.ENGINE_STATUS_SUMMARY_FAILED,
         state_after_call=EngineStatusSummary.ENGINE_STATUS_SUMMARY_FAILED,
-        nowait=False,
+        wait=True,
         check_engine_restart_call=True,
     )
 
