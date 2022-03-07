@@ -9,9 +9,7 @@ import keyring
 from appdirs import user_config_dir
 from click import echo
 from firebolt.common import Settings
-from firebolt.common.exception import FireboltError
 from firebolt.service.manager import ResourceManager
-from httpx import HTTPStatusError
 from keyring.errors import KeyringError
 from tabulate import tabulate
 
@@ -58,9 +56,6 @@ def prepare_execution_result_table(
 def construct_resource_manager(**raw_config_options: str) -> ResourceManager:
     """
     Propagate raw_config_options to the settings and construct a resource manager
-
-    If access_token could be extracted from the config, try to access using it,
-    use username, password as fallback option
     """
 
     settings_dict = {
@@ -68,13 +63,6 @@ def construct_resource_manager(**raw_config_options: str) -> ResourceManager:
         "default_region": raw_config_options.get("region", ""),
         "account_name": raw_config_options["account_name"],
     }
-
-    token = read_config().get("token", None)
-    if token is not None:
-        try:
-            return ResourceManager(Settings(**settings_dict, access_token=token))
-        except HTTPStatusError:
-            pass
 
     rm = ResourceManager(
         Settings(
@@ -84,7 +72,6 @@ def construct_resource_manager(**raw_config_options: str) -> ResourceManager:
         )
     )
 
-    update_config(token=rm.client.auth.token)
     return rm
 
 
@@ -148,13 +135,12 @@ def read_config() -> Dict[str, str]:
         if config.has_section(config_section):
             config_dict = dict((k, v) for k, v in config[config_section].items())
 
-    for param in ["token", "password"]:
-        try:
-            value = keyring.get_password("firebolt-cli", param)
-            if value and len(value) != 0:
-                config_dict[param] = value
-        except KeyringError:
-            continue
+    try:
+        value = keyring.get_password("firebolt-cli", "password")
+        if value and len(value) != 0:
+            config_dict["password"] = value
+    except KeyringError:
+        pass
 
     return dict({(k, v) for k, v in config_dict.items() if v and len(v)})
 
@@ -179,31 +165,21 @@ def set_keyring_param(param: str, value: str) -> bool:
 
 def update_config(**kwargs: str) -> None:
     """
-    Update the config file (or use the keyring for updating token and password)
+    Update the config file (or use the keyring for updating password)
     if a parameter set to None, the parameter will not be updates
     To delete the parameter, it should be set to empty string
-
-    Note: token cannot be updated if other parameters are not None
 
     :param kwargs:
     :return:
     """
 
-    # Invalidate the current token if one of the parameters is set
-    if any(
-        [i in kwargs for i in ["password", "username", "account_name", "api_endpoint"]]
+    # Try to update password in keyring first, and only if failed in config
+    if (
+        "password" in kwargs
+        and kwargs["password"] is not None
+        and set_keyring_param("password", kwargs["password"])
     ):
-        set_keyring_param("token", "")
-        kwargs["token"] = ""
-
-    # Try to update token and password in keyring first, and only if failed in config
-    for param in ["token", "password"]:
-        if (
-            param in kwargs
-            and kwargs[param] is not None
-            and set_keyring_param(param, kwargs[param])
-        ):
-            del kwargs[param]
+        del kwargs["password"]
 
     if len(kwargs):
         config = ConfigParser(interpolation=None)
@@ -221,14 +197,14 @@ def update_config(**kwargs: str) -> None:
 
 def exit_on_firebolt_exception(func: Callable) -> Callable:
     """
-    Decorator which catches FireboltError and RuntimeError and exits the programms
+    Decorator which catches all Exceptions and exits the programms
     """
 
     @wraps(func)
     def decorator(*args: str, **kwargs: str) -> None:
         try:
             func(*args, **kwargs)
-        except (FireboltError, RuntimeError, HTTPStatusError) as err:
+        except Exception as err:
             echo(err, err=True)
             sys.exit(1)
 

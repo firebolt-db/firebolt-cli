@@ -94,7 +94,6 @@ ALL_CONFIG_PARAMS = [
     "api_endpoint",
     "engine_name",
     "database_name",
-    "token",
     "password",
 ]
 
@@ -147,27 +146,8 @@ def test_config_get_set_all(fs: FakeFilesystem) -> None:
     assert config["password"] == "password_value"
 
 
-@pytest.mark.parametrize(
-    "param", ["username", "password", "api_endpoint", "account_name"]
-)
-def test_config_token_invalidation(fs: FakeFilesystem, param: str) -> None:
-    fs.create_dir(user_config_dir())
-    update_config(token="token")
-
-    update_config(**dict({(param, "value")}))
-    config = read_config()
-
-    assert "token" not in config, "token should have been deleted but it is not"
-    assert param in config
-    assert config[param] == "value"
-
-
 def test_construct_resource_manager_password(mocker: MockerFixture):
-    update_config(token="")
-
     rm = mocker.patch.object(ResourceManager, "__init__", return_value=None)
-    client_mock = mocker.patch.object(ResourceManager, "client", create=True)
-    client_mock.auth.token = "some_new_token"
 
     construct_resource_manager(
         username="username",
@@ -184,28 +164,3 @@ def test_construct_resource_manager_password(mocker: MockerFixture):
             server="endpoint.firebolt.io",
         )
     )
-
-    assert read_config().get("token") == "some_new_token"
-
-
-def test_construct_resource_manager_token(mocker: MockerFixture):
-    update_config(token="old_token")
-
-    rm = mocker.patch.object(ResourceManager, "__init__", return_value=None)
-
-    construct_resource_manager(
-        username="username",
-        password="password",
-        api_endpoint="endpoint.firebolt.io",
-        account_name="firebolt",
-    )
-    rm.assert_called_once_with(
-        Settings(
-            access_token="old_token",
-            default_region="",
-            server="endpoint.firebolt.io",
-            account_name="firebolt",
-        )
-    )
-
-    assert read_config().get("token") == "old_token"
