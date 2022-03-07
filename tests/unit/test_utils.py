@@ -1,8 +1,11 @@
 import json
+from collections import namedtuple
+from typing import Sequence
 
 import pytest
 from appdirs import user_config_dir
 from firebolt.common import Settings
+from firebolt.common.exception import FireboltError
 from firebolt.service.manager import ResourceManager
 from pyfakefs.fake_filesystem import FakeFilesystem
 from pytest_mock import MockerFixture
@@ -10,6 +13,7 @@ from pytest_mock import MockerFixture
 from firebolt_cli.utils import (
     construct_resource_manager,
     convert_bytes,
+    get_default_database_engine,
     prepare_execution_result_line,
     prepare_execution_result_table,
     read_config,
@@ -209,3 +213,56 @@ def test_construct_resource_manager_token(mocker: MockerFixture):
     )
 
     assert read_config().get("token") == "old_token"
+
+
+def test_database_get_default_engine_happy_path(
+    configure_resource_manager: Sequence, mocker: MockerFixture
+):
+    rm, databases, database, engines, engine = configure_resource_manager
+
+    rm.bindings = mocker.patch.object(ResourceManager, "bindings", create=True)
+    _Engine = namedtuple("Engine", "engine_id is_default_engine")
+    rm.bindings.get_many.return_value = [
+        _Engine(11, False),
+        _Engine(12, True),
+        _Engine(13, False),
+    ]
+
+    get_default_database_engine(ResourceManager(), "database_name")
+
+    engines.get.assert_called_once_with(12)
+    databases.get_by_name.assert_called_once_with(name="database_name")
+
+
+def test_database_get_default_engine_empty(
+    configure_resource_manager: Sequence, mocker: MockerFixture
+):
+    rm, databases, database, engines, engine = configure_resource_manager
+
+    rm.bindings = mocker.patch.object(ResourceManager, "bindings", create=True)
+    namedtuple("Engine", "engine_id is_default_engine")
+    rm.bindings.get_many.return_value = []
+
+    with pytest.raises(FireboltError):
+        get_default_database_engine(ResourceManager(), "database_name")
+
+    databases.get_by_name.assert_called_once_with(name="database_name")
+
+
+def test_database_get_default_engine_none(
+    configure_resource_manager: Sequence, mocker: MockerFixture
+):
+    rm, databases, database, engines, engine = configure_resource_manager
+
+    rm.bindings = mocker.patch.object(ResourceManager, "bindings", create=True)
+    _Engine = namedtuple("Engine", "engine_id is_default_engine")
+    rm.bindings.get_many.return_value = [
+        _Engine(11, False),
+        _Engine(12, False),
+        _Engine(13, False),
+    ]
+
+    with pytest.raises(FireboltError):
+        get_default_database_engine(ResourceManager(), "database_name")
+
+    databases.get_by_name.assert_called_once_with(name="database_name")

@@ -10,6 +10,7 @@ from appdirs import user_config_dir
 from click import echo
 from firebolt.common import Settings
 from firebolt.common.exception import FireboltError
+from firebolt.model.engine import Engine
 from firebolt.service.manager import ResourceManager
 from httpx import HTTPStatusError
 from keyring.errors import KeyringError
@@ -232,3 +233,22 @@ def exit_on_firebolt_exception(func: Callable) -> Callable:
             sys.exit(1)
 
     return decorator
+
+
+def get_default_database_engine(rm: ResourceManager, database_name: str) -> Engine:
+    """
+    Get the default engine of the database. If the default engine doesn't exists
+    raise FireboltError
+    """
+
+    database = rm.databases.get_by_name(name=database_name)
+    bindings = rm.bindings.get_many(database_id=database.database_id)
+
+    if len(bindings) == 0:
+        raise FireboltError("No engines attached to the database")
+
+    for binding in bindings:
+        if binding.is_default_engine:
+            return rm.engines.get(binding.engine_id)
+
+    raise FireboltError("No default engine is found.")
