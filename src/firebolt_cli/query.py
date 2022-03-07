@@ -20,7 +20,9 @@ from firebolt_cli.common_options import (
     default_from_config_file,
 )
 from firebolt_cli.utils import (
+    construct_resource_manager,
     exit_on_firebolt_exception,
+    get_default_database_engine,
     read_from_file,
     read_from_stdin_buffer,
 )
@@ -138,7 +140,7 @@ def enter_interactive_session(cursor: Cursor, use_csv: bool) -> None:
     "--engine-name",
     help="Name or url of the engine to use for SQL queries",
     envvar="FIREBOLT_ENGINE_NAME",
-    callback=default_from_config_file(),
+    callback=default_from_config_file(required=False),
 )
 @option("--csv", help="Provide query output in csv format", is_flag=True, default=False)
 @option(
@@ -173,10 +175,17 @@ def query(**raw_config_options: str) -> None:
     # Decide whether to store the value as engine_name or engine_url
     # '.' symbol should always be in url and cannot be in engine_name
     engine_name, engine_url = None, None
-    if "." in raw_config_options["engine_name"]:
-        engine_url = raw_config_options["engine_name"]
+
+    if raw_config_options["engine_name"] is None:
+        rm = construct_resource_manager(**raw_config_options)
+        engine_name = get_default_database_engine(
+            rm, raw_config_options["database_name"]
+        ).name
     else:
-        engine_name = raw_config_options["engine_name"]
+        if "." in raw_config_options["engine_name"]:
+            engine_url = raw_config_options["engine_name"]
+        else:
+            engine_name = raw_config_options["engine_name"]
 
     with connect(
         engine_url=engine_url,
