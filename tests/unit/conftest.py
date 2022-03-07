@@ -19,7 +19,7 @@ def configure_cli(fs: FakeFilesystem) -> None:
         result = runner.invoke(
             configure,
             [],
-            input="username\npassword\naccount_name\ndatabase_name\nengine_name\n",
+            input="username\npassword\naccount_name\ndatabase_name\n\n\n",
         )
 
         assert result.exit_code == 0, "configuration of cli failed"

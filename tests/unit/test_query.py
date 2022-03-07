@@ -1,5 +1,6 @@
 import csv
 import unittest.mock
+from collections import namedtuple
 from typing import Callable, Optional, Sequence
 from unittest import mock
 
@@ -59,7 +60,7 @@ def test_query_file_missing(configure_cli: Callable) -> None:
 
 def query_generic_test(
     additional_parameter: Sequence[str],
-    check_output_callback: Callable[[str], None],
+    check_output_callback: Optional[Callable[[str], None]],
     expected_sql: str,
     input: Optional[str],
     cursor_mock: unittest.mock.Mock,
@@ -86,14 +87,13 @@ def query_generic_test(
         [
             "--database-name",
             "test_database",
-            "--engine-name",
-            "engine-name",
         ]
         + additional_parameter,
         input=input,
     )
 
-    check_output_callback(result.stdout)
+    if check_output_callback:
+        check_output_callback(result.stdout)
 
     cursor_mock.execute.assert_called_once_with(expected_sql)
 
@@ -115,7 +115,7 @@ def test_query_csv_output(
             assert False, "output csv is incorrectly formatted"
 
     query_generic_test(
-        ["--csv"],
+        ["--csv", "--engine-name", "engine-name"],
         check_csv_correctness,
         expected_sql="query from input;",
         input="query from input;",
@@ -136,7 +136,7 @@ def test_query_tabular_output(
         assert len(output) != 0
 
     query_generic_test(
-        [],
+        ["--engine-name", "engine-name"],
         check_tabular_correctness,
         expected_sql="query from input;",
         input="query from input;",
@@ -155,7 +155,7 @@ def test_query_file(
     fs.create_file("path_to_file.sql", contents="query from file\nsecond line")
 
     query_generic_test(
-        ["--file", "path_to_file.sql"],
+        ["--file", "path_to_file.sql", "--engine-name", "engine_name"],
         lambda x: None,
         expected_sql="query from file\nsecond line",
         input=None,
@@ -256,3 +256,34 @@ def test_sql_execution_multiline(
     assert cursor_mock.fetchall.call_count == 2
 
     cursor_mock.execute.assert_called_once_with(expected_sql)
+
+
+def test_query_default_engine(
+    mocker: MockerFixture, configure_cli: Callable, cursor_mock: unittest.mock.Mock
+):
+    """
+    Monkey path get_default_database_engine function, and check,
+    that it is called if the engine-name is not provided to the query
+    """
+    configure_cli()
+
+    construct_resource_manager_mock = mocker.patch(
+        "firebolt_cli.query.construct_resource_manager"
+    )
+    default_database_engine_mock = mocker.patch(
+        "firebolt_cli.query.get_default_database_engine"
+    )
+
+    _Engine = namedtuple("Engine", "name")
+    default_database_engine_mock.return_value = _Engine("default_engine_name")
+
+    query_generic_test(
+        [],
+        None,
+        expected_sql="SELECT 1;",
+        input="SELECT 1;",
+        cursor_mock=cursor_mock,
+    )
+
+    construct_resource_manager_mock.assert_called_once()
+    default_database_engine_mock.assert_called_once()
