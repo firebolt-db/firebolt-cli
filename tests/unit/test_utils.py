@@ -158,6 +158,7 @@ def test_construct_resource_manager_password(mocker: MockerFixture):
         password="password",
         api_endpoint="endpoint.firebolt.io",
         account_name="firebolt",
+        access_token=None,
     )
     rm.assert_called_once_with(
         Settings(
@@ -166,6 +167,29 @@ def test_construct_resource_manager_password(mocker: MockerFixture):
             default_region="",
             account_name="firebolt",
             server="endpoint.firebolt.io",
+            access_token=None,
+        )
+    )
+
+
+def test_construct_resource_manager_token(mocker: MockerFixture):
+    rm = mocker.patch.object(ResourceManager, "__init__", return_value=None)
+
+    construct_resource_manager(
+        username="username",
+        password="password",
+        api_endpoint="endpoint.firebolt.io",
+        account_name="firebolt",
+        access_token="access_token",
+    )
+    rm.assert_called_once_with(
+        Settings(
+            user=None,
+            password=None,
+            default_region="",
+            account_name="firebolt",
+            server="endpoint.firebolt.io",
+            access_token="access_token",
         )
     )
 
