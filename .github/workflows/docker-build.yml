@@ -31,7 +31,7 @@ jobs:
         id: tag_generation
         run: |
            NEW_TAG=$(cat repo_path/src/firebolt_cli/__init__.py | awk -F'"' '{ print $2}')
-           echo "::set-output name=new_tag::ghcr.io/firebolt-db/firebolt-cli:$NEW_TAG"
+           echo "::set-output name=new_tag::ghcr.io/firebolt-db/firebolt-cli:$NEW_TAG, ghcr.io/firebolt-db/firebolt-cli:latest"
         shell: bash
 
       - name: Build and push
