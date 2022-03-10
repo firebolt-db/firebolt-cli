@@ -28,13 +28,14 @@ jobs:
           path: repo_path
 
       - name: Assign release version from version.properties to Env variable
+        id: tag_generation
         run: |
            NEW_TAG=$(cat repo_path/src/firebolt_cli/__init__.py | awk -F'"' '{ print $2}')
-           echo "::set-output name=new_tag::$NEW_TAG"
+           echo "::set-output name=new_tag::ghcr.io/firebolt-db/firebolt-cli:$NEW_TAG"
         shell: bash
 
       - name: Build and push
         uses: docker/build-push-action@v2
         with:
           push: true
-          tags: 'ghcr.io/firebolt-db/firebolt-cli:{{ steps.tag_generation.outputs.new_tag  }}'
+          tags: ${{ steps.tag_generation.outputs.new_tag }}
