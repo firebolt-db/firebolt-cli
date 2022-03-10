@@ -2,6 +2,10 @@ name: Docker Build
 
 on:
   workflow_dispatch:
+  workflow_call:
+    secrets:
+      GITHUB_TOKEN:
+        required: true
 
 jobs:
   docker:
@@ -20,8 +24,12 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+     - name: Assign release version from version.properties to Env variable
+       run: |
+          cat src/firebolt_cli/__init__.py | awk -F'"' '{ print $2}' >> $FIREBOLT_CLI_VERSION
+
       - name: Build and push
         uses: docker/build-push-action@v2
         with:
           push: true
-          tags: ghcr.io/firebolt-db/firebolt-cli:latest
+          tags: 'ghcr.io/firebolt-db/firebolt-cli:{{ $env.FIREBOLT_CLI_VERSION }}'
