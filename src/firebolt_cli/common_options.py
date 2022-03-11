@@ -1,3 +1,4 @@
+from os import environ
 from typing import Callable, List, Optional
 
 from click import Context, MissingParameter, Parameter, option, prompt
@@ -25,11 +26,12 @@ def password_from_config_file(
 ) -> Optional[str]:
     # type check
     assert param.name
+
     # user asked to prompt for password
     if value:
         return prompt("Password", type=str, hide_input=True)
 
-    pw_value = read_config().get("password", None)
+    pw_value = environ.get("FIREBOLT_PASSWORD") or read_config().get("password", None)
     if not pw_value:
         raise MissingParameter(ctx=ctx, param=param, param_hint=f"--{param.name}")
 
