@@ -30,7 +30,8 @@ jobs:
       - name: Assign release version from version.properties to Env variable
         id: tag_generation
         run: |
-           NEW_TAG=$(cat repo_path/src/firebolt_cli/__init__.py | awk -F'"' '{ print $2}')
+           cd repo_path
+           NEW_TAG=$(python -c 'from src.firebolt_cli.__init__ import __version__; print (__version__)')
            echo "::set-output name=docker_tags::ghcr.io/firebolt-db/firebolt-cli:$NEW_TAG, ghcr.io/firebolt-db/firebolt-cli:latest"
         shell: bash
 
