@@ -70,6 +70,13 @@ _common_options: List[Callable] = [
         callback=default_from_config_file(DEFAULT_API_URL, required=False),
         hidden=True,
     ),
+    option(
+        "--access-token",
+        envvar="FIREBOLT_ACCESS_TOKEN",
+        help="Firebolt token for authentication, "
+        "if failed username/password will be used",
+        required=False,
+    ),
 ]
 
 
