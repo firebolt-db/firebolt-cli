@@ -115,6 +115,7 @@ $ export FIREBOLT_PASSWORD=your_password
 $ export FIREBOLT_ACCOUNT_NAME=your_account_name
 $ export FIREBOLT_API_ENDPOINT=api_endpoint
 $ export FIREBOLT_ENGINE_NAME_URL=your_engine_name_or_url
+$ export FIREBOLT_ACCESS_TOKEN=access_token
 $ firebolt query
 ```
 
