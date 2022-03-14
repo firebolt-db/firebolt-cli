@@ -111,13 +111,13 @@ firebolt query --username your_user_name --engine-name your_running_engine
 3. Use environment variable
 ```
 $ export FIREBOLT_USERNAME=your_username
+$ export FIREBOLT_PASSWORD=your_password
 $ export FIREBOLT_ACCOUNT_NAME=your_account_name
 $ export FIREBOLT_API_ENDPOINT=api_endpoint
 $ export FIREBOLT_ENGINE_NAME_URL=your_engine_name_or_url
 $ export FIREBOLT_ACCESS_TOKEN=access_token
 $ firebolt query
 ```
-Note, that it is not possible to set the password via the environment variables.
 
 ### Interactive SQL
 To enter interactive SQL, firebolt CLI has to be configured using one of three methods from [configuration section](#configure).
@@ -164,3 +164,20 @@ firebolt>
 
 ### Managing resources
 With firebolt cli it is also possible to manage databases and engines, for the full set of available features please see `firebolt engine --help` and `firebolt database --help`.
+
+## Docker
+To start the work with docker, 
+you should first pull the docker from the repository.
+```
+docker pull ghcr.io/firebolt-db/firebolt-cli:latest
+```
+
+Afterward, you will be able to run the cli and passing all configuration variables as environment variables. 
+
+Here is an example of getting a list of available engines: 
+```
+docker run -e FIREBOLT_USERNAME="your_username"\
+           -e FIREBOLT_PASSWORD="your_password"\  
+           ghcr.io/firebolt-db/firebolt-cli:latest engine list
+```
+

@@ -2,6 +2,7 @@ name: Docker Build
 
 on:
   workflow_dispatch:
+  workflow_call:
 
 jobs:
   docker:
@@ -20,8 +21,22 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Checkout action repo
+        uses: actions/checkout@v2
+        with:
+          repository: firebolt-db/firebolt-cli
+          path: repo_path
+
+      - name: Assign release version from version.properties to Env variable
+        id: tag_generation
+        run: |
+           cd repo_path
+           NEW_TAG=$(python -c 'from src.firebolt_cli.__init__ import __version__; print (__version__)')
+           echo "::set-output name=docker_tags::ghcr.io/firebolt-db/firebolt-cli:$NEW_TAG, ghcr.io/firebolt-db/firebolt-cli:latest"
+        shell: bash
+
       - name: Build and push
         uses: docker/build-push-action@v2
         with:
           push: true
-          tags: user/app:latest
+          tags: ${{ steps.tag_generation.outputs.docker_tags }}
