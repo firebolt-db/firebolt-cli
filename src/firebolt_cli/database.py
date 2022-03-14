@@ -4,6 +4,7 @@ from firebolt.service.manager import ResourceManager
 
 from firebolt_cli.common_options import common_options, json_option
 from firebolt_cli.utils import (
+    construct_aliased_group,
     construct_resource_manager,
     convert_bytes,
     exit_on_firebolt_exception,
@@ -45,7 +46,15 @@ def print_db_full_information(
     )
 
 
-@group()
+@group(
+    name="database (db)",
+    cls=construct_aliased_group(
+        shortages={
+            "list": "list (ls)",
+            "ls": "list (ls)",
+        }
+    ),
+)
 def database() -> None:
     """
     Manage the databases
@@ -83,7 +92,7 @@ def create(**raw_config_options: str) -> None:
     print_db_full_information(rm, database, bool(raw_config_options["json"]))
 
 
-@command()
+@command(name="list (ls)")
 @common_options
 @option(
     "--name-contains",

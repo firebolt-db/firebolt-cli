@@ -15,6 +15,7 @@ from firebolt.service.types import (
 
 from firebolt_cli.common_options import common_options, json_option
 from firebolt_cli.utils import (
+    construct_aliased_group,
     construct_resource_manager,
     exit_on_firebolt_exception,
     prepare_execution_result_line,
@@ -49,7 +50,14 @@ AVAILABLE_NEW_ENGINES = [
 ]
 
 
-@group()
+@group(
+    cls=construct_aliased_group(
+        shortages={
+            "list": "list (ls)",
+            "ls": "list (ls)",
+        }
+    )
+)
 def engine() -> None:
     """
     Manage the engines
@@ -515,7 +523,7 @@ def status(**raw_config_options: str) -> None:
     echo(f"Engine {engine.name} current status is: {current_status_name}")
 
 
-@command()
+@command(name="list (ls)")
 @common_options
 @option(
     "--name-contains",

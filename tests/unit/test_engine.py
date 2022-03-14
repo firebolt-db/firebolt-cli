@@ -15,13 +15,13 @@ from firebolt_cli.engine import (
     create,
     describe,
     drop,
-    list,
     restart,
     start,
     status,
     stop,
     update,
 )
+from firebolt_cli.main import main
 
 
 @pytest.fixture(autouse=True)
@@ -479,7 +479,8 @@ def test_engine_restart_not_exist(configure_resource_manager: Sequence) -> None:
     assert result.exit_code != 0
 
 
-def test_engine_list(configure_resource_manager: Sequence) -> None:
+@pytest.mark.parametrize("list_command", ["list", "ls"])
+def test_engine_list(configure_resource_manager: Sequence, list_command: str) -> None:
     """
     test engine list happy path
     """
@@ -500,7 +501,7 @@ def test_engine_list(configure_resource_manager: Sequence) -> None:
     engines_mock.get_many.return_value = [engine_mock1, engine_mock2]
 
     result = CliRunner(mix_stderr=False).invoke(
-        list, "--name-contains engine_name --json".split()
+        main, f"engine {list_command} --name-contains engine_name --json".split()
     )
 
     output = json.loads(result.stdout)
