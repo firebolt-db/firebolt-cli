@@ -7,6 +7,7 @@ from appdirs import user_config_dir
 from firebolt.common import Settings
 from firebolt.common.exception import FireboltError
 from firebolt.service.manager import ResourceManager
+from httpx import HTTPStatusError
 from pyfakefs.fake_filesystem import FakeFilesystem
 from pytest_mock import MockerFixture
 
@@ -190,6 +191,43 @@ def test_construct_resource_manager_token(mocker: MockerFixture):
             account_name="firebolt",
             server="endpoint.firebolt.io",
             access_token="access_token",
+        )
+    )
+
+
+def test_construct_resource_manager_invalid_token(mocker: MockerFixture):
+    rm = mocker.patch.object(ResourceManager, "__init__", return_value=None)
+
+    rm.side_effect = [HTTPStatusError(message="", request=None, response=None), None]
+    construct_resource_manager(
+        username="username",
+        password="password",
+        api_endpoint="endpoint.firebolt.io",
+        account_name="firebolt",
+        access_token="invalid_access_token",
+    )
+
+    assert rm.call_count == 2
+
+    rm.assert_any_call(
+        Settings(
+            user=None,
+            password=None,
+            default_region="",
+            account_name="firebolt",
+            server="endpoint.firebolt.io",
+            access_token="invalid_access_token",
+        )
+    )
+
+    rm.assert_any_call(
+        Settings(
+            user="username",
+            password="password",
+            default_region="",
+            account_name="firebolt",
+            server="endpoint.firebolt.io",
+            access_token=None,
         )
     )
 

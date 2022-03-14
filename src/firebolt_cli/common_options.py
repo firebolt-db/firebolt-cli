@@ -76,7 +76,6 @@ _common_options: List[Callable] = [
         help="Firebolt token for authentication, "
         "if failed username/password will be used",
         required=False,
-        hidden=True,
     ),
 ]
 
