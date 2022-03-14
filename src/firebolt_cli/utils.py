@@ -73,6 +73,8 @@ def construct_resource_manager(**raw_config_options: str) -> ResourceManager:
             return ResourceManager(
                 Settings(
                     **settings_dict,
+                    user=None,
+                    password=None,
                     access_token=raw_config_options["access_token"],
                 )
             )
@@ -84,6 +86,7 @@ def construct_resource_manager(**raw_config_options: str) -> ResourceManager:
             **settings_dict,
             user=raw_config_options["username"],
             password=raw_config_options["password"],
+            access_token=None,
         )
     )
 
