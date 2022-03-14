@@ -210,14 +210,14 @@ def update_config(**kwargs: str) -> None:
 
 def exit_on_firebolt_exception(func: Callable) -> Callable:
     """
-    Decorator which catches FireboltError and RuntimeError and exits the programms
+    Decorator which catches all Exceptions and exits the programms
     """
 
     @wraps(func)
     def decorator(*args: str, **kwargs: str) -> None:
         try:
             func(*args, **kwargs)
-        except (FireboltError, RuntimeError) as err:
+        except Exception as err:
             echo(err, err=True)
             sys.exit(1)
 
