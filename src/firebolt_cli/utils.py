@@ -12,6 +12,7 @@ from firebolt.common import Settings
 from firebolt.common.exception import FireboltError
 from firebolt.model.engine import Engine
 from firebolt.service.manager import ResourceManager
+from httpx import HTTPStatusError
 from keyring.errors import KeyringError
 from tabulate import tabulate
 
@@ -58,6 +59,7 @@ def prepare_execution_result_table(
 def construct_resource_manager(**raw_config_options: str) -> ResourceManager:
     """
     Propagate raw_config_options to the settings and construct a resource manager
+    :rtype: object
     """
 
     settings_dict = {
@@ -66,15 +68,24 @@ def construct_resource_manager(**raw_config_options: str) -> ResourceManager:
         "account_name": raw_config_options["account_name"],
     }
 
-    rm = ResourceManager(
+    if raw_config_options["access_token"] is not None:
+        try:
+            return ResourceManager(
+                Settings(
+                    **settings_dict,
+                    access_token=raw_config_options["access_token"],
+                )
+            )
+        except HTTPStatusError:
+            pass
+
+    return ResourceManager(
         Settings(
             **settings_dict,
             user=raw_config_options["username"],
             password=raw_config_options["password"],
         )
     )
-
-    return rm
 
 
 def convert_bytes(num: Optional[float]) -> str:

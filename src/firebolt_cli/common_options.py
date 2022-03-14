@@ -12,9 +12,14 @@ def default_from_config_file(
     def inner(ctx: Context, param: Parameter, value: Optional[str]) -> Optional[str]:
         # type check
         assert param.name
+
         value = value or read_config().get(param.name, None) or default
         if required and not value:
-            raise MissingParameter(ctx=ctx, param=param, param_hint=f"--{param.name}")
+            raise MissingParameter(
+                ctx=ctx,
+                param=param,
+                param_hint="--{}".format(param.name.replace("_", "-")),
+            )
         return value
 
     return inner
@@ -31,7 +36,9 @@ def password_from_config_file(
 
     pw_value = read_config().get("password", None)
     if not pw_value:
-        raise MissingParameter(ctx=ctx, param=param, param_hint=f"--{param.name}")
+        raise MissingParameter(
+            ctx=ctx, param=param, param_hint="--{}".format(param.name.replace("_", "-"))
+        )
 
     return pw_value
 
@@ -54,7 +61,7 @@ _common_options: List[Callable] = [
     option(
         "--account-name",
         envvar="FIREBOLT_ACCOUNT_NAME",
-        callback=default_from_config_file(required=True),
+        callback=default_from_config_file(required=False),
         help="Name of Firebolt account",
     ),
     option(
@@ -62,6 +69,13 @@ _common_options: List[Callable] = [
         envvar="FIREBOLT_API_ENDPOINT",
         callback=default_from_config_file(DEFAULT_API_URL, required=False),
         hidden=True,
+    ),
+    option(
+        "--access-token",
+        envvar="FIREBOLT_ACCESS_TOKEN",
+        help="Firebolt token for authentication, "
+        "if failed username/password will be used",
+        required=False,
     ),
 ]
 

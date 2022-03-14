@@ -114,6 +114,7 @@ $ export FIREBOLT_USERNAME=your_username
 $ export FIREBOLT_ACCOUNT_NAME=your_account_name
 $ export FIREBOLT_API_ENDPOINT=api_endpoint
 $ export FIREBOLT_ENGINE_NAME_URL=your_engine_name_or_url
+$ export FIREBOLT_ACCESS_TOKEN=access_token
 $ firebolt query
 ```
 Note, that it is not possible to set the password via the environment variables.
