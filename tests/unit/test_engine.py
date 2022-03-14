@@ -510,7 +510,9 @@ def test_engine_list(configure_resource_manager: Sequence) -> None:
     assert output[1]["name"] == "engine_mock2"
 
     rm.assert_called_once()
-    engines_mock.get_many.assert_called_once_with(name_contains="engine_name")
+    engines_mock.get_many.assert_called_once_with(
+        name_contains="engine_name", order_by="ENGINE_ORDER_NAME_ASC"
+    )
 
     assert result.stderr == ""
     assert result.exit_code == 0
