@@ -24,6 +24,8 @@ jobs:
       - name: Checkout action repo
         uses: actions/checkout@v2
         with:
+          fetch-depth: 0
+          ref: main
           repository: firebolt-db/firebolt-cli
           path: repo_path
 
