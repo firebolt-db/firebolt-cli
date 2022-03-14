@@ -79,7 +79,6 @@ def api_endpoint() -> str:
 @fixture(scope="session")
 def configure_cli(
     api_endpoint: str,
-    account_name: str,
     password: str,
     username: str,
     database_name: str,
@@ -87,7 +86,7 @@ def configure_cli(
     result = CliRunner().invoke(
         configure,
         [],
-        input=f"{username}\n{password}\n{account_name}\n{database_name}\n\n",
+        input=f"{username}\n{password}\n\n{database_name}\n\n",
     )
     assert result.exit_code == 0
 

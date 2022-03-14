@@ -170,9 +170,7 @@ def test_parameters_missing(fs: FakeFilesystem):
             f"Missing option --{option_name}" in result.stdout
         ), "invalid missing parameter message"
 
-    for opt, option_name in zip(
-        _common_options[:3], ("username", "password", "account_name")
-    ):
+    for opt, option_name in zip(_common_options[:2], ("username", "password")):
         check_empty_option(opt, option_name)
 
         # create config file without current option

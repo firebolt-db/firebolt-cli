@@ -149,3 +149,38 @@ def test_query_incorrect(configure_cli: None, engine_url: str, read_from_stdin: 
 
     assert result.stderr != ""
     assert result.exit_code != 0
+
+
+def test_query_account_name(configure_cli: None, engine_name: str, account_name: str):
+    """
+    Test account name correct/incorrect
+    """
+
+    query_simple_generic(
+        additional_parameters=[
+            "--engine-name",
+            engine_name,
+            "--account-name",
+            account_name,
+        ],
+        read_from_stdin=True,
+        query="SELECT 1;",
+        check_result=True,
+    )
+
+    result = query_simple_generic(
+        additional_parameters=[
+            "--engine-name",
+            engine_name,
+            "--account-name",
+            "firebolt_non_existing",
+        ],
+        read_from_stdin=True,
+        query="SELECT 1;",
+        check_result=False,
+    )
+    assert "Account" in result.stderr
+    assert "does not exist" in result.stderr
+    assert "firebolt_non_existing" in result.stderr
+
+    assert result.exit_code != 0
