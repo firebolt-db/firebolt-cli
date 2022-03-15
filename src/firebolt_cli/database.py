@@ -99,7 +99,10 @@ def list(**raw_config_options: str) -> None:
     """
     rm = construct_resource_manager(**raw_config_options)
 
-    databases = rm.databases.get_many(name_contains=raw_config_options["name_contains"])
+    databases = rm.databases.get_many(
+        name_contains=raw_config_options["name_contains"],
+        order_by="DATABASE_ORDER_NAME_ASC",
+    )
 
     if not raw_config_options["json"]:
         echo(f"Found {len(databases)} databases")
