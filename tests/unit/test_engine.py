@@ -50,9 +50,7 @@ def test_engine_start_not_found(configure_resource_manager: Sequence) -> None:
 
     engines_mock.get_by_name.side_effect = FireboltError("engine not found")
 
-    result = CliRunner(mix_stderr=False).invoke(
-        start, "--name not_existing_engine".split()
-    )
+    result = CliRunner(mix_stderr=False).invoke(start, "not_existing_engine".split())
 
     engines_mock.get_by_name.assert_called_once_with(name="not_existing_engine")
 
@@ -90,7 +88,7 @@ def engine_start_stop_generic(
 
     result = CliRunner(mix_stderr=False).invoke(
         command,
-        ["--name", "engine_name"] + additional_parameters,
+        additional_parameters + ["engine_name"],
     )
 
     engines_mock.get_by_name.assert_called_once_with(name="engine_name")
@@ -246,7 +244,7 @@ def test_engine_status(configure_resource_manager: Sequence) -> None:
 
     engine_mock.current_status_summary.name = "engine running"
 
-    result = CliRunner(mix_stderr=False).invoke(status, "--name engine_name".split())
+    result = CliRunner(mix_stderr=False).invoke(status, "engine_name".split())
 
     engines_mock.get_by_name.assert_called_once_with(name="engine_name")
 
@@ -418,9 +416,7 @@ def test_engine_status_not_found(configure_resource_manager: Sequence) -> None:
 
     engines_mock.get_by_name.side_effect = FireboltError("engine not found")
 
-    result = CliRunner(mix_stderr=False).invoke(
-        status, "--name non_existing_engine".split()
-    )
+    result = CliRunner(mix_stderr=False).invoke(status, ["non_existing_engine"])
 
     engines_mock.get_by_name.assert_called_once_with(name="non_existing_engine")
     rm.assert_called_once()
@@ -468,9 +464,7 @@ def test_engine_restart_not_exist(configure_resource_manager: Sequence) -> None:
     """
     rm, _, _, engines_mock, _ = configure_resource_manager
 
-    result = CliRunner(mix_stderr=False).invoke(
-        restart, "--name non_existing_engine".split()
-    )
+    result = CliRunner(mix_stderr=False).invoke(restart, ["non_existing_engine"])
 
     engines_mock.get_by_name.assert_called_once_with(name="non_existing_engine")
     rm.assert_called_once()
@@ -665,11 +659,7 @@ def engine_drop_generic_workflow(
 
     result = CliRunner(mix_stderr=False).invoke(
         drop,
-        [
-            "--name",
-            "to_drop_engine_name",
-        ]
-        + additional_parameters,
+        ["to_drop_engine_name"] + additional_parameters,
         input=input,
     )
 
@@ -724,9 +714,7 @@ def test_engine_drop_not_found(configure_resource_manager: Sequence) -> None:
 
     engines_mock.get_by_name.side_effect = RuntimeError("engine not found")
 
-    result = CliRunner(mix_stderr=False).invoke(
-        drop, "--name to_drop_engine_name".split()
-    )
+    result = CliRunner(mix_stderr=False).invoke(drop, "to_drop_engine_name".split())
 
     engines_mock.get_by_name.assert_called_once_with(name="to_drop_engine_name")
 
@@ -751,7 +739,7 @@ def test_engine_describe_json(configure_resource_manager: Sequence) -> None:
     engine_mock.database = database_mock
 
     result = CliRunner(mix_stderr=False).invoke(
-        describe, ["--name", "to_describe_engine", "--json"]
+        describe, ["to_describe_engine", "--json"]
     )
 
     engine_description = json.loads(result.stdout)
@@ -786,9 +774,7 @@ def test_engine_describe_not_found(configure_resource_manager: Sequence) -> None
     rm, _, _, engines_mock, _ = configure_resource_manager
     engines_mock.get_by_name.side_effect = FireboltError("engine not found")
 
-    result = CliRunner(mix_stderr=False).invoke(
-        describe, ["--name", "to_describe_engine"]
-    )
+    result = CliRunner(mix_stderr=False).invoke(describe, ["to_describe_engine"])
 
     assert result.stderr != ""
     assert result.exit_code != 0
