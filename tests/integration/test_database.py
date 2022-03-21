@@ -36,7 +36,7 @@ def test_database_create_drop(
     # Getting the description of the database
     result = CliRunner(mix_stderr=False).invoke(
         main,
-        f"database describe --name {database_name} --json".split(),
+        f"database describe {database_name} --json".split(),
     )
     assert result.stderr == ""
     assert result.exit_code == 0
@@ -63,7 +63,7 @@ def test_database_create_drop(
 
     # Dropping the created database
     result = CliRunner(mix_stderr=False).invoke(
-        main, f"database drop --name {database_name} --yes".split()
+        main, f"database drop {database_name} --yes".split()
     )
     assert result.exit_code == 0
 
@@ -74,7 +74,7 @@ def test_database_description_not_existing(configure_cli: None, database_name: s
     """
     result = CliRunner(mix_stderr=False).invoke(
         main,
-        f"database describe --name {database_name}_not_existing --json".split(),
+        f"database describe {database_name}_not_existing --json".split(),
     )
     assert result.stderr != ""
     assert result.exit_code != 0
@@ -85,7 +85,7 @@ def test_database_drop_non_existing(configure_cli: None):
     Trying to drop non-existing database
     """
     result = CliRunner(mix_stderr=False).invoke(
-        main, f"database drop --name non_existing_test_database --yes".split()
+        main, f"database drop non_existing_test_database --yes".split()
     )
 
     assert result.exit_code != 0, ""
@@ -112,12 +112,12 @@ def test_database_list_setup(database_name: str, default_region: str) -> None:
     # Clean up the test
     CliRunner(mix_stderr=False).invoke(
         main,
-        f"database drop --name {database_name}_list_integration_test1 --yes".split(),
+        f"database drop {database_name}_list_integration_test1 --yes".split(),
     )
 
     CliRunner(mix_stderr=False).invoke(
         main,
-        f"database drop --name {database_name}_list_integration_test2 --yes".split(),
+        f"database drop {database_name}_list_integration_test2 --yes".split(),
     )
 
 
@@ -193,7 +193,7 @@ def test_database_update(database_name: str, configure_cli: None):
 
     result = CliRunner(mix_stderr=False).invoke(
         main,
-        f"database describe --name {database_name} --json".split(),
+        f"database describe {database_name} --json".split(),
     )
 
     output = json.loads(result.stdout)
