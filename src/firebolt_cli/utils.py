@@ -3,11 +3,11 @@ import os
 import sys
 from configparser import ConfigParser
 from functools import wraps
-from typing import Callable, Dict, Optional, Sequence
+from typing import Callable, Dict, Optional, Sequence, Type
 
 import keyring
 from appdirs import user_config_dir
-from click import echo
+from click import Command, Context, Group, echo
 from firebolt.common import Settings
 from firebolt.common.exception import FireboltError
 from firebolt.model.engine import Engine
@@ -18,6 +18,26 @@ from tabulate import tabulate
 
 config_file = os.path.join(user_config_dir(), "firebolt.ini")
 config_section = "firebolt-cli"
+
+
+def construct_shortcuts(shortages: dict) -> Type[Group]:
+    class AliasedGroup(Group):
+        def get_command(self, ctx: Context, cmd_name: str) -> Optional[Command]:
+            rv = Group.get_command(self, ctx, cmd_name)
+            if rv is not None:
+                return rv
+
+            matches = [
+                x for x in self.list_commands(ctx) if x in shortages.get(cmd_name, None)
+            ]
+
+            if not matches:
+                return None
+
+            assert len(matches) == 1
+            return Group.get_command(self, ctx, matches[0])
+
+    return AliasedGroup
 
 
 def prepare_execution_result_line(

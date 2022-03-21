@@ -9,6 +9,7 @@ from firebolt.common.exception import AttachedEngineInUseError, FireboltError
 from pyfakefs.fake_filesystem import FakeFilesystem
 
 from firebolt_cli.database import create, describe, drop, list, update
+from firebolt_cli.main import main
 
 Database = namedtuple("Database", "name compute_region_key description")
 
@@ -87,6 +88,7 @@ def databases_list_generic_workflow(
     return_databases: Sequence,
     name_contains: Optional[str],
     output_validator: Callable[[str], None],
+    short_version=False,
 ) -> None:
     """
     General workflow with different databases and parameters and
@@ -96,7 +98,12 @@ def databases_list_generic_workflow(
 
     databases_mock.get_many.return_value = return_databases
 
-    result = CliRunner(mix_stderr=False).invoke(list, additional_parameters)
+    cli_runner = CliRunner(mix_stderr=False)
+    if short_version:
+        result = cli_runner.invoke(main, ["db", "ls"] + additional_parameters)
+    else:
+        result = cli_runner.invoke(list, additional_parameters)
+
     databases_mock.get_many.assert_called_once_with(
         name_contains=name_contains, order_by="DATABASE_ORDER_NAME_ASC"
     )
@@ -106,8 +113,10 @@ def databases_list_generic_workflow(
     assert result.exit_code == 0, "non-zero exit code"
 
 
+@pytest.mark.parametrize("short_version", [False, True])
 def test_databases_list_happy_path(
     configure_resource_manager: Sequence,
+    short_version: bool,
 ) -> None:
     """
     Test common workflow with some databases and json output
@@ -123,6 +132,7 @@ def test_databases_list_happy_path(
         additional_parameters=[],
         name_contains=None,
         output_validator=lambda x: len(x) > 0,
+        short_version=short_version,
     )
 
 
