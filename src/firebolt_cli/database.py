@@ -1,4 +1,4 @@
-from click import command, confirm, echo, group, option
+from click import argument, command, confirm, echo, group, option
 from firebolt.model.database import Database
 from firebolt.service.manager import ResourceManager
 
@@ -126,11 +126,14 @@ def list(**raw_config_options: str) -> None:
 
 @command()
 @common_options
-@option("--name", help="Database name, that should be dropped", type=str, required=True)
 @option(
     "--yes",
     help="Automatic yes on confirmation prompt",
     is_flag=True,
+)
+@argument(
+    "database_name",
+    type=str,
 )
 @exit_on_firebolt_exception
 def drop(**raw_config_options: str) -> None:
@@ -138,12 +141,10 @@ def drop(**raw_config_options: str) -> None:
     Drop specified database
     """
     rm = construct_resource_manager(**raw_config_options)
-    database = rm.databases.get_by_name(name=raw_config_options["name"])
+    database = rm.databases.get_by_name(name=raw_config_options["database_name"])
 
     if raw_config_options["yes"] or confirm(
-        "Do you really want to drop the database {name}?".format(
-            name=raw_config_options["name"]
-        )
+        f"Do you really want to drop the database {database.name}?"
     ):
         database.delete()
         echo(f"Drop request for database {database.name} is successfully sent")
@@ -153,10 +154,8 @@ def drop(**raw_config_options: str) -> None:
 
 @command()
 @common_options
-@option(
-    "--name",
-    help="Database name, that should be described",
-    required=True,
+@argument(
+    "database_name",
     type=str,
 )
 @json_option
@@ -166,7 +165,7 @@ def describe(**raw_config_options: str) -> None:
     Describe specified database
     """
     rm = construct_resource_manager(**raw_config_options)
-    database = rm.databases.get_by_name(name=raw_config_options["name"])
+    database = rm.databases.get_by_name(name=raw_config_options["database_name"])
     print_db_full_information(rm, database, bool(raw_config_options["json"]))
 
 

@@ -222,11 +222,7 @@ def database_drop_generic_workflow(
 
     result = CliRunner(mix_stderr=False).invoke(
         drop,
-        [
-            "--name",
-            "to_drop_database_name",
-        ]
-        + additional_parameters,
+        ["to_drop_database_name"] + additional_parameters,
         input=input,
     )
 
@@ -282,10 +278,7 @@ def test_database_drop_not_found(configure_resource_manager: Sequence) -> None:
 
     result = CliRunner(mix_stderr=False).invoke(
         drop,
-        [
-            "--name",
-            "to_drop_database_name",
-        ],
+        ["to_drop_database_name"],
     )
 
     databases_mock.get_by_name.assert_called_once_with(name="to_drop_database_name")
@@ -305,7 +298,7 @@ def test_database_drop_wrong_state(configure_resource_manager: Sequence) -> None
     )
 
     result = CliRunner(mix_stderr=False).invoke(
-        drop, ["--name", "to_drop_database_name", "--yes"]
+        drop, ["to_drop_database_name", "--yes"]
     )
 
     databases_mock.get_by_name.assert_called_once_with(name="to_drop_database_name")
@@ -320,9 +313,7 @@ def test_database_describe_happy_path(configure_resource_manager: Sequence) -> N
     rm, databases_mock, database_mock, _, _ = configure_resource_manager
     database_mock.data_size_full = 100
 
-    result = CliRunner(mix_stderr=False).invoke(
-        describe, ["--name", "to_describe_database"]
-    )
+    result = CliRunner(mix_stderr=False).invoke(describe, ["to_describe_database"])
 
     assert result.stderr == ""
     assert result.exit_code == 0
@@ -336,7 +327,7 @@ def test_database_describe_json(configure_resource_manager: Sequence) -> None:
     database_mock.description = "db description"
 
     result = CliRunner(mix_stderr=False).invoke(
-        describe, ["--name", "to_describe_database", "--json"]
+        describe, ["to_describe_database", "--json"]
     )
     database_description = json.loads(result.stdout)
     assert "name" in database_description
@@ -357,9 +348,7 @@ def test_database_describe_not_found(configure_resource_manager: Sequence) -> No
     rm, databases_mock, database_mock, _, _ = configure_resource_manager
     databases_mock.get_by_name.side_effect = FireboltError("db not found")
 
-    result = CliRunner(mix_stderr=False).invoke(
-        describe, ["--name", "to_describe_database"]
-    )
+    result = CliRunner(mix_stderr=False).invoke(describe, ["to_describe_database"])
 
     assert result.stderr != ""
     assert result.exit_code != 0

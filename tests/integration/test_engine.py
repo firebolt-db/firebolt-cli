@@ -12,7 +12,7 @@ def test_engine_start_running(engine_name: str, cli_runner: CliRunner) -> None:
     """
     Test start engine, which is running should fail
     """
-    result = cli_runner.invoke(main, f"engine start --name {engine_name}".split())
+    result = cli_runner.invoke(main, f"engine start {engine_name}".split())
 
     assert result.stderr != ""
     assert result.exit_code != 0
@@ -23,9 +23,7 @@ def test_engine_stop_stopped(stopped_engine_name: str, cli_runner: CliRunner) ->
     Test stop engine, which is stopped should fail
     """
 
-    result = cli_runner.invoke(
-        main, f"engine stop --name {stopped_engine_name}".split()
-    )
+    result = cli_runner.invoke(main, f"engine stop {stopped_engine_name}".split())
 
     assert result.stderr != ""
     assert result.exit_code != 0
@@ -38,24 +36,20 @@ def test_engine_start_stop(stopped_engine_name: str, cli_runner: CliRunner) -> N
     """
 
     result = cli_runner.invoke(
-        main, f"engine start --name {stopped_engine_name} --wait".split()
+        main, f"engine start {stopped_engine_name} --wait".split()
     )
     assert result.exit_code == 0
 
-    result = cli_runner.invoke(
-        main, f"engine status --name {stopped_engine_name}".split()
-    )
+    result = cli_runner.invoke(main, f"engine status {stopped_engine_name}".split())
     assert result.exit_code == 0
     assert "running" in result.stdout.lower()
 
     result = cli_runner.invoke(
-        main, f"engine stop --name {stopped_engine_name} --wait".split()
+        main, f"engine stop {stopped_engine_name} --wait".split()
     )
     assert result.exit_code == 0
 
-    result = cli_runner.invoke(
-        main, f"engine status --name {stopped_engine_name}".split()
-    )
+    result = cli_runner.invoke(main, f"engine status {stopped_engine_name}".split())
     assert result.exit_code == 0
     assert "stopped" in result.stdout.lower()
 
@@ -68,16 +62,16 @@ def test_engine_status(engine_name: str, stopped_engine_name: str) -> None:
     """
     runner = CliRunner(mix_stderr=False)
 
-    result = runner.invoke(main, f"engine status --name {engine_name}".split())
+    result = runner.invoke(main, f"engine status {engine_name}".split())
     assert result.exit_code == 0
     assert "running" in result.stdout.lower()
 
-    result = runner.invoke(main, f"engine status --name {stopped_engine_name}".split())
+    result = runner.invoke(main, f"engine status {stopped_engine_name}".split())
     assert result.exit_code == 0
     assert "stopped" in result.stdout.lower()
 
     result = runner.invoke(
-        main, f"engine status --name {engine_name}_non_existing_engine".split()
+        main, f"engine status {engine_name}_non_existing_engine".split()
     )
     assert result.exit_code != 0
     assert result.stderr != ""
@@ -120,7 +114,7 @@ def test_engine_update_single_parameter(database_name: str) -> None:
 
         assert output[value.output_name] == value.expected
 
-    runner.invoke(main, f"engine drop --name {engine_name} --yes")
+    runner.invoke(main, f"engine drop {engine_name} --yes")
     assert result.exit_code == 0
 
 
@@ -130,9 +124,7 @@ def test_engine_restart_stopped(
     """
     Test restart engine, which is stopped should fail
     """
-    result = cli_runner.invoke(
-        main, f"engine restart --name {stopped_engine_name}".split()
-    )
+    result = cli_runner.invoke(main, f"engine restart {stopped_engine_name}".split())
 
     assert result.stderr != ""
     assert result.exit_code != 0
@@ -144,16 +136,14 @@ def test_engine_restart_running(engine_name: str, cli_runner: CliRunner) -> None
     Test restart engine, which is running should
     restart an engine and wait until it is running
     """
-    result = cli_runner.invoke(
-        main, f"engine restart --name {engine_name} --wait".split()
-    )
+    result = cli_runner.invoke(main, f"engine restart {engine_name} --wait".split())
 
     assert result.stderr == ""
     assert result.exit_code == 0
 
     # Check that engine actually running after restart
     result = CliRunner(mix_stderr=False).invoke(
-        main, f"engine status --name {engine_name}".split()
+        main, f"engine status {engine_name}".split()
     )
     assert result.exit_code == 0
     assert "running" in result.stdout.lower()
@@ -179,14 +169,14 @@ def test_engine_create_minimal(engine_name: str, database_name: str):
 
     result = CliRunner(mix_stderr=False).invoke(
         main,
-        f"engine describe --json " f"--name {engine_name} ".split(),
+        f"engine describe --json {engine_name} ".split(),
     )
     assert result.exit_code == 0
     update_output = json.loads(result.stdout)
     assert update_output == create_output
 
     result = CliRunner(mix_stderr=False).invoke(
-        main, f"engine drop --name {engine_name} --yes".split()
+        main, f"engine drop {engine_name} --yes".split()
     )
     assert result.exit_code == 0
 
@@ -211,7 +201,7 @@ def test_engine_drop_not_existing(engine_name: str):
     engine drop non-existing engine should return an error
     """
     result = CliRunner(mix_stderr=False).invoke(
-        main, f"engine drop --name {engine_name}_not_existing_db --yes".split()
+        main, f"engine drop {engine_name}_not_existing_db --yes".split()
     )
     assert result.exit_code != 0
     assert "not found" in result.stderr.lower()
