@@ -24,8 +24,8 @@ from firebolt.service.types import (
 
 from firebolt_cli.common_options import common_options, json_option
 from firebolt_cli.utils import (
-    construct_aliased_group,
     construct_resource_manager,
+    construct_shortcuts,
     exit_on_firebolt_exception,
     prepare_execution_result_line,
     prepare_execution_result_table,
@@ -60,7 +60,7 @@ AVAILABLE_NEW_ENGINES = [
 
 
 @group(
-    cls=construct_aliased_group(
+    cls=construct_shortcuts(
         shortages={
             "list": "list (ls)",
             "ls": "list (ls)",

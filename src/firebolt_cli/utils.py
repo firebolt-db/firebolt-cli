@@ -20,7 +20,7 @@ config_file = os.path.join(user_config_dir(), "firebolt.ini")
 config_section = "firebolt-cli"
 
 
-def construct_aliased_group(shortages: dict) -> Type[Group]:
+def construct_shortcuts(shortages: dict) -> Type[Group]:
     class AliasedGroup(Group):
         def get_command(self, ctx: Context, cmd_name: str) -> Optional[Command]:
             rv = Group.get_command(self, ctx, cmd_name)
@@ -28,9 +28,7 @@ def construct_aliased_group(shortages: dict) -> Type[Group]:
                 return rv
 
             matches = [
-                x
-                for x in self.list_commands(ctx)
-                if x in set({cmd_name, shortages.get(cmd_name, None)})
+                x for x in self.list_commands(ctx) if x in shortages.get(cmd_name, None)
             ]
 
             if not matches:

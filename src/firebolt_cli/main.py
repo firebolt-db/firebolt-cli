@@ -5,11 +5,11 @@ from firebolt_cli.configure import configure
 from firebolt_cli.database import database
 from firebolt_cli.engine import engine
 from firebolt_cli.query import query
-from firebolt_cli.utils import construct_aliased_group
+from firebolt_cli.utils import construct_shortcuts
 
 
 @group(
-    cls=construct_aliased_group(
+    cls=construct_shortcuts(
         shortages={
             "config": "configure (config)",
             "configure": "configure (config)",

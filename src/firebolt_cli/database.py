@@ -4,8 +4,8 @@ from firebolt.service.manager import ResourceManager
 
 from firebolt_cli.common_options import common_options, json_option
 from firebolt_cli.utils import (
-    construct_aliased_group,
     construct_resource_manager,
+    construct_shortcuts,
     convert_bytes,
     exit_on_firebolt_exception,
     prepare_execution_result_line,
@@ -48,7 +48,7 @@ def print_db_full_information(
 
 @group(
     name="database (db)",
-    cls=construct_aliased_group(
+    cls=construct_shortcuts(
         shortages={
             "list": "list (ls)",
             "ls": "list (ls)",
