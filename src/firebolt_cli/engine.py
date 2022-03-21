@@ -540,7 +540,10 @@ def list(**raw_config_options: str) -> None:
 
     rm = construct_resource_manager(**raw_config_options)
 
-    engines = rm.engines.get_many(name_contains=raw_config_options["name_contains"])
+    engines = rm.engines.get_many(
+        name_contains=raw_config_options["name_contains"],
+        order_by="ENGINE_ORDER_NAME_ASC",
+    )
 
     if not raw_config_options["json"]:
         echo("Found {num_engines} engines".format(num_engines=len(engines)))
