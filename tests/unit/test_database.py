@@ -104,7 +104,9 @@ def databases_list_generic_workflow(
     else:
         result = cli_runner.invoke(list, additional_parameters)
 
-    databases_mock.get_many.assert_called_once_with(name_contains=name_contains)
+    databases_mock.get_many.assert_called_once_with(
+        name_contains=name_contains, order_by="DATABASE_ORDER_NAME_ASC"
+    )
 
     output_validator(result.stdout)
     assert result.stderr == ""
