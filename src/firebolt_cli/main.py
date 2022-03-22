@@ -5,6 +5,7 @@ from firebolt_cli.configure import configure
 from firebolt_cli.database import database
 from firebolt_cli.engine import engine
 from firebolt_cli.query import query
+from firebolt_cli.table import table
 
 
 @group()
@@ -19,3 +20,4 @@ main.add_command(configure)
 main.add_command(engine)
 main.add_command(query)
 main.add_command(database)
+main.add_command(table)

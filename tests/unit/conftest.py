@@ -76,3 +76,16 @@ def configure_resource_manager(mocker: MockerFixture) -> ResourceManager:
     yield rm, databases_mock, database_mock, engines_mock, engine_mock
 
     rm.assert_called_once()
+
+
+@pytest.fixture
+def mock_table_config() -> dict:
+    return {
+        "table_name": "test_table",
+        "columns": [
+            {"name": "test_col_1", "type": "INT"},
+            {"name": "test_col_2", "type": "TEXT"},
+        ],
+        "file_type": "PARQUET",
+        "object_pattern": "*.parquet",
+    }

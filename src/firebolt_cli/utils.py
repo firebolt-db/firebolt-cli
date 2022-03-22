@@ -3,7 +3,7 @@ import os
 import sys
 from configparser import ConfigParser
 from functools import wraps
-from typing import Callable, Dict, Optional, Sequence
+from typing import Callable, Dict, Optional, Sequence, Tuple
 
 import keyring
 from appdirs import user_config_dir
@@ -244,3 +244,15 @@ def get_default_database_engine(rm: ResourceManager, database_name: str) -> Engi
             return rm.engines.get(binding.engine_id)
 
     raise FireboltError("No default engine is found.")
+
+
+def extract_engine_name_url(
+    engine_name_url: str,
+) -> Tuple[Optional[str], Optional[str]]:
+    """
+    Returns a tuple engine_name, engine_url
+    """
+    if "." in engine_name_url:
+        return None, engine_name_url
+    else:
+        return engine_name_url, None
