@@ -16,7 +16,7 @@ from firebolt_cli.utils import (
 )
 
 
-@group()
+@group(name="table (tb)")
 def table() -> None:
     """
     Creating tables

@@ -6,9 +6,21 @@ from firebolt_cli.database import database
 from firebolt_cli.engine import engine
 from firebolt_cli.query import query
 from firebolt_cli.table import table
+from firebolt_cli.utils import construct_shortcuts
 
 
-@group()
+@group(
+    cls=construct_shortcuts(
+        shortages={
+            "config": "configure (config)",
+            "configure": "configure (config)",
+            "db": "database (db)",
+            "database": "database (db)",
+            "tb": "table (tb)",
+            "table": "table (tb)",
+        }
+    )
+)
 @version_option(__version__, "-V", "--version")
 def main() -> None:
     """

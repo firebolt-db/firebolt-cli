@@ -5,6 +5,7 @@ from click.testing import CliRunner
 from pyfakefs.fake_filesystem import FakeFilesystem
 
 from firebolt_cli.configure import configure
+from firebolt_cli.main import main
 from firebolt_cli.utils import config_file, config_section, read_config
 
 
@@ -163,4 +164,20 @@ def test_configure_overrides(fs: FakeFilesystem) -> None:
         "username": "username2",
         "database_name": "database_name",
         "account_name": "account_name",
+    }
+
+
+def test_configure_short_version(fs: FakeFilesystem) -> None:
+    fs.create_dir(user_config_dir())
+    runner = CliRunner()
+    result = runner.invoke(
+        main,
+        "config --username username".split(),
+    )
+
+    assert result.exit_code == 0, "non-zero exit code for configure"
+    assert "Successfully" in result.stdout, "Invalid result message"
+
+    assert read_config() == {
+        "username": "username",
     }

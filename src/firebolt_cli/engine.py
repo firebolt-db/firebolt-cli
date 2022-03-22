@@ -3,7 +3,16 @@ import sys
 from datetime import timedelta
 from typing import Callable
 
-from click import Choice, IntRange, command, confirm, echo, group, option
+from click import (
+    Choice,
+    IntRange,
+    argument,
+    command,
+    confirm,
+    echo,
+    group,
+    option,
+)
 from firebolt.common.exception import FireboltError
 from firebolt.model.engine import Engine
 from firebolt.service.manager import ResourceManager
@@ -16,6 +25,7 @@ from firebolt.service.types import (
 from firebolt_cli.common_options import common_options, json_option
 from firebolt_cli.utils import (
     construct_resource_manager,
+    construct_shortcuts,
     exit_on_firebolt_exception,
     prepare_execution_result_line,
     prepare_execution_result_table,
@@ -49,7 +59,14 @@ AVAILABLE_NEW_ENGINES = [
 ]
 
 
-@group()
+@group(
+    cls=construct_shortcuts(
+        shortages={
+            "list": "list (ls)",
+            "ls": "list (ls)",
+        }
+    )
+)
 def engine() -> None:
     """
     Manage the engines
@@ -108,16 +125,14 @@ def start_stop_generic(
 @command()
 @common_options
 @option(
-    "--name",
-    help="Name of the engine, engine should be in stopped state",
-    type=str,
-    required=True,
-)
-@option(
     "--wait/--no-wait",
     help="Wait until the engine is started",
     is_flag=True,
     default=False,
+)
+@argument(
+    "engine_name",
+    type=str,
 )
 @exit_on_firebolt_exception
 def start(**raw_config_options: str) -> None:
@@ -126,7 +141,8 @@ def start(**raw_config_options: str) -> None:
     """
 
     rm = construct_resource_manager(**raw_config_options)
-    engine = rm.engines.get_by_name(name=raw_config_options["name"])
+    engine = rm.engines.get_by_name(name=raw_config_options["engine_name"])
+
     if (
         engine.current_status_summary
         == EngineStatusSummary.ENGINE_STATUS_SUMMARY_FAILED
@@ -162,16 +178,14 @@ def start(**raw_config_options: str) -> None:
 @command()
 @common_options
 @option(
-    "--name",
-    help="Name of the engine, engine should be in running or starting state",
-    type=str,
-    required=True,
-)
-@option(
     "--wait/--no-wait",
     help="Wait until the engine is stopped",
     is_flag=True,
     default=False,
+)
+@argument(
+    "engine_name",
+    type=str,
 )
 @exit_on_firebolt_exception
 def stop(**raw_config_options: str) -> None:
@@ -180,7 +194,7 @@ def stop(**raw_config_options: str) -> None:
     """
 
     rm = construct_resource_manager(**raw_config_options)
-    engine = rm.engines.get_by_name(name=raw_config_options["name"])
+    engine = rm.engines.get_by_name(name=raw_config_options["engine_name"])
 
     start_stop_generic(
         engine=engine,
@@ -354,16 +368,14 @@ WARMUP_METHODS = {
 @command()
 @common_options
 @option(
-    "--name",
-    help="Name of the engine, engine should be in running or failed state",
-    type=str,
-    required=True,
-)
-@option(
     "--wait/--no-wait",
     help="Wait until the engine is restarted",
     is_flag=True,
     default=False,
+)
+@argument(
+    "engine_name",
+    type=str,
 )
 @exit_on_firebolt_exception
 def restart(**raw_config_options: str) -> None:
@@ -372,7 +384,7 @@ def restart(**raw_config_options: str) -> None:
     """
 
     rm = construct_resource_manager(**raw_config_options)
-    engine = rm.engines.get_by_name(name=raw_config_options["name"])
+    engine = rm.engines.get_by_name(name=raw_config_options["engine_name"])
 
     start_stop_generic(
         engine=engine,
@@ -495,11 +507,9 @@ def update(**raw_config_options: str) -> None:
 
 @command()
 @common_options
-@option(
-    "--name",
-    help="Name of the engine",
+@argument(
+    "engine_name",
     type=str,
-    required=True,
 )
 @exit_on_firebolt_exception
 def status(**raw_config_options: str) -> None:
@@ -508,14 +518,14 @@ def status(**raw_config_options: str) -> None:
     """
 
     rm = construct_resource_manager(**raw_config_options)
-    engine = rm.engines.get_by_name(name=raw_config_options["name"])
+    engine = rm.engines.get_by_name(name=raw_config_options["engine_name"])
     current_status_name = (
         engine.current_status_summary.name if engine.current_status_summary else ""
     )
     echo(f"Engine {engine.name} current status is: {current_status_name}")
 
 
-@command()
+@command(name="list (ls)")
 @common_options
 @option(
     "--name-contains",
@@ -561,11 +571,14 @@ def list(**raw_config_options: str) -> None:
 
 @command()
 @common_options
-@option("--name", help="Engine name, that should be deleted", type=str, required=True)
 @option(
     "--yes",
     help="Automatic yes on confirmation prompt",
     is_flag=True,
+)
+@argument(
+    "engine_name",
+    type=str,
 )
 @exit_on_firebolt_exception
 def drop(**raw_config_options: str) -> None:
@@ -573,12 +586,10 @@ def drop(**raw_config_options: str) -> None:
     Drop an existing engine
     """
     rm = construct_resource_manager(**raw_config_options)
-    engine = rm.engines.get_by_name(name=raw_config_options["name"])
+    engine = rm.engines.get_by_name(name=raw_config_options["engine_name"])
 
     if raw_config_options["yes"] or confirm(
-        "Do you really want to drop the engine {name}?".format(
-            name=raw_config_options["name"]
-        )
+        f"Do you really want to drop the engine {engine.name}?"
     ):
         engine.delete()
         echo(f"Drop request for engine {engine.name} is successfully sent")
@@ -588,10 +599,8 @@ def drop(**raw_config_options: str) -> None:
 
 @command()
 @common_options
-@option(
-    "--name",
-    help="Engine name, that should be described",
-    required=True,
+@argument(
+    "engine_name",
     type=str,
 )
 @json_option
@@ -601,7 +610,7 @@ def describe(**raw_config_options: str) -> None:
     Describe specified engine
     """
     rm = construct_resource_manager(**raw_config_options)
-    engine = rm.engines.get_by_name(name=raw_config_options["name"])
+    engine = rm.engines.get_by_name(name=raw_config_options["engine_name"])
     echo_engine_information(rm, engine, bool(raw_config_options["json"]))
 
 

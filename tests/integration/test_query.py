@@ -158,8 +158,9 @@ def test_incorrect_credentials(configure_cli: None, engine_name: str):
 
     result = CliRunner(mix_stderr=False).invoke(
         main,
-        f"query --engine-name {engine_name} --username incorrect_username".split(),
+        f"query --engine-name {engine_name}".split(),
         input="SELECT 1;",
+        env={"FIREBOLT_PASSWORD": "incorrect_password"},
     )
 
     assert "403 Forbidden" in result.stderr
