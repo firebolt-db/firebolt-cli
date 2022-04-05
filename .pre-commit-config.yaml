@@ -27,8 +27,8 @@ repos:
     hooks:
       - id: isort
 
-  - repo: https://github.com/psf/black
-    rev: 21.7b0
+  - repo: https://github.com/ambv/black
+    rev: 22.3.0
     hooks:
       - id: black
         language-version: 3.9
@@ -45,3 +45,15 @@ repos:
         additional_dependencies:
           - flake8-tidy-imports
           - flake8-quotes
+
+
+  - repo: local
+    hooks:
+      - id: mypy
+        name: mypy
+        entry: mypy
+        language: system
+        types: [python]
+        require_serial: true
+        verbose: true
+        pass_filenames: false
