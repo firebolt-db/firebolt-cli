@@ -1,4 +1,4 @@
-name: Firebolt CLI Integration tests
+name: Integration tests
 
 on:
   workflow_dispatch:
