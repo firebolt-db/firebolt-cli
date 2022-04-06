@@ -85,12 +85,12 @@ def test_convert_bytes() -> None:
         convert_bytes(-10.0)
 
     assert "0 KB" == convert_bytes(0)
-    assert "1 KB" == convert_bytes(2 ** 10)
-    assert "1 MB" == convert_bytes(2 ** 20)
-    assert "1 GB" == convert_bytes(2 ** 30)
-    assert "1.2 GB" == convert_bytes(1.2 * 2 ** 30)
-    assert "9.99 GB" == convert_bytes(9.99 * 2 ** 30)
-    assert "19.99 EB" == convert_bytes(19.99 * 2 ** 60)
+    assert "1 KB" == convert_bytes(2**10)
+    assert "1 MB" == convert_bytes(2**20)
+    assert "1 GB" == convert_bytes(2**30)
+    assert "1.2 GB" == convert_bytes(1.2 * 2**30)
+    assert "9.99 GB" == convert_bytes(9.99 * 2**30)
+    assert "19.99 EB" == convert_bytes(19.99 * 2**60)
 
 
 ALL_CONFIG_PARAMS = [
