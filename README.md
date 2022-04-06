@@ -183,4 +183,4 @@ docker run -e FIREBOLT_USERNAME="your_username"\
 
 ## Contributing
 
-See: [CONTRIBUTING.MD](https://github.com/firebolt-db/dbt-firebolt/tree/main/CONTRIBUTING.MD)
+See: [CONTRIBUTING.MD](https://github.com/firebolt-db/firebolt-cli/tree/main/CONTRIBUTING.MD)
