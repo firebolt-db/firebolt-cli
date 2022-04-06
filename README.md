@@ -1,4 +1,12 @@
 # Firebolt-CLI
+
+[![Nightly code check](https://github.com/firebolt-db/firebolt-cli/actions/workflows/nightly.yml/badge.svg)](https://github.com/firebolt-db/firebolt-cli/actions/workflows/nightly.yml)
+[![Unit tests](https://github.com/firebolt-db/firebolt-cli/actions/workflows/unit-tests.yml/badge.svg)](https://github.com/firebolt-db/firebolt-cli/actions/workflows/unit-tests.yml)
+[![Code quality checks](https://github.com/firebolt-db/firebolt-cli/actions/workflows/code-check.yml/badge.svg)](https://github.com/firebolt-db/firebolt-cli/actions/workflows/code-check.yml)
+[![Firebolt Security Scan](https://github.com/firebolt-db/firebolt-cli/actions/workflows/security-scan.yml/badge.svg)](https://github.com/firebolt-db/firebolt-cli/actions/workflows/security-scan.yml)
+[![Integration tests](https://github.com/firebolt-db/firebolt-cli/actions/workflows/integration-tests.yml/badge.svg)](https://github.com/firebolt-db/firebolt-cli/actions/workflows/integration-tests.yml)
+![Coverage](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/ptiurin/bddce7ae8fba7b63a4d5d0921e8e34af/raw/firebolt-cli-coverage.json)
+
 Firebolt cli is a tool for connecting to firebolt, managing firebolt resources, and executing queries from the command line.
 
 ## Quickstart
