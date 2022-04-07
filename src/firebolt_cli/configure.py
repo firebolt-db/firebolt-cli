@@ -11,11 +11,11 @@ from firebolt_cli.utils import read_config, update_config
     is_flag=True,
     default=False,
     help="The password used for connecting to Firebolt.",
-    )
+)
 @option("--account-name", help="The name of the Firebolt account.")
 @option(
     "--database-name", help="The name of the database you would like to connect to."
-    )
+)
 @option("--api-endpoint", hidden=True)
 @option("--engine-name", help="The name or URL of the engine to use.")
 def configure(**raw_config_options: str) -> None:

@@ -248,8 +248,8 @@ def engine_properties_options(create_mode: bool = True) -> Callable:
         ),
         option(
             "--type",
-            help="Engine type: \"rw\" for general purpose "
-            "and \"ro\" for data analytics.",
+            help='Engine type: "rw" for general purpose '
+            'and "ro" for data analytics.',
             type=Choice(list(ENGINE_TYPES.keys()), case_sensitive=False),
             default="ro" if create_mode else None,
             required=False,
