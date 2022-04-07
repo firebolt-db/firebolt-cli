@@ -189,3 +189,6 @@ docker run -e FIREBOLT_USERNAME="your_username"\
            ghcr.io/firebolt-db/firebolt-cli:latest engine list
 ```
 
+## Contributing
+
+See: [CONTRIBUTING.MD](https://github.com/firebolt-db/firebolt-cli/tree/main/CONTRIBUTING.MD)
