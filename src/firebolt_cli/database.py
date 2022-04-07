@@ -57,21 +57,21 @@ def print_db_full_information(
 )
 def database() -> None:
     """
-    Manage the databases
+    Manage databases.
     """
 
 
 @command()
 @common_options
-@option("--name", help="New database name", type=str, required=True)
+@option("--name", help="A new database name.", type=str, required=True)
 @option(
     "--description",
-    help="Database textual description up to 64 characters",
+    help="A database description (max: 64 characters).",
     type=str,
     default="",
 )
 @json_option
-@option("--region", help="Region for the new database", required=True, type=str)
+@option("--region", help="The region for the new database.", required=True, type=str)
 @exit_on_firebolt_exception
 def create(**raw_config_options: str) -> None:
     """
@@ -96,7 +96,7 @@ def create(**raw_config_options: str) -> None:
 @common_options
 @option(
     "--name-contains",
-    help="Output databases will be filtered by name_contains",
+    help="A string used to filter the list of returned databases. Partial matches will be returned. ",
     default=None,
     type=str,
 )
@@ -137,7 +137,7 @@ def list(**raw_config_options: str) -> None:
 @common_options
 @option(
     "--yes",
-    help="Automatic yes on confirmation prompt",
+    help="Automatically drop database without a confirmation prompt.",
     is_flag=True,
 )
 @argument(
@@ -147,7 +147,7 @@ def list(**raw_config_options: str) -> None:
 @exit_on_firebolt_exception
 def drop(**raw_config_options: str) -> None:
     """
-    Drop specified database
+    Drop specified database. By default, this requires confirmation to execute.
     """
     rm = construct_resource_manager(**raw_config_options)
     database = rm.databases.get_by_name(name=raw_config_options["database_name"])
@@ -171,7 +171,7 @@ def drop(**raw_config_options: str) -> None:
 @exit_on_firebolt_exception
 def describe(**raw_config_options: str) -> None:
     """
-    Describe specified database
+    Describe specified database.
     """
     rm = construct_resource_manager(**raw_config_options)
     database = rm.databases.get_by_name(name=raw_config_options["database_name"])
@@ -182,13 +182,13 @@ def describe(**raw_config_options: str) -> None:
 @common_options
 @option(
     "--name",
-    help="Database name, that should be updated",
+    help="The database name that should be updated.",
     required=True,
     type=str,
 )
 @option(
     "--description",
-    help="Database textual description up to 64 characters",
+    help="Database textual description (max: 64 characters)",
     type=str,
     required=True,
 )

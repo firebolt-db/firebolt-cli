@@ -69,7 +69,7 @@ AVAILABLE_NEW_ENGINES = [
 )
 def engine() -> None:
     """
-    Manage the engines
+    Manage engines.
     """
 
 
@@ -126,7 +126,7 @@ def start_stop_generic(
 @common_options
 @option(
     "--wait/--no-wait",
-    help="Wait until the engine is started",
+    help="Wait until the engine is started.",
     is_flag=True,
     default=False,
 )
@@ -137,7 +137,7 @@ def start_stop_generic(
 @exit_on_firebolt_exception
 def start(**raw_config_options: str) -> None:
     """
-    Start an existing engine
+    Start an existing engine.
     """
 
     rm = construct_resource_manager(**raw_config_options)
@@ -166,10 +166,10 @@ def start(**raw_config_options: str) -> None:
         accepted_final_nowait_states={
             EngineStatusSummary.ENGINE_STATUS_SUMMARY_STARTING
         },
-        wrong_initial_state_error="Engine {name} is not in a stopped state,"
-        " the current engine state is {state}",
-        success_message="Engine {name} is successfully started",
-        success_message_nowait="Start request for engine {name} is successfully sent",
+        wrong_initial_state_error="Engine {name} is not in a stopped state."
+        "The current engine state is {state}.",
+        success_message="Engine {name} is successfully started.",
+        success_message_nowait="Start request for engine {name} is successfully sent.",
         failure_message="Engine {name} failed to start. Engine status: {status}.",
         **raw_config_options,
     )
@@ -179,7 +179,7 @@ def start(**raw_config_options: str) -> None:
 @common_options
 @option(
     "--wait/--no-wait",
-    help="Wait until the engine is stopped",
+    help="Wait until the engine is stopped.",
     is_flag=True,
     default=False,
 )
@@ -208,10 +208,10 @@ def stop(**raw_config_options: str) -> None:
             EngineStatusSummary.ENGINE_STATUS_SUMMARY_STOPPING,
             EngineStatusSummary.ENGINE_STATUS_SUMMARY_STOPPED,
         },
-        wrong_initial_state_error="Engine {name} is not in a running or starting state,"
-        " the current engine state is {state}",
-        success_message="Engine {name} is successfully stopped",
-        success_message_nowait="Stop request for engine {name} is successfully sent",
+        wrong_initial_state_error="Engine {name} is not in a running or starting state."
+        " The current engine state is {state}.",
+        success_message="Engine {name} is successfully stopped.",
+        success_message_nowait="Stop request for engine {name} is successfully sent.",
         failure_message="Engine {name} failed to stop. Engine status: {status}.",
         **raw_config_options,
     )
@@ -226,7 +226,7 @@ def engine_properties_options(create_mode: bool = True) -> Callable:
     _ENGINE_OPTIONS = [
         option(
             "--name",
-            help="Name of the engine",
+            help="Name of the engine.",
             type=str,
             required=True,
         ),
@@ -241,21 +241,21 @@ def engine_properties_options(create_mode: bool = True) -> Callable:
         ),
         option(
             "--description",
-            help="Engine description",
+            help="Engine description (max: 64 characters).",
             type=str,
             default="" if create_mode else None,
             required=False,
         ),
         option(
             "--type",
-            help="Engine type: rw for general purpose and ro for data analytics",
+            help="Engine type: \"rw\" for general purpose and \"ro\" for data analytics.",
             type=Choice(list(ENGINE_TYPES.keys()), case_sensitive=False),
             default="ro" if create_mode else None,
             required=False,
         ),
         option(
             "--scale",
-            help="Engine scale",
+            help="The number of engine nodes. Value entered must be between 1 and 128.",
             type=IntRange(1, 128, clamp=False),
             default=1 if create_mode else None,
             required=False,
@@ -263,7 +263,8 @@ def engine_properties_options(create_mode: bool = True) -> Callable:
         ),
         option(
             "--auto-stop",
-            help="Stop engine automatically after specified time in minutes",
+            help="Stop engine automatically after specified time in minutes."
+            "Value entered must be between 1 and 43200 (max value is equal to 30 days).",
             type=IntRange(1, 30 * 24 * 60, clamp=False),
             default=20 if create_mode else None,
             required=False,
@@ -272,7 +273,7 @@ def engine_properties_options(create_mode: bool = True) -> Callable:
         option(
             "--warmup",
             help="Engine warmup method. "
-            "Minimal(min), Preload indexes(ind), Preload all data(all) ",
+            "Minimal(min), Preload indexes(ind), Preload all data(all)",
             type=Choice(list(WARMUP_METHODS.keys())),
             default="ind" if create_mode else None,
             required=False,
@@ -369,7 +370,7 @@ WARMUP_METHODS = {
 @common_options
 @option(
     "--wait/--no-wait",
-    help="Wait until the engine is restarted",
+    help="Wait until the engine is restarted.",
     is_flag=True,
     default=False,
 )
@@ -380,7 +381,7 @@ WARMUP_METHODS = {
 @exit_on_firebolt_exception
 def restart(**raw_config_options: str) -> None:
     """
-    Restart an existing engine
+    Restart an existing engine.
     """
 
     rm = construct_resource_manager(**raw_config_options)
@@ -398,10 +399,10 @@ def restart(**raw_config_options: str) -> None:
             EngineStatusSummary.ENGINE_STATUS_SUMMARY_STOPPING,
             EngineStatusSummary.ENGINE_STATUS_SUMMARY_STARTING,
         },
-        wrong_initial_state_error="Engine {name} is not in a running or failed state,"
-        " the current engine state is {state}",
-        success_message="Engine {name} is successfully restarted",
-        success_message_nowait="Restart request for engine {name} is successfully sent",
+        wrong_initial_state_error="Engine {name} is not in a running or failed state."
+        " The current engine state is {state}.",
+        success_message="Engine {name} is successfully restarted.",
+        success_message_nowait="Restart request for engine {name} is successfully sent.",
         failure_message="Engine {name} failed to restart. Engine status: {status}.",
         **raw_config_options,
     )
@@ -410,10 +411,10 @@ def restart(**raw_config_options: str) -> None:
 @command()
 @common_options
 @engine_properties_options(create_mode=True)
-@option("--name", help="Name of the engine", type=str, required=True)
+@option("--name", help="Name of the engine.", type=str, required=True)
 @option(
     "--database-name",
-    help="Name of the database the engine should be attached to",
+    help="Name of the database the engine should be attached to.",
     type=str,
     required=True,
 )
@@ -421,7 +422,7 @@ def restart(**raw_config_options: str) -> None:
 @exit_on_firebolt_exception
 def create(**raw_config_options: str) -> None:
     """
-    Creates engine with the requested parameters
+    Creates engine with the requested parameters.
     """
     rm = construct_resource_manager(**raw_config_options)
 
@@ -448,7 +449,7 @@ def create(**raw_config_options: str) -> None:
     if not raw_config_options["json"]:
         echo(
             f"Engine {engine.name} is successfully created "
-            f"and attached to the {database.name}"
+            f"and attached to the {database.name}."
         )
 
     echo_engine_information(rm, engine, bool(raw_config_options["json"]))
@@ -459,7 +460,7 @@ def create(**raw_config_options: str) -> None:
 @engine_properties_options(create_mode=False)
 @option(
     "--new-engine-name",
-    help="Set this parameter for renaming the engine",
+    help="Set this parameter for renaming the engine.",
     default=None,
     required=False,
 )
@@ -467,7 +468,7 @@ def create(**raw_config_options: str) -> None:
 @exit_on_firebolt_exception
 def update(**raw_config_options: str) -> None:
     """
-    Update engine parameters, engine should be stopped before update
+    Update engine parameters. Engine should be stopped before updating.
     """
     something_to_update = any(
         raw_config_options[param] is not None
@@ -482,7 +483,7 @@ def update(**raw_config_options: str) -> None:
     )
 
     if not something_to_update:
-        echo("Nothing to update, at least one parameter should be provided", err=True)
+        echo("Nothing to update. At least one parameter should be provided.", err=True)
         sys.exit(os.EX_USAGE)
 
     rm = construct_resource_manager(**raw_config_options)
@@ -500,7 +501,7 @@ def update(**raw_config_options: str) -> None:
     )
 
     if not raw_config_options["json"]:
-        echo(f"Engine {engine.name} is successfully updated")
+        echo(f"Engine {engine.name} is successfully updated.")
 
     echo_engine_information(rm, engine, bool(raw_config_options["json"]))
 
@@ -514,7 +515,7 @@ def update(**raw_config_options: str) -> None:
 @exit_on_firebolt_exception
 def status(**raw_config_options: str) -> None:
     """
-    Check the engine status
+    Check the engine status.
     """
 
     rm = construct_resource_manager(**raw_config_options)
@@ -529,7 +530,7 @@ def status(**raw_config_options: str) -> None:
 @common_options
 @option(
     "--name-contains",
-    help="Output engines will be filtered by name-contains",
+    help="A string used to filter the list of returned engines. Partial matches will be returned.",
     default=None,
     type=str,
 )

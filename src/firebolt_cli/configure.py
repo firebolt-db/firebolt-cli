@@ -4,17 +4,17 @@ from firebolt_cli.utils import read_config, update_config
 
 
 @command(name="configure (config)")
-@option("-u", "--username", help="Firebolt username")
+@option("-u", "--username", help="The username used for connecting to Firebolt.")
 @option(
-    "-p", "--password", is_flag=True, default=False, help="Prompt to enter the password"
+    "-p", "--password", is_flag=True, default=False, help="The password used for connecting to Firebolt."
 )
-@option("--account-name", help="Name of Firebolt account")
-@option("--database-name", help="Database to use for SQL queries")
+@option("--account-name", help="The name of the Firebolt account.")
+@option("--database-name", help="The name of the database you would like to connect to.")
 @option("--api-endpoint", hidden=True)
-@option("--engine-name", help="Name or url of the engine to use for SQL queries")
+@option("--engine-name", help="The name or URL of the engine to use.")
 def configure(**raw_config_options: str) -> None:
     """
-    Store firebolt configuration parameters in config file
+    Store firebolt configuration parameters in config file.
     """
     config = {k: v for k, v in raw_config_options.items() if v is not None}
 
@@ -52,4 +52,4 @@ def configure(**raw_config_options: str) -> None:
             config[key] = value
 
     update_config(**config)
-    echo("Successfully updated firebolt-cli configuration")
+    echo("Successfully updated firebolt-cli configuration.")

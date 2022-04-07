@@ -35,7 +35,7 @@ INTERNAL_COMMANDS = EXIT_COMMANDS + HELP_COMMANDS + [TABLES_COMMAND]
 
 def print_result_if_any(cursor: Cursor, use_csv: bool) -> None:
     """
-    Fetch the data from cursor and print it in csv or tabular format
+    Fetch the data from cursor and print it in csv or tabular format.
     """
     while 1:
         if cursor.description:
@@ -72,9 +72,9 @@ def show_help() -> None:
     Print help message with internal commands of interactive sql execution
     """
     rows = [
-        ["/".join(HELP_COMMANDS), "Show this help message"],
-        ["/".join(EXIT_COMMANDS), "Exit firebolt-cli"],
-        [TABLES_COMMAND, "Show tables in current database"],
+        ["/".join(HELP_COMMANDS), "Show this help message."],
+        ["/".join(EXIT_COMMANDS), "Exit firebolt-cli."],
+        [TABLES_COMMAND, "Show tables in current database."],
     ]
 
     for internal_command, help_message in rows:
@@ -100,9 +100,9 @@ def process_internal_command(internal_command: str) -> str:
 
 def enter_interactive_session(cursor: Cursor, use_csv: bool) -> None:
     """
-    Enters an infinite loop of interactive shell
+    Enters an infinite loop of interactive shell.
     """
-    echo("Connection succeeded")
+    echo("Connection succeeded.")
 
     session: PromptSession = PromptSession(
         message="firebolt> ",
@@ -142,30 +142,30 @@ def enter_interactive_session(cursor: Cursor, use_csv: bool) -> None:
     envvar="FIREBOLT_ENGINE_NAME",
     callback=default_from_config_file(required=False),
 )
-@option("--csv", help="Provide query output in csv format", is_flag=True, default=False)
+@option("--csv", help="Provide query output in CSV format.", is_flag=True, default=False)
 @option(
     "--database-name",
     envvar="FIREBOLT_DATABASE_NAME",
-    help="Database name to use for SQL queries",
+    help="Database name to use for SQL queries.",
     callback=default_from_config_file(),
 )
 @option(
     "--file",
-    help="Path to the file with the sql query to be executed",
+    help="Path to the file with the SQL query to be executed.",
     default=None,
     type=click.Path(exists=True),
 )
 @exit_on_firebolt_exception
 def query(**raw_config_options: str) -> None:
     """
-    Execute sql queries
+    Execute SQL queries.
     """
     stdin_query = read_from_stdin_buffer()
     file_query = read_from_file(raw_config_options["file"])
 
     if stdin_query and file_query:
         echo(
-            "SQL request should be either read from stdin or file, both are specified",
+            "SQL request should be either read from stdin or file, both are specified.",
             err=True,
         )
         sys.exit(os.EX_USAGE)

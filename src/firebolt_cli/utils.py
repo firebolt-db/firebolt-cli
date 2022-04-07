@@ -50,7 +50,7 @@ def prepare_execution_result_line(
     """
 
     if len(data) != len(header):
-        raise ValueError("data and header have different length")
+        raise ValueError("Data and header have different length.")
 
     if use_json:
         return json.dumps(dict(zip(header, data)), indent=4)
@@ -68,7 +68,7 @@ def prepare_execution_result_table(
     """
     for d in data:
         if len(d) != len(header):
-            raise ValueError("data and header have different length")
+            raise ValueError("Data and header have different length.")
 
     if use_json:
         return json.dumps([dict(zip(header, d)) for d in data], indent=4)
