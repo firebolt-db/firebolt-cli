@@ -96,7 +96,8 @@ def create(**raw_config_options: str) -> None:
 @common_options
 @option(
     "--name-contains",
-    help="A string used to filter the list of returned databases. Partial matches will be returned. ",
+    help="A string used to filter the list of returned databases. "
+    "Partial matches will be returned. ",
     default=None,
     type=str,
 )

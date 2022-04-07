@@ -264,7 +264,8 @@ def engine_properties_options(create_mode: bool = True) -> Callable:
         option(
             "--auto-stop",
             help="Stop engine automatically after specified time in minutes."
-            "Value entered must be between 1 and 43200 (max value is equal to 30 days).",
+            "Value entered must be between 1 and 43200"
+            "(max value is equal to 30 days).",
             type=IntRange(1, 30 * 24 * 60, clamp=False),
             default=20 if create_mode else None,
             required=False,
@@ -402,7 +403,8 @@ def restart(**raw_config_options: str) -> None:
         wrong_initial_state_error="Engine {name} is not in a running or failed state."
         " The current engine state is {state}.",
         success_message="Engine {name} is successfully restarted.",
-        success_message_nowait="Restart request for engine {name} is successfully sent.",
+        success_message_nowait="Restart request for engine {name} "
+        "is successfully sent.",
         failure_message="Engine {name} failed to restart. Engine status: {status}.",
         **raw_config_options,
     )
@@ -530,7 +532,8 @@ def status(**raw_config_options: str) -> None:
 @common_options
 @option(
     "--name-contains",
-    help="A string used to filter the list of returned engines. Partial matches will be returned.",
+    help="A string used to filter the list of returned engines. "
+    "Partial matches will be returned.",
     default=None,
     type=str,
 )
