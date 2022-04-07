@@ -142,7 +142,9 @@ def enter_interactive_session(cursor: Cursor, use_csv: bool) -> None:
     envvar="FIREBOLT_ENGINE_NAME",
     callback=default_from_config_file(required=False),
 )
-@option("--csv", help="Provide query output in CSV format.", is_flag=True, default=False)
+@option(
+    "--csv", help="Provide query output in CSV format.", is_flag=True, default=False
+)
 @option(
     "--database-name",
     envvar="FIREBOLT_DATABASE_NAME",
