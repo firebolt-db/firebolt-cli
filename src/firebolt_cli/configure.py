@@ -4,13 +4,13 @@ from firebolt_cli.utils import read_config, update_config
 
 
 @command(name="configure (config)")
-@option("-u", "--username", help="The username used for connecting to Firebolt.")
+@option("-u", "--username", help="The email address used for connecting to Firebolt.")
 @option(
     "-p",
     "--password",
     is_flag=True,
     default=False,
-    help="The password used for connecting to Firebolt.",
+    help="Opens a protected prompt to enter the Firebolt password.",
 )
 @option("--account-name", help="The name of the Firebolt account.")
 @option(
