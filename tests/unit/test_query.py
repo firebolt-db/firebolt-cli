@@ -170,7 +170,8 @@ def test_connection_error(mocker: MockerFixture, configure_cli: Callable) -> Non
     configure_cli()
 
     connect_function_mock = mocker.patch(
-        "firebolt_cli.query.connect", side_effect=FireboltError("mocked error")
+        "firebolt_cli.query.create_connection",
+        side_effect=FireboltError("mocked error"),
     )
 
     result = CliRunner(mix_stderr=False).invoke(
