@@ -10,6 +10,7 @@ from appdirs import user_config_dir
 from click import Command, Context, Group, echo
 from firebolt.common import Settings
 from firebolt.common.exception import FireboltError
+from firebolt.db.connection import Connection, connect
 from firebolt.model.engine import Engine
 from firebolt.service.manager import ResourceManager
 from httpx import HTTPStatusError
@@ -264,3 +265,41 @@ def get_default_database_engine(rm: ResourceManager, database_name: str) -> Engi
             return rm.engines.get(binding.engine_id)
 
     raise FireboltError("No default engine is found.")
+
+
+def create_connection(
+    engine_name: str,
+    database_name: str,
+    username: str,
+    password: str,
+    access_token: Optional[str],
+    api_endpoint: str,
+    account_name: str,
+    **kwargs: str,
+) -> Connection:
+    """
+    Create connection based on access_token if provided,
+    in case of failure use username/password
+    """
+
+    params = {
+        "engine_url": None,
+        "engine_name": None,
+        "database": database_name,
+        "api_endpoint": api_endpoint,
+        "account_name": account_name,
+    }
+
+    # decide what to propagate engine_name or url
+    if "." in engine_name:
+        params["engine_url"] = engine_name
+    else:
+        params["engine_name"] = engine_name
+
+    if access_token:
+        try:
+            return connect(**params, access_token=access_token)
+        except FireboltError:
+            pass
+
+    return connect(**params, username=username, password=password)

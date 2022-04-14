@@ -29,7 +29,7 @@ def configure_cli(fs: FakeFilesystem) -> None:
 
 @pytest.fixture()
 def cursor_mock(mocker: MockerFixture) -> unittest.mock.Mock:
-    connect_function_mock = mocker.patch("firebolt_cli.query.connect")
+    connect_function_mock = mocker.patch("firebolt_cli.query.create_connection")
 
     connection_mock = unittest.mock.MagicMock()
     connect_function_mock.return_value = connection_mock
@@ -76,3 +76,16 @@ def configure_resource_manager(mocker: MockerFixture) -> ResourceManager:
     yield rm, databases_mock, database_mock, engines_mock, engine_mock
 
     rm.assert_called_once()
+
+
+@pytest.fixture()
+def mock_connection_params() -> dict:
+    return {
+        "engine_name": "mock_engine_name",
+        "database_name": "mock_database_name",
+        "username": "mock_username",
+        "password": "mock_password",
+        "access_token": "mock_access_token",
+        "api_endpoint": "mock_api_endpoint",
+        "account_name": "mock_account_name",
+    }

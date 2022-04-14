@@ -14,6 +14,7 @@ from pytest_mock import MockerFixture
 from firebolt_cli.utils import (
     construct_resource_manager,
     convert_bytes,
+    create_connection,
     get_default_database_engine,
     prepare_execution_result_line,
     prepare_execution_result_table,
@@ -283,3 +284,63 @@ def test_database_get_default_engine_none(
         get_default_database_engine(ResourceManager(), "database_name")
 
     databases.get_by_name.assert_called_once_with(name="database_name")
+
+
+def test_create_connection_engine_name(
+    mock_connection_params: dict, mocker: MockerFixture
+):
+    """
+    Check create_connection with engine name and access_token
+    """
+    connect_function_mock = mocker.patch("firebolt_cli.utils.connect")
+    create_connection(**mock_connection_params)
+
+    connect_function_mock.assert_called_once_with(
+        access_token=mock_connection_params["access_token"],
+        account_name=mock_connection_params["account_name"],
+        api_endpoint=mock_connection_params["api_endpoint"],
+        database=mock_connection_params["database_name"],
+        engine_name=mock_connection_params["engine_name"],
+        engine_url=None,
+    )
+
+
+def test_create_connection_engine_url(
+    mock_connection_params: dict, mocker: MockerFixture
+):
+    """
+    Check create_connection with engine url and access_token
+    """
+    connect_function_mock = mocker.patch("firebolt_cli.utils.connect")
+    mock_connection_params["engine_name"] = "engine_url.firebolt.io"
+    create_connection(**mock_connection_params)
+
+    connect_function_mock.assert_called_once_with(
+        access_token=mock_connection_params["access_token"],
+        account_name=mock_connection_params["account_name"],
+        api_endpoint=mock_connection_params["api_endpoint"],
+        database=mock_connection_params["database_name"],
+        engine_name=None,
+        engine_url=mock_connection_params["engine_name"],
+    )
+
+
+def test_create_connection_user_password(
+    mock_connection_params: dict, mocker: MockerFixture
+):
+    """
+    Check create_connection with engine name and username/password
+    """
+    connect_function_mock = mocker.patch("firebolt_cli.utils.connect")
+    mock_connection_params["access_token"] = None
+    create_connection(**mock_connection_params)
+
+    connect_function_mock.assert_called_once_with(
+        username=mock_connection_params["username"],
+        password=mock_connection_params["password"],
+        account_name=mock_connection_params["account_name"],
+        api_endpoint=mock_connection_params["api_endpoint"],
+        database=mock_connection_params["database_name"],
+        engine_name=mock_connection_params["engine_name"],
+        engine_url=None,
+    )
