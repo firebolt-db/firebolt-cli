@@ -177,7 +177,7 @@ def query(**raw_config_options: str) -> None:
         rm = construct_resource_manager(**raw_config_options)
         raw_config_options["engine_name"] = get_default_database_engine(
             rm, raw_config_options["database_name"]
-        ).name
+        ).endpoint
 
     with create_connection(**raw_config_options) as connection:
         cursor = connection.cursor()
