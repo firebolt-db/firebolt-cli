@@ -5,7 +5,7 @@ import pytest
 from click.testing import CliRunner
 
 from firebolt_cli.main import main
-from src.firebolt_cli.utils import construct_resource_manager
+from firebolt_cli.utils import construct_resource_manager
 
 
 def query_simple_generic(
