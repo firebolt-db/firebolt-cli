@@ -10,6 +10,7 @@ from appdirs import user_config_dir
 from click import Command, Context, Group, echo
 from firebolt.common import Settings
 from firebolt.common.exception import FireboltError
+from firebolt.db.connection import Connection, connect
 from firebolt.model.engine import Engine
 from firebolt.service.manager import ResourceManager
 from httpx import HTTPStatusError
@@ -276,3 +277,38 @@ def extract_engine_name_url(
         return None, engine_name_url
     else:
         return engine_name_url, None
+
+
+def create_connection(
+    engine_name: str,
+    database_name: str,
+    username: str,
+    password: str,
+    access_token: Optional[str],
+    api_endpoint: str,
+    account_name: str,
+    **kwargs: str,
+) -> Connection:
+    """
+    Create connection based on access_token if provided,
+    in case of failure use username/password
+    """
+
+    params = {
+        "engine_url": None,
+        "engine_name": None,
+        "database": database_name,
+        "api_endpoint": api_endpoint,
+        "account_name": account_name,
+    }
+
+    # decide what to propagate engine_name or url
+    params["engine_url"], params["engine_name"] = extract_engine_name_url(engine_name)
+
+    if access_token:
+        try:
+            return connect(**params, access_token=access_token)
+        except FireboltError:
+            pass
+
+    return connect(**params, username=username, password=password)

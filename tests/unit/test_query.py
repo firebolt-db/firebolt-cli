@@ -170,7 +170,8 @@ def test_connection_error(mocker: MockerFixture, configure_cli: Callable) -> Non
     configure_cli()
 
     connect_function_mock = mocker.patch(
-        "firebolt_cli.query.connect", side_effect=FireboltError("mocked error")
+        "firebolt_cli.query.create_connection",
+        side_effect=FireboltError("mocked error"),
     )
 
     result = CliRunner(mix_stderr=False).invoke(
@@ -274,8 +275,10 @@ def test_query_default_engine(
         "firebolt_cli.query.get_default_database_engine"
     )
 
-    _Engine = namedtuple("Engine", "name")
-    default_database_engine_mock.return_value = _Engine("default_engine_name")
+    _Engine = namedtuple("Engine", "endpoint")
+    default_database_engine_mock.return_value = _Engine(
+        "default_engine_endpoint.firebolt.io"
+    )
 
     query_generic_test(
         [],
