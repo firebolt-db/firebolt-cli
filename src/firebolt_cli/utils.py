@@ -303,7 +303,7 @@ def create_connection(
     }
 
     # decide what to propagate engine_name or url
-    params["engine_url"], params["engine_name"] = extract_engine_name_url(engine_name)
+    params["engine_name"], params["engine_url"] = extract_engine_name_url(engine_name)
 
     if access_token:
         try:
