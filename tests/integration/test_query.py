@@ -5,6 +5,7 @@ import pytest
 from click.testing import CliRunner
 
 from firebolt_cli.main import main
+from firebolt_cli.utils import construct_resource_manager
 
 
 def query_simple_generic(
@@ -202,3 +203,30 @@ def test_query_account_name(configure_cli: None, engine_name: str, account_name:
     assert "firebolt_non_existing" in result.stderr
 
     assert result.exit_code != 0
+
+
+def test_query_with_access_token(
+    username: str, password: str, account_name: str, api_endpoint: str, engine_name: str
+):
+    """ """
+    access_token = construct_resource_manager(
+        username=username,
+        password=password,
+        account_name=account_name,
+        api_endpoint=api_endpoint,
+        access_token=None,
+    ).client.auth._token
+
+    query_simple_generic(
+        additional_parameters=[
+            "--engine-name",
+            engine_name,
+            "--account-name",
+            account_name,
+            "--access-token",
+            access_token,
+        ],
+        read_from_stdin=True,
+        query="SELECT 1;",
+        check_result=True,
+    )

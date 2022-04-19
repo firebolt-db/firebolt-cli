@@ -6,7 +6,6 @@ import click
 from click import command, echo, option
 from firebolt.common.exception import FireboltError
 from firebolt.db import Cursor
-from firebolt.db.connection import connect
 from prompt_toolkit.application import get_app
 from prompt_toolkit.enums import DEFAULT_BUFFER
 from prompt_toolkit.filters import Condition
@@ -21,6 +20,7 @@ from firebolt_cli.common_options import (
 )
 from firebolt_cli.utils import (
     construct_resource_manager,
+    create_connection,
     exit_on_firebolt_exception,
     get_default_database_engine,
     read_from_file,
@@ -172,31 +172,14 @@ def query(**raw_config_options: str) -> None:
 
     sql_query = stdin_query or file_query
 
-    # Decide whether to store the value as engine_name or engine_url
-    # '.' symbol should always be in url and cannot be in engine_name
-    engine_name, engine_url = None, None
-
+    # if engine_name is not set, use default engine
     if raw_config_options["engine_name"] is None:
         rm = construct_resource_manager(**raw_config_options)
-        engine_name = get_default_database_engine(
+        raw_config_options["engine_name"] = get_default_database_engine(
             rm, raw_config_options["database_name"]
-        ).name
-    else:
-        if "." in raw_config_options["engine_name"]:
-            engine_url = raw_config_options["engine_name"]
-        else:
-            engine_name = raw_config_options["engine_name"]
+        ).endpoint
 
-    with connect(
-        engine_url=engine_url,
-        engine_name=engine_name,
-        database=raw_config_options["database_name"],
-        username=raw_config_options["username"],
-        password=raw_config_options["password"],
-        api_endpoint=raw_config_options["api_endpoint"],
-        account_name=raw_config_options["account_name"],
-    ) as connection:
-
+    with create_connection(**raw_config_options) as connection:
         cursor = connection.cursor()
 
         if sql_query:

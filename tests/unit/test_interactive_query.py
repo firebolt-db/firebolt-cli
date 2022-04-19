@@ -18,14 +18,13 @@ def test_interactive_immediate_stop() -> None:
     """
     Enter interactive shell and send EOF immediately
     """
-    inp = create_pipe_input()
-    cursor_mock = unittest.mock.MagicMock()
-    inp.send_text(".quit\n")
+    with create_pipe_input() as inp:
+        cursor_mock = unittest.mock.MagicMock()
+        inp.send_text(".quit\n")
 
-    with create_app_session(input=inp, output=DummyOutput()):
-        enter_interactive_session(cursor_mock, False)
+        with create_app_session(input=inp, output=DummyOutput()):
+            enter_interactive_session(cursor_mock, False)
 
-    inp.close()
     cursor_mock.execute.assert_not_called()
 
 
@@ -33,21 +32,20 @@ def test_interactive_send_empty() -> None:
     """
     Empty strings should not be sent to the cursor
     """
-    inp = create_pipe_input()
-    cursor_mock = unittest.mock.MagicMock()
+    with create_pipe_input() as inp:
+        cursor_mock = unittest.mock.MagicMock()
 
-    inp.send_text(" \n")
-    inp.send_text("\t \n")
-    inp.send_text("   ;;;;   \n")
-    inp.send_text(";\n")
-    inp.send_text(";;\n")
-    inp.send_text(".quit\n")
+        inp.send_text(" \n")
+        inp.send_text("\t \n")
+        inp.send_text("   ;;;;   \n")
+        inp.send_text(";\n")
+        inp.send_text(";;\n")
+        inp.send_text(".quit\n")
 
-    with create_app_session(input=inp, output=DummyOutput()):
-        enter_interactive_session(cursor_mock, False)
+        with create_app_session(input=inp, output=DummyOutput()):
+            enter_interactive_session(cursor_mock, False)
 
     cursor_mock.execute.assert_not_called()
-    inp.close()
 
 
 def test_interactive_multiple_requests() -> None:
@@ -55,30 +53,29 @@ def test_interactive_multiple_requests() -> None:
     Test interactive sql happy path,
     multiple requests are passed one by one to the cursor
     """
-    inp = create_pipe_input()
-    cursor_mock = unittest.mock.MagicMock()
-    cursor_mock.nextset.return_value = None
+    with create_pipe_input() as inp:
+        cursor_mock = unittest.mock.MagicMock()
+        cursor_mock.nextset.return_value = None
 
-    inp.send_text("SELECT 1;\n")
-    inp.send_text("SELECT 2;\n")
-    inp.send_text("SELECT 3;\n")
-    inp.send_text("SELECT 4;\n")
-    inp.send_text(".quit\n")
+        inp.send_text("SELECT 1;\n")
+        inp.send_text("SELECT 2;\n")
+        inp.send_text("SELECT 3;\n")
+        inp.send_text("SELECT 4;\n")
+        inp.send_text(".quit\n")
 
-    with create_app_session(input=inp, output=DummyOutput()):
-        enter_interactive_session(cursor_mock, False)
+        with create_app_session(input=inp, output=DummyOutput()):
+            enter_interactive_session(cursor_mock, False)
 
-    cursor_mock.execute.assert_has_calls(
-        [
-            mock.call("SELECT 1"),
-            mock.call("SELECT 2"),
-            mock.call("SELECT 3"),
-            mock.call("SELECT 4"),
-        ],
-        any_order=False,
-    )
+        cursor_mock.execute.assert_has_calls(
+            [
+                mock.call("SELECT 1"),
+                mock.call("SELECT 2"),
+                mock.call("SELECT 3"),
+                mock.call("SELECT 4"),
+            ],
+            any_order=False,
+        )
 
-    inp.close()
     assert cursor_mock.execute.call_count == 4
 
 
@@ -92,14 +89,13 @@ def test_interactive_raise_error() -> None:
         unittest.mock.Mock(side_effect=FireboltError("sql execution failed")), "execute"
     )
 
-    inp = create_pipe_input()
-    inp.send_text("wrong sql;\n")
-    inp.send_text(".quit\n")
+    with create_pipe_input() as inp:
+        inp.send_text("wrong sql;\n")
+        inp.send_text(".quit\n")
 
-    with create_app_session(input=inp, output=DummyOutput()):
-        enter_interactive_session(cursor_mock, False)
+        with create_app_session(input=inp, output=DummyOutput()):
+            enter_interactive_session(cursor_mock, False)
 
-    inp.close()
     cursor_mock.execute.assert_called_once_with("wrong sql")
 
 
@@ -136,17 +132,16 @@ def test_interactive_multi_statement() -> None:
     Test interactive sql happy path,
     multistatement is passed
     """
-    inp = create_pipe_input()
-    cursor_mock = unittest.mock.MagicMock()
-    cursor_mock.nextset.side_effect = [True, None]
-    cursor_mock.description = None
+    with create_pipe_input() as inp:
+        cursor_mock = unittest.mock.MagicMock()
+        cursor_mock.nextset.side_effect = [True, None]
+        cursor_mock.description = None
 
-    inp.send_text("SELECT 1; SELECT 2;\n")
-    inp.send_text(".exit\n")
+        inp.send_text("SELECT 1; SELECT 2;\n")
+        inp.send_text(".exit\n")
 
-    with create_app_session(input=inp, output=DummyOutput()):
-        enter_interactive_session(cursor_mock, False)
-    inp.close()
+        with create_app_session(input=inp, output=DummyOutput()):
+            enter_interactive_session(cursor_mock, False)
 
     cursor_mock.execute.assert_called_once_with("SELECT 1; SELECT 2")
 

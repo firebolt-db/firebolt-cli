@@ -1,4 +1,12 @@
 # Firebolt-CLI
+
+[![Nightly code check](https://github.com/firebolt-db/firebolt-cli/actions/workflows/nightly.yml/badge.svg)](https://github.com/firebolt-db/firebolt-cli/actions/workflows/nightly.yml)
+[![Unit tests](https://github.com/firebolt-db/firebolt-cli/actions/workflows/unit-tests.yml/badge.svg)](https://github.com/firebolt-db/firebolt-cli/actions/workflows/unit-tests.yml)
+[![Code quality checks](https://github.com/firebolt-db/firebolt-cli/actions/workflows/code-check.yml/badge.svg)](https://github.com/firebolt-db/firebolt-cli/actions/workflows/code-check.yml)
+[![Firebolt Security Scan](https://github.com/firebolt-db/firebolt-cli/actions/workflows/security-scan.yml/badge.svg)](https://github.com/firebolt-db/firebolt-cli/actions/workflows/security-scan.yml)
+[![Integration tests](https://github.com/firebolt-db/firebolt-cli/actions/workflows/integration-tests.yml/badge.svg)](https://github.com/firebolt-db/firebolt-cli/actions/workflows/integration-tests.yml)
+![Coverage](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/ptiurin/bddce7ae8fba7b63a4d5d0921e8e34af/raw/firebolt-cli-coverage.json)
+
 Firebolt cli is a tool for connecting to firebolt, managing firebolt resources, and executing queries from the command line.
 
 ## Quickstart
@@ -18,7 +26,7 @@ To verify the installation run:
 ```
 $ firebolt --version
 
-firebolt, version 0.0.1
+firebolt, version 0.2.0
 ```
 
 ### Running
@@ -36,14 +44,14 @@ Successfully updated firebolt-cli configuration
 
 To run your first query, the engine has to be running. Check the status of the engine by executing the following command:
 ```
-$ firebolt engine status --name your_engine_name
+$ firebolt engine status your_engine_name
 
 Engine your_engine_name current status is: ENGINE_STATUS_SUMMARY_STOPPED
 ```
 
 If the engine is stopped, you have to start the engine by executing the following command:
 ```
-$ firebolt engine start --name your_engine_name --wait
+$ firebolt engine start your_engine_name --wait
 
 Engine your_engine_name is successfully started
 ```
@@ -86,20 +94,20 @@ Options:
   --help         Show this message and exit.
 
 Commands:
-  configure  Store firebolt configuration parameters in config file
-  database   Manage the databases
-  engine     Manage the engines
-  query      Execute sql queries
+  configure (config)  Store firebolt configuration parameters in config file
+  database (db)       Manage the databases
+  engine              Manage the engines
+  query               Execute sql queries
 ```
 For more information about a specific command use flag `--help`, e.g. `firebolt database create --help`.
 
 ### Configure 
 There are three ways to configure firebolt cli:
-1. Run `firebolt configure` and setting all parameters from STDIN.
+1. Run `firebolt config` and setting all parameters from STDIN.
 
 Or you can set particular parameters by running configure with additional command-line arguments:
 ```
-firebolt configure --username your_user_name --account-name firebolt
+firebolt config --username your_user_name --account-name firebolt
 ```
 
 2. Pass additional command-line arguments to each command.
@@ -181,3 +189,6 @@ docker run -e FIREBOLT_USERNAME="your_username"\
            ghcr.io/firebolt-db/firebolt-cli:latest engine list
 ```
 
+## Contributing
+
+See: [CONTRIBUTING.MD](https://github.com/firebolt-db/firebolt-cli/tree/main/CONTRIBUTING.MD)
