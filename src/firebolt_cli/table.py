@@ -1,6 +1,5 @@
 import click
 from click import command, echo, group, option
-from firebolt.db.connection import connect
 from firebolt_ingest.aws_settings import AWSSettings  # type: ignore
 from firebolt_ingest.model.table import Table  # type: ignore
 from firebolt_ingest.service import TableService  # type: ignore
@@ -10,8 +9,8 @@ from firebolt_cli.common_options import (
     default_from_config_file,
 )
 from firebolt_cli.utils import (
+    create_connection,
     exit_on_firebolt_exception,
-    extract_engine_name_url,
     read_from_file,
 )
 
@@ -55,18 +54,9 @@ def create_external(**raw_config_options: str) -> None:
     """
     aws_settings = AWSSettings(s3_url=raw_config_options["s3_url"])
     table = Table.parse_yaml(read_from_file(raw_config_options["file"]))
-    engine_name, engine_url = extract_engine_name_url(raw_config_options["engine_name"])
 
-    with connect(
-        engine_url=engine_url,
-        engine_name=engine_name,
-        database=raw_config_options["database_name"],
-        username=raw_config_options["username"],
-        password=raw_config_options["password"],
-        api_endpoint=raw_config_options["api_endpoint"],
-        account_name=raw_config_options["account_name"],
-    ) as connection:
-        TableService(connection, aws_settings).create_external_table(table)
+    with create_connection(**raw_config_options) as connection:
+        TableService(connection).create_external_table(table, aws_settings)
         echo(f"External table ({table.table_name}) was successfully created")
 
 
@@ -90,26 +80,23 @@ def create_external(**raw_config_options: str) -> None:
     type=click.Path(exists=True),
     required=True,
 )
+@option(
+    "--add-file-metadata",
+    help="Add meta columns(source_file_name/source_file_timestamp) to the fact table",
+    is_flag=True,
+    default=False,
+)
 @exit_on_firebolt_exception
 def create_fact(**raw_config_options: str) -> None:
     """
     Create fact table
     """
-    table_yaml_string = read_from_file(raw_config_options["file"])
-    table = Table.parse_yaml(table_yaml_string)
+    table = Table.parse_yaml(read_from_file(raw_config_options["file"]))
 
-    engine_name, engine_url = extract_engine_name_url(raw_config_options["engine_name"])
-
-    with connect(
-        engine_url=engine_url,
-        engine_name=engine_name,
-        database=raw_config_options["database_name"],
-        username=raw_config_options["username"],
-        password=raw_config_options["password"],
-        api_endpoint=raw_config_options["api_endpoint"],
-        account_name=raw_config_options["account_name"],
-    ) as connection:
-        TableService(connection).create_internal_table(table)
+    with create_connection(**raw_config_options) as connection:
+        TableService(connection).create_internal_table(
+            table=table, add_file_metadata=raw_config_options["add_file_metadata"]
+        )
         echo(f"Fact table ({table.table_name}) was successfully created")
 
 

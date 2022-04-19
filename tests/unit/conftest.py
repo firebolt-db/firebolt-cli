@@ -87,7 +87,8 @@ def mock_table_config() -> dict:
             {"name": "test_col_2", "type": "TEXT"},
         ],
         "file_type": "PARQUET",
-        "object_pattern": "*.parquet",
+        "object_pattern": ["*.parquet"],
+        "primary_index": ["test_col_1"],
     }
 
 
