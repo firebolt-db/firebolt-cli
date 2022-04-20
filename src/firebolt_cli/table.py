@@ -1,8 +1,8 @@
 import click
 from click import command, echo, group, option
 from firebolt_ingest.aws_settings import AWSSettings  # type: ignore
-from firebolt_ingest.model.table import Table  # type: ignore
-from firebolt_ingest.service import TableService  # type: ignore
+from firebolt_ingest.table_model import Table  # type: ignore
+from firebolt_ingest.table_service import TableService  # type: ignore
 
 from firebolt_cli.common_options import (
     common_options,

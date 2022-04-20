@@ -2,7 +2,7 @@ from typing import Callable
 
 import yaml
 from click.testing import CliRunner
-from firebolt_ingest.service import TableService
+from firebolt_ingest.table_service import TableService
 from pyfakefs.fake_filesystem import FakeFilesystem
 from pytest_mock import MockerFixture
 
