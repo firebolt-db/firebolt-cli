@@ -9,6 +9,7 @@ from firebolt_cli.common_options import (
     default_from_config_file,
 )
 from firebolt_cli.utils import (
+    create_aws_creds_from_environ,
     create_connection,
     exit_on_firebolt_exception,
     read_from_file,
@@ -52,7 +53,11 @@ def create_external(**raw_config_options: str) -> None:
     """
     Create external table
     """
-    aws_settings = AWSSettings(s3_url=raw_config_options["s3_url"])
+    aws_settings = AWSSettings(
+        s3_url=raw_config_options["s3_url"],
+        aws_credentials=create_aws_creds_from_environ(),
+    )
+
     table = Table.parse_yaml(read_from_file(raw_config_options["file"]))
 
     with create_connection(**raw_config_options) as connection:
