@@ -19,7 +19,7 @@ from firebolt_cli.utils import (
 @group(name="table (tb)")
 def table() -> None:
     """
-    Creating tables
+    Create tables
     """
 
 
@@ -87,7 +87,8 @@ def create_external(**raw_config_options: str) -> None:
 )
 @option(
     "--add-file-metadata",
-    help="Add meta columns(source_file_name/source_file_timestamp) to the fact table",
+    help="Add meta columns (source_file_name and source_file_timestamp)"
+    " to the fact table",
     is_flag=True,
     default=False,
 )

@@ -87,11 +87,12 @@ def configure_cli(
     password: str,
     username: str,
     database_name: str,
+    engine_name: str,
 ) -> None:
     result = CliRunner().invoke(
         configure,
         [],
-        input=f"{username}\n{password}\n\n{database_name}\n\n",
+        input=f"{username}\n{password}\n\n{database_name}\n{engine_name}\n",
     )
     assert result.exit_code == 0
 
