@@ -390,7 +390,7 @@ def test_create_aws_creds_from_environ_happy_path():
         assert create_aws_creds_from_environ() is None
 
 
-def test_create_aws_creds_from_environ_invalide():
+def test_create_aws_creds_from_environ_invalid():
     """
     Test incorrect cases of construction of aws_creds
     """

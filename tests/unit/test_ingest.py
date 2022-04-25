@@ -1,5 +1,4 @@
 from typing import Callable
-from unittest.mock import ANY
 
 import pytest
 from click.testing import CliRunner
@@ -54,13 +53,13 @@ def test_ingest_happy_path(
         ts_ingest_full.assert_called_once_with(
             external_table_name="ex_table",
             internal_table_name="table",
-            firebolt_dont_wait_for_upload_to_s3=ANY,
+            firebolt_dont_wait_for_upload_to_s3=False,
         )
     else:
         ts_ingest_append.assert_called_once_with(
             external_table_name="ex_table",
             internal_table_name="table",
-            firebolt_dont_wait_for_upload_to_s3=ANY,
+            firebolt_dont_wait_for_upload_to_s3=False,
         )
 
     ts_verify_ingestion.assert_called_once_with(
@@ -105,7 +104,7 @@ def test_ingest_verify_failed(
     ts_ingest_full.assert_called_once_with(
         external_table_name="ex_table",
         internal_table_name="table",
-        firebolt_dont_wait_for_upload_to_s3=ANY,
+        firebolt_dont_wait_for_upload_to_s3=False,
     )
 
     ts_verify_ingestion.assert_called_once_with(

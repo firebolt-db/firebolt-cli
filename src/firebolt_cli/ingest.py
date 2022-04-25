@@ -1,9 +1,10 @@
 import os
 import sys
+from typing import Any, Dict
 
 from click import Choice, command, echo, option
 from firebolt.common.exception import FireboltError
-from firebolt_ingest.table_service import TableService  # type: ignore
+from firebolt_ingest.table_service import TableService
 
 from firebolt_cli.common_options import (
     common_options,
@@ -55,7 +56,7 @@ def ingest(**raw_config_options: str) -> None:
     with create_connection(**raw_config_options) as connection:
         ts = TableService(connection)
 
-        params = {
+        params: Dict[str, Any] = {
             "internal_table_name": raw_config_options["fact_table_name"],
             "external_table_name": raw_config_options["external_table_name"],
             "firebolt_dont_wait_for_upload_to_s3": False,
