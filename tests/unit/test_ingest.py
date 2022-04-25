@@ -1,5 +1,4 @@
 from typing import Callable
-from unittest.mock import ANY
 
 from click.testing import CliRunner
 from firebolt_ingest.table_service import TableService
@@ -41,7 +40,7 @@ def test_ingest_happy_path(
     ts_ingest.assert_called_once_with(
         external_table_name="ex_table",
         internal_table_name="table",
-        firebolt_dont_wait_for_upload_to_s3=ANY,
+        firebolt_dont_wait_for_upload_to_s3=False,
     )
 
     assert result.exit_code == 0

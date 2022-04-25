@@ -1,5 +1,5 @@
 from click import command, echo, option
-from firebolt_ingest.table_service import TableService  # type: ignore
+from firebolt_ingest.table_service import TableService
 
 from firebolt_cli.common_options import (
     common_options,

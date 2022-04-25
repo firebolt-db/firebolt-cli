@@ -319,43 +319,64 @@ def create_connection(
     return connect(**params, username=username, password=password)
 
 
+def create_aws_key_secret_creds_from_environ() -> Optional[AWSCredentialsKeySecret]:
+    """
+    if FIREBOLT_AWS_KEY_ID/FIREBOLT_AWS_SECRET_KEY are set,
+    construct AWSCredentialsKeySecret based on these variable.
+    if both parameter are not set, returns None
+    If only one parameter is set, raises an exception
+    """
+    aws_key_id = os.environ.get("FIREBOLT_AWS_KEY_ID")
+    aws_secret_key = os.environ.get("FIREBOLT_AWS_SECRET_KEY")
+
+    if aws_key_id and aws_secret_key:
+        return AWSCredentialsKeySecret(
+            aws_key_id=aws_key_id, aws_secret_key=aws_secret_key
+        )
+    elif aws_key_id or aws_secret_key:
+        raise FireboltError(
+            "Aws key/secret are both mandatory for a valid pair."
+            "Provided only one parameter."
+        )
+    else:
+        return None
+
+
+def create_aws_role_creds_from_environ() -> Optional[AWSCredentialsRole]:
+    """
+    if FIREBOLT_AWS_ROLE_ARN is set returns AWSCredentialsRole from it and
+    optionally from FIREBOLT_AWS_ROLE_EXTERNAL_ID
+    if only FIREBOLT_AWS_ROLE_EXTERNAL_ID is set, raises an error
+    """
+    role_arn = os.environ.get("FIREBOLT_AWS_ROLE_ARN")
+    external_id = os.environ.get("FIREBOLT_AWS_ROLE_EXTERNAL_ID")
+
+    if role_arn:
+        return AWSCredentialsRole(role_arn=role_arn, external_id=external_id)
+    elif external_id:
+        raise FireboltError("Aws external id is provided, but not role_arn")
+    else:
+        return None
+
+
 def create_aws_creds_from_environ() -> Optional[AWSCredentials]:
     """
     Returns: AWSCredentials constructed from the provided environment variables;
         either from FIREBOLT_AWS_KEY_ID/FIREBOLT_AWS_SECRET_KEY pair
         or from FIREBOLT_AWS_ROLE_ARN/FIREBOLT_AWS_ROLE_EXTERNAL_ID
-
         in case of inconsistency raises FireboltError
     """
-    aws_key_id = os.environ.get("FIREBOLT_AWS_KEY_ID")
-    aws_secret_key = os.environ.get("FIREBOLT_AWS_SECRET_KEY")
 
-    role_arn = os.environ.get("FIREBOLT_AWS_ROLE_ARN")
-    external_id = os.environ.get("FIREBOLT_AWS_ROLE_EXTERNAL_ID")
+    key_secret_creds = create_aws_key_secret_creds_from_environ()
+    role_creds = create_aws_role_creds_from_environ()
 
-    if aws_key_id or aws_secret_key:
-        if role_arn or external_id:
-            raise FireboltError(
-                "Either aws key/secret or role_arn/external_id pair "
-                "should be specified. Found both."
-            )
-
-        if not (aws_key_id and aws_secret_key):
-            raise FireboltError(
-                "Aws key/secret are both mandatory for a valid pair."
-                "Provided only one parameter."
-            )
-
-        return AWSCredentials(
-            key_secret_creds=AWSCredentialsKeySecret(
-                aws_key_id=aws_key_id, aws_secret_key=aws_secret_key
-            )
-        )
-    elif role_arn:
-        return AWSCredentials(
-            role_creds=AWSCredentialsRole(role_arn=role_arn, external_id=external_id)
-        )
-    elif external_id:
-        raise FireboltError("Aws external id is provided, but not role_arn")
-    else:
+    if key_secret_creds is None and role_creds is None:
         return None
+
+    if key_secret_creds and role_creds:
+        raise FireboltError(
+            "Either aws key/secret or role_arn/external_id pair "
+            "should be specified. Found both."
+        )
+
+    return AWSCredentials(key_secret_creds=key_secret_creds, role_creds=role_creds)
