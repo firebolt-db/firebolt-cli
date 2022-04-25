@@ -3,7 +3,7 @@ import os
 import sys
 from configparser import ConfigParser
 from functools import wraps
-from typing import Callable, Dict, Optional, Sequence, Type
+from typing import Callable, Dict, Optional, Sequence, Tuple, Type
 
 import keyring
 from appdirs import user_config_dir
@@ -13,6 +13,11 @@ from firebolt.common.exception import FireboltError
 from firebolt.db.connection import Connection, connect
 from firebolt.model.engine import Engine
 from firebolt.service.manager import ResourceManager
+from firebolt_ingest.aws_settings import (  # type: ignore
+    AWSCredentials,
+    AWSCredentialsKeySecret,
+    AWSCredentialsRole,
+)
 from httpx import HTTPStatusError
 from keyring.errors import KeyringError
 from tabulate import tabulate
@@ -267,6 +272,18 @@ def get_default_database_engine(rm: ResourceManager, database_name: str) -> Engi
     raise FireboltError("No default engine is found.")
 
 
+def extract_engine_name_url(
+    engine_name_url: str,
+) -> Tuple[Optional[str], Optional[str]]:
+    """
+    Returns a tuple engine_name, engine_url
+    """
+    if "." in engine_name_url:
+        return None, engine_name_url
+    else:
+        return engine_name_url, None
+
+
 def create_connection(
     engine_name: str,
     database_name: str,
@@ -291,10 +308,7 @@ def create_connection(
     }
 
     # decide what to propagate engine_name or url
-    if "." in engine_name:
-        params["engine_url"] = engine_name
-    else:
-        params["engine_name"] = engine_name
+    params["engine_name"], params["engine_url"] = extract_engine_name_url(engine_name)
 
     if access_token:
         try:
@@ -303,3 +317,66 @@ def create_connection(
             pass
 
     return connect(**params, username=username, password=password)
+
+
+def create_aws_key_secret_creds_from_environ() -> Optional[AWSCredentialsKeySecret]:
+    """
+    if FIREBOLT_AWS_KEY_ID/FIREBOLT_AWS_SECRET_KEY are set,
+    construct AWSCredentialsKeySecret based on these variable.
+    if both parameter are not set, returns None
+    If only one parameter is set, raises an exception
+    """
+    aws_key_id = os.environ.get("FIREBOLT_AWS_KEY_ID")
+    aws_secret_key = os.environ.get("FIREBOLT_AWS_SECRET_KEY")
+
+    if aws_key_id and aws_secret_key:
+        return AWSCredentialsKeySecret(
+            aws_key_id=aws_key_id, aws_secret_key=aws_secret_key
+        )
+    elif aws_key_id or aws_secret_key:
+        raise FireboltError(
+            "Aws key/secret are both mandatory for a valid pair."
+            "Provided only one parameter."
+        )
+    else:
+        return None
+
+
+def create_aws_role_creds_from_environ() -> Optional[AWSCredentialsRole]:
+    """
+    if FIREBOLT_AWS_ROLE_ARN is set returns AWSCredentialsRole from it and
+    optionally from FIREBOLT_AWS_ROLE_EXTERNAL_ID
+    if only FIREBOLT_AWS_ROLE_EXTERNAL_ID is set, raises an error
+    """
+    role_arn = os.environ.get("FIREBOLT_AWS_ROLE_ARN")
+    external_id = os.environ.get("FIREBOLT_AWS_ROLE_EXTERNAL_ID")
+
+    if role_arn:
+        return AWSCredentialsRole(role_arn=role_arn, external_id=external_id)
+    elif external_id:
+        raise FireboltError("Aws external id is provided, but not role_arn")
+    else:
+        return None
+
+
+def create_aws_creds_from_environ() -> Optional[AWSCredentials]:
+    """
+    Returns: AWSCredentials constructed from the provided environment variables;
+        either from FIREBOLT_AWS_KEY_ID/FIREBOLT_AWS_SECRET_KEY pair
+        or from FIREBOLT_AWS_ROLE_ARN/FIREBOLT_AWS_ROLE_EXTERNAL_ID
+        in case of inconsistency raises FireboltError
+    """
+
+    key_secret_creds = create_aws_key_secret_creds_from_environ()
+    role_creds = create_aws_role_creds_from_environ()
+
+    if key_secret_creds is None and role_creds is None:
+        return None
+
+    if key_secret_creds and role_creds:
+        raise FireboltError(
+            "Either aws key/secret or role_arn/external_id pair "
+            "should be specified. Found both."
+        )
+
+    return AWSCredentials(key_secret_creds=key_secret_creds, role_creds=role_creds)

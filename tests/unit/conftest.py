@@ -79,6 +79,20 @@ def configure_resource_manager(mocker: MockerFixture) -> ResourceManager:
 
 
 @pytest.fixture()
+def mock_table_config() -> dict:
+    return {
+        "table_name": "test_table",
+        "columns": [
+            {"name": "test_col_1", "type": "INT"},
+            {"name": "test_col_2", "type": "TEXT"},
+        ],
+        "file_type": "PARQUET",
+        "object_pattern": ["*.parquet"],
+        "primary_index": ["test_col_1"],
+    }
+
+
+@pytest.fixture()
 def mock_connection_params() -> dict:
     return {
         "engine_name": "mock_engine_name",

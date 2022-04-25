@@ -1,6 +1,8 @@
 import json
+import os
 from collections import namedtuple
 from typing import Sequence
+from unittest import mock
 
 import pytest
 from appdirs import user_config_dir
@@ -14,6 +16,7 @@ from pytest_mock import MockerFixture
 from firebolt_cli.utils import (
     construct_resource_manager,
     convert_bytes,
+    create_aws_creds_from_environ,
     create_connection,
     get_default_database_engine,
     prepare_execution_result_line,
@@ -344,3 +347,82 @@ def test_create_connection_user_password(
         engine_name=mock_connection_params["engine_name"],
         engine_url=None,
     )
+
+
+def test_create_aws_creds_from_environ_happy_path():
+    """
+    Test correct cases of construction of aws_creds
+    """
+    with mock.patch.dict(
+        os.environ,
+        {
+            "FIREBOLT_AWS_KEY_ID": "mock_key_id",
+            "FIREBOLT_AWS_SECRET_KEY": "mock_secret",
+        },
+    ):
+        aws_creds = create_aws_creds_from_environ()
+
+        assert aws_creds.key_secret_creds.aws_key_id == "mock_key_id"
+        assert (
+            aws_creds.key_secret_creds.aws_secret_key.get_secret_value()
+            == "mock_secret"
+        )
+
+    with mock.patch.dict(
+        os.environ,
+        {
+            "FIREBOLT_AWS_ROLE_ARN": "mock_role_arn",
+            "FIREBOLT_AWS_ROLE_EXTERNAL_ID": "mock_external_id",
+        },
+    ):
+        aws_creds = create_aws_creds_from_environ()
+
+        assert aws_creds.role_creds.role_arn.get_secret_value() == "mock_role_arn"
+        assert aws_creds.role_creds.external_id == "mock_external_id"
+
+    with mock.patch.dict(os.environ, {"FIREBOLT_AWS_ROLE_ARN": "mock_role_arn"}):
+        aws_creds = create_aws_creds_from_environ()
+
+        assert aws_creds.role_creds.role_arn.get_secret_value() == "mock_role_arn"
+        assert aws_creds.role_creds.external_id is None
+
+    with mock.patch.dict(os.environ, {}):
+        assert create_aws_creds_from_environ() is None
+
+
+def test_create_aws_creds_from_environ_invalide():
+    """
+    Test incorrect cases of construction of aws_creds
+    """
+    with mock.patch.dict(os.environ, {"FIREBOLT_AWS_KEY_ID": "mock_value"}):
+        with pytest.raises(FireboltError):
+            create_aws_creds_from_environ()
+
+    with mock.patch.dict(os.environ, {"FIREBOLT_AWS_SECRET_KEY": "mock_value"}):
+        with pytest.raises(FireboltError):
+            create_aws_creds_from_environ()
+
+    with mock.patch.dict(os.environ, {"FIREBOLT_AWS_ROLE_EXTERNAL_ID": "mock_value"}):
+        with pytest.raises(FireboltError):
+            create_aws_creds_from_environ()
+
+    with mock.patch.dict(
+        os.environ,
+        {
+            "FIREBOLT_AWS_KEY_ID": "mock_value",
+            "FIREBOLT_AWS_SECRET_KEY": "mock_value",
+            "FIREBOLT_AWS_ROLE_ARN": "mock_value",
+        },
+    ):
+        with pytest.raises(FireboltError):
+            create_aws_creds_from_environ()
+
+    with mock.patch.dict(
+        os.environ,
+        {
+            "FIREBOLT_AWS_SECRET_KEY": "mock_value",
+            "FIREBOLT_AWS_ROLE_EXTERNAL_ID": "mock_value",
+        },
+    ):
+        with pytest.raises(FireboltError):
+            create_aws_creds_from_environ()
