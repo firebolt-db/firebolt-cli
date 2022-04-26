@@ -46,6 +46,7 @@ jobs:
           firebolt-password: ${{ secrets.FIREBOLT_PASSWORD }}
           api-endpoint: "api.dev.firebolt.io"
           region: "us-east-1"
+          instance-type: "B2"
           db_suffix: ${{ format('{0}_{1}', matrix.os, matrix.python-version) }}
 
       - name: Run integration tests
