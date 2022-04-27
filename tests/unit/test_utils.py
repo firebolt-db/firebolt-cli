@@ -429,15 +429,24 @@ def test_create_aws_creds_from_environ_invalide():
             create_aws_creds_from_environ()
 
 
-def test_format_short_statement():
+@pytest.mark.parametrize(
+    "argument, expected",
+    [
+        ("SELECT 1", "SELECT 1"),
+        ("/**/ SELECT 1", "SELECT 1"),
+        ("-- SELECT 1;\nSELECT 2", "SELECT 2"),
+        ("SELECT        23          \n FROM table\n", "SELECT 23 FROM table"),
+    ],
+)
+def test_format_short_statement(argument: str, expected: str):
     """
     test common cases of format_short_statement
     """
-    assert format_short_statement("SELECT 1") == "SELECT 1"
-    assert format_short_statement("/**/ SELECT 1") == "SELECT 1"
-    assert format_short_statement("-- SELECT 1;\nSELECT 2") == "SELECT 2"
-    assert (
-        format_short_statement("SELECT        23          \n FROM table\n")
-        == "SELECT 23 FROM table"
-    )
+    assert format_short_statement(argument) == expected
+
+
+def test_format_short_statement_truncate():
+    """
+    test format_short_statement with truncate_long_string paramter
+    """
     assert format_short_statement("SELECT 123", truncate_long_string=6) == "SELECT ..."

@@ -255,10 +255,10 @@ def test_sql_execution_multiline(
     assert cursor_mock.nextset.call_count == 2
     assert cursor_mock.fetchall.call_count == 2
 
-    cursor_mock.execute.assert_has_calls(
-        [mock.call("SELECT * FROM t1;"), mock.call("SELECT * FROM t2;")]
-    )
-    assert cursor_mock.execute.call_count == 2
+    assert cursor_mock.execute.mock_calls == [
+        mock.call("SELECT * FROM t1;"),
+        mock.call("SELECT * FROM t2;"),
+    ]
 
 
 def test_query_default_engine(

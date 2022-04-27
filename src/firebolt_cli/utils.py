@@ -66,6 +66,8 @@ def format_short_statement(statement: str, truncate_long_string: int = 80) -> st
     )
 
     statement = statement.replace("\n", " ").replace("\t", " ").strip()
+
+    # strip consecutive whitespaces
     statement = re.sub(" +", " ", statement)
 
     if 0 < truncate_long_string < len(statement):
