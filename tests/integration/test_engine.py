@@ -118,6 +118,27 @@ def test_engine_update_single_parameter(database_name: str) -> None:
     assert result.exit_code == 0
 
 
+def test_engine_update_auto_stop(stopped_engine_name: str) -> None:
+    """
+    test engine update --auto_stop, set to zero means it is always on
+    """
+    runner = CliRunner(mix_stderr=False)
+
+    result = runner.invoke(
+        main,
+        f"engine update --name {stopped_engine_name} --auto-stop 0".split(),
+    )
+    assert "ALWAYS ON" in result.stdout
+    assert result.exit_code == 0
+
+    result = runner.invoke(
+        main,
+        f"engine update --name {stopped_engine_name} --auto-stop 313".split(),
+    )
+    assert result.exit_code == 0
+    assert "5:13:00" in result.stdout
+
+
 def test_engine_restart_stopped(
     stopped_engine_name: str, cli_runner: CliRunner
 ) -> None:
