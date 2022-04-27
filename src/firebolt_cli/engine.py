@@ -260,6 +260,7 @@ def engine_properties_options(create_mode: bool = True) -> Callable:
             default=1 if create_mode else None,
             required=False,
             show_default=True,
+            metavar="INTEGER",
         ),
         option(
             "--auto-stop",
@@ -268,6 +269,7 @@ def engine_properties_options(create_mode: bool = True) -> Callable:
             default=20 if create_mode else None,
             required=False,
             show_default=True,
+            metavar="INTEGER",
         ),
         option(
             "--warmup",
