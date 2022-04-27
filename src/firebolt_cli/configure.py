@@ -3,7 +3,7 @@ from click import command, echo, option, prompt
 from firebolt_cli.utils import read_config, update_config
 
 
-@command(name="configure (config)")
+@command(name="configure", short_help="Store firebolt configuration (alias: config)")
 @option("-u", "--username", help="Firebolt username")
 @option(
     "-p", "--password", is_flag=True, default=False, help="Prompt to enter the password"
