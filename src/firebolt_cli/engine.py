@@ -1,7 +1,7 @@
 import os
 import sys
 from datetime import timedelta
-from typing import Callable
+from typing import Callable, Optional
 
 from click import (
     Choice,
@@ -262,6 +262,13 @@ def engine_properties_options(create_mode: bool = True) -> Callable:
             show_default=True,
         ),
         option(
+            "--use-spot/--no-use-spot",
+            help="Use spot instances",
+            is_flag=True,
+            default=None,
+            required=False,
+        ),
+        option(
             "--auto-stop",
             help="Stop engine automatically after specified time in minutes",
             type=IntRange(1, 30 * 24 * 60, clamp=False),
@@ -333,6 +340,9 @@ def echo_engine_information(
                 if engine.current_status_summary
                 else None,
                 _format_auto_stop(engine.settings.auto_stop_delay_duration),
+                revision.specification.db_compute_instances_use_spot
+                if revision
+                else "",
                 engine.settings.preset,
                 engine.settings.warm_up,
                 str(engine.create_time),
@@ -345,6 +355,7 @@ def echo_engine_information(
                 "description",
                 "status",
                 "auto_stop",
+                "is_spot_instance",
                 "preset",
                 "warm_up",
                 "create_time",
@@ -437,6 +448,11 @@ def create(**raw_config_options: str) -> None:
         auto_stop=int(raw_config_options["auto_stop"]),
         warmup=WARMUP_METHODS[raw_config_options["warmup"]],
         description=raw_config_options["description"],
+        revision_spec_kwargs={
+            "db_compute_instances_use_spot": True
+            if raw_config_options["use_spot"]
+            else False
+        },
     )
 
     try:
@@ -465,20 +481,23 @@ def create(**raw_config_options: str) -> None:
 )
 @json_option
 @exit_on_firebolt_exception
-def update(**raw_config_options: str) -> None:
+def update(use_spot: Optional[bool], **raw_config_options: str) -> None:
     """
     Update engine parameters, engine should be stopped before update
     """
-    something_to_update = any(
-        raw_config_options[param] is not None
-        for param in [
-            "spec",
-            "type",
-            "scale",
-            "auto_stop",
-            "warmup",
-            "description",
-        ]
+    something_to_update = (
+        any(
+            raw_config_options[param] is not None
+            for param in [
+                "spec",
+                "type",
+                "scale",
+                "auto_stop",
+                "warmup",
+                "description",
+            ]
+        )
+        or use_spot is not None
     )
 
     if not something_to_update:
@@ -497,6 +516,7 @@ def update(**raw_config_options: str) -> None:
         auto_stop=string_to_int_or_none(raw_config_options["auto_stop"]),
         warmup=WARMUP_METHODS.get(raw_config_options["warmup"], None),
         description=raw_config_options["description"],
+        use_spot=use_spot,
     )
 
     if not raw_config_options["json"]:

@@ -400,6 +400,7 @@ def test_engine_create_happy_path_optional_parameters(
         auto_stop=893,
         warmup=WarmupMethod.PRELOAD_ALL_DATA,
         description="test_description",
+        revision_spec_kwargs={"db_compute_instances_use_spot": False},
     )
 
     database_mock.attach_to_engine.assert_called_once_with(
@@ -548,7 +549,7 @@ def test_engine_update_all_parameters(
         configure_resource_manager,
         "--name engine_name --new-engine-name name_of_the_new_engine "
         "--spec C1 --description test_description "
-        "--type rw --scale 23 --auto-stop 893 --warmup all",
+        "--type rw --scale 23 --auto-stop 893 --warmup all --use-spot",
     )
 
     engine_mock.update.assert_called_once_with(
@@ -559,6 +560,7 @@ def test_engine_update_all_parameters(
         auto_stop=893,
         warmup=WarmupMethod.PRELOAD_ALL_DATA,
         description="test_description",
+        use_spot=True,
     )
 
 
@@ -583,6 +585,7 @@ def test_engine_update_subset_parameters1(
         engine_type=None,
         scale=42,
         auto_stop=None,
+        use_spot=None,
         warmup=WarmupMethod.PRELOAD_INDEXES,
     )
 
@@ -597,7 +600,7 @@ def test_engine_update_subset_parameters2(
 
     engine_mock = generic_engine_update(
         configure_resource_manager,
-        "--name engine_name --spec i3.xlarge --type ro --auto-stop 8393",
+        "--name engine_name --spec i3.xlarge --type ro --auto-stop 8393 --no-use-spot",
     )
 
     engine_mock.update.assert_called_once_with(
@@ -608,6 +611,7 @@ def test_engine_update_subset_parameters2(
         scale=None,
         auto_stop=8393,
         warmup=None,
+        use_spot=False,
     )
 
 
