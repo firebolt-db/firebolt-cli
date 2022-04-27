@@ -18,6 +18,7 @@ from firebolt_cli.utils import (
     convert_bytes,
     create_aws_creds_from_environ,
     create_connection,
+    format_short_statement,
     get_default_database_engine,
     prepare_execution_result_line,
     prepare_execution_result_table,
@@ -426,3 +427,17 @@ def test_create_aws_creds_from_environ_invalide():
     ):
         with pytest.raises(FireboltError):
             create_aws_creds_from_environ()
+
+
+def test_format_short_statement():
+    """
+    test common cases of format_short_statement
+    """
+    assert format_short_statement("SELECT 1") == "SELECT 1"
+    assert format_short_statement("/**/ SELECT 1") == "SELECT 1"
+    assert format_short_statement("-- SELECT 1;\nSELECT 2") == "SELECT 2"
+    assert (
+        format_short_statement("SELECT        23          \n FROM table\n")
+        == "SELECT 23 FROM table"
+    )
+    assert format_short_statement("SELECT 123", truncate_long_string=6) == "SELECT ..."
