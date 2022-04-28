@@ -3,6 +3,7 @@ import os
 import sys
 
 import click
+import sqlparse  # type: ignore
 from click import command, echo, option
 from firebolt.common.exception import FireboltError
 from firebolt.db import Cursor
@@ -22,6 +23,7 @@ from firebolt_cli.utils import (
     construct_resource_manager,
     create_connection,
     exit_on_firebolt_exception,
+    format_short_statement,
     get_default_database_engine,
     read_from_file,
     read_from_stdin_buffer,
@@ -33,28 +35,61 @@ TABLES_COMMAND = ".tables"
 INTERNAL_COMMANDS = EXIT_COMMANDS + HELP_COMMANDS + [TABLES_COMMAND]
 
 
-def print_result_if_any(cursor: Cursor, use_csv: bool) -> None:
+def is_data_statement(statement: sqlparse.sql.Statement) -> bool:
     """
-    Fetch the data from cursor and print it in csv or tabular format
+    true if the statement is supposed to output some data
     """
-    while 1:
-        if cursor.description:
-            data = cursor.fetchall()
+    token = statement.token_first(skip_cm=True, skip_ws=True).normalized
+    return token in {"SHOW", "DESCRIBE", "EXPLAIN", "SELECT", "WITH"}
 
-            headers = [i.name for i in cursor.description]
-            if use_csv:
-                writer = csv.writer(sys.stdout)
-                writer.writerow(headers)
-                writer.writerows(data)
-            else:
-                echo(tabulate(data, headers=headers, tablefmt="grid"))
 
-        if not cursor.nextset():
-            break
+def echo_execution_status(statement: str, success: bool) -> None:
+    """
+    print execution summary result: Success or Error
+    and a shortened statement to which it is referring
+    """
+    statement = format_short_statement(statement)
+    msg, color = ("Success:", "green") if success else ("Error:", "yellow")
+
+    echo("{} {}".format(click.style(msg, fg=color, bold=True), statement))
+
+
+def execute_and_print(cursor: Cursor, query: str, use_csv: bool) -> None:
+    """
+    execute multiple queries one by one, fetch the data from cursor
+    and print it in csv or tabular format
+    """
+    statements = sqlparse.parse(query)
+
+    for statement in statements:
+        try:
+            cursor.execute(str(statement))
+
+            is_data = is_data_statement(statement)
+
+            if not use_csv:
+                echo_execution_status(str(statement), success=True)
+
+            if cursor.description and is_data:
+                data = cursor.fetchall()
+
+                headers = [i.name for i in cursor.description]
+                if use_csv:
+                    writer = csv.writer(sys.stdout)
+                    writer.writerow(headers)
+                    writer.writerows(data)
+                else:
+                    echo(tabulate(data, headers=headers, tablefmt="grid"))
+
+            cursor.nextset()
+
+        except FireboltError as err:
+            echo_execution_status(str(statement), success=False)
+            raise err
 
 
 @Condition
-def is_multilne_needed() -> bool:
+def is_multiline_needed() -> bool:
     """
     function reads the buffer of the interactive prompt
     and return true if the continuation of the request is required
@@ -108,7 +143,7 @@ def enter_interactive_session(cursor: Cursor, use_csv: bool) -> None:
         message="firebolt> ",
         prompt_continuation="     ...> ",
         lexer=PygmentsLexer(PostgresLexer),
-        multiline=is_multilne_needed,
+        multiline=is_multiline_needed,
     )
 
     while 1:
@@ -122,8 +157,7 @@ def enter_interactive_session(cursor: Cursor, use_csv: bool) -> None:
             if len(sql_query) == 0:
                 continue
 
-            cursor.execute(sql_query)
-            print_result_if_any(cursor, use_csv=use_csv)
+            execute_and_print(cursor, sql_query, use_csv)
         except FireboltError as err:
             echo(err)
             continue
@@ -184,8 +218,7 @@ def query(**raw_config_options: str) -> None:
 
         if sql_query:
             # if query is available, then execute, print result and exit
-            cursor.execute(sql_query)
-            print_result_if_any(cursor, bool(raw_config_options["csv"]))
+            execute_and_print(cursor, sql_query, bool(raw_config_options["csv"]))
         else:
             # otherwise start the interactive session
             enter_interactive_session(cursor, bool(raw_config_options["csv"]))

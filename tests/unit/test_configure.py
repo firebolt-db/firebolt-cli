@@ -181,3 +181,36 @@ def test_configure_short_version(fs: FakeFilesystem) -> None:
     assert read_config() == {
         "username": "username",
     }
+
+
+def test_configure_reset(fs: FakeFilesystem) -> None:
+    """ """
+
+    fs.create_dir(user_config_dir())
+    runner = CliRunner()
+    result = runner.invoke(
+        configure,
+        [
+            "--username",
+            "username",
+            "--database-name",
+            "database_name",
+        ],
+    )
+    assert result.exit_code == 0, "non-zero exit code for configure"
+    assert "Successfully" in result.stdout, "Invalid result message"
+
+    assert read_config() == {
+        "username": "username",
+        "database_name": "database_name",
+    }
+
+    result = runner.invoke(
+        configure,
+        ["reset"],
+    )
+
+    assert result.exit_code == 0, "non-zero exit code for configure"
+    assert "Successfully" in result.stdout, "Invalid result message"
+
+    assert read_config() == {}

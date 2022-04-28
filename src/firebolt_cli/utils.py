@@ -1,11 +1,13 @@
 import json
 import os
+import re
 import sys
 from configparser import ConfigParser
 from functools import wraps
 from typing import Callable, Dict, Optional, Sequence, Tuple, Type
 
 import keyring
+import sqlparse  # type: ignore
 from appdirs import user_config_dir
 from click import Command, Context, Group, echo
 from firebolt.common import Settings
@@ -13,7 +15,7 @@ from firebolt.common.exception import FireboltError
 from firebolt.db.connection import Connection, connect
 from firebolt.model.engine import Engine
 from firebolt.service.manager import ResourceManager
-from firebolt_ingest.aws_settings import (  # type: ignore
+from firebolt_ingest.aws_settings import (
     AWSCredentials,
     AWSCredentialsKeySecret,
     AWSCredentialsRole,
@@ -34,7 +36,7 @@ def construct_shortcuts(shortages: dict) -> Type[Group]:
                 return rv
 
             matches = [
-                x for x in self.list_commands(ctx) if x in shortages.get(cmd_name, None)
+                x for x in self.list_commands(ctx) if x in shortages.get(cmd_name, [])
             ]
 
             if not matches:
@@ -44,6 +46,34 @@ def construct_shortcuts(shortages: dict) -> Type[Group]:
             return Group.get_command(self, ctx, matches[0])
 
     return AliasedGroup
+
+
+def format_short_statement(statement: str, truncate_long_string: int = 80) -> str:
+    """
+    Format a complex query into a single line with
+    stripped comments and excessive whitespaces
+
+    Args:
+        statement: a valid sql statement
+        truncate_long_string: if set to positive integer strings longer, that
+        the specified value will be truncated and "..." will be added
+
+    Returns: a formatted string
+
+    """
+    statement = sqlparse.format(
+        str(statement), strip_comments=True, use_space_around_operators=True
+    )
+
+    statement = statement.replace("\n", " ").replace("\t", " ").strip()
+
+    # strip consecutive whitespaces
+    statement = re.sub(" +", " ", statement)
+
+    if 0 < truncate_long_string < len(statement):
+        return statement[:truncate_long_string] + " ..."
+
+    return statement
 
 
 def prepare_execution_result_line(
