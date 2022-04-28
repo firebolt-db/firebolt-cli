@@ -1,6 +1,7 @@
 import json
 from typing import Callable, Optional, Sequence
 from unittest import mock
+from unittest.mock import ANY
 
 import pytest
 from click.testing import CliRunner, Result
@@ -10,6 +11,7 @@ from firebolt.service.types import (
     EngineType,
     WarmupMethod,
 )
+from pytest_mock import MockerFixture
 
 from firebolt_cli.engine import (
     create,
@@ -50,7 +52,7 @@ def test_engine_start_not_found(configure_resource_manager: Sequence) -> None:
 
     engines_mock.get_by_name.side_effect = FireboltError("engine not found")
 
-    result = CliRunner(mix_stderr=False).invoke(start, "not_existing_engine".split())
+    result = CliRunner(mix_stderr=False).invoke(start, ["not_existing_engine"])
 
     engines_mock.get_by_name.assert_called_once_with(name="not_existing_engine")
 
@@ -244,9 +246,35 @@ def test_engine_status(configure_resource_manager: Sequence) -> None:
 
     engine_mock.current_status_summary.name = "engine running"
 
-    result = CliRunner(mix_stderr=False).invoke(status, "engine_name".split())
+    result = CliRunner(mix_stderr=False).invoke(status, ["engine_name"])
 
     engines_mock.get_by_name.assert_called_once_with(name="engine_name")
+
+    assert "engine running" in result.stdout
+    assert result.stderr == ""
+    assert result.exit_code == 0
+
+
+def test_engine_status_default(
+    mocker: MockerFixture, configure_resource_manager: Sequence
+) -> None:
+    (
+        rm,
+        databases_mock,
+        database_mock,
+        engines_mock,
+        engine_mock,
+    ) = configure_resource_manager
+
+    engine_mock.current_status_summary.name = "engine running"
+
+    get_default_database_engine_mock = mocker.patch(
+        "firebolt_cli.engine.get_default_database_engine", return_value=engine_mock
+    )
+
+    result = CliRunner(mix_stderr=False).invoke(status, [])
+
+    get_default_database_engine_mock.assert_called_once_with(ANY, "database_name")
 
     assert "engine running" in result.stdout
     assert result.stderr == ""
