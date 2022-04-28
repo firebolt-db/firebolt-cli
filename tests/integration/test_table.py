@@ -157,7 +157,7 @@ def test_ingest_full_overwrite(
         f"--external-table-name {external_table_name} "
         f"--mode {mode}".split(),
     )
-    assert result.exit_code == 0
+    assert result.exit_code == 0, result.stderr
 
     for table_name in [fact_table_name, external_table_name]:
         drop_table(
