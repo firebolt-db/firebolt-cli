@@ -118,14 +118,16 @@ def test_create_external_table(
     )
 
 
+@pytest.mark.parametrize("mode", ["append", "overwrite"])
 def test_ingest_full_overwrite(
     configure_cli: None,
     mock_table_config: dict,
     cli_runner: CliRunner,
     s3_url: str,
+    mode: str,
 ):
     """
-    create external and fact tables, do full ingestion overwrite
+    create external and fact tables, do ingestion with different modes
     """
 
     with open("table_config.yaml", "w") as f:
@@ -140,7 +142,8 @@ def test_ingest_full_overwrite(
     assert result.exit_code == 0
 
     result = cli_runner.invoke(
-        main, f"table create-fact " f"--file table_config.yaml ".split()
+        main,
+        f"table create-fact " f"--file table_config.yaml --add-file-metadata".split(),
     )
     assert result.exit_code == 0
 
@@ -151,11 +154,74 @@ def test_ingest_full_overwrite(
         main,
         f"ingest "
         f"--fact-table-name {fact_table_name} "
-        f"--external-table-name {external_table_name} ".split(),
+        f"--external-table-name {external_table_name} "
+        f"--mode {mode}".split(),
     )
     assert result.exit_code == 0
 
     for table_name in [fact_table_name, external_table_name]:
+        drop_table(
+            table_name,
+            cli_runner,
+        )
+
+
+def test_ingest_append(
+    configure_cli: None,
+    mock_table_config: dict,
+    cli_runner: CliRunner,
+    s3_url: str,
+):
+    """
+    create external and fact tables, do ingest data partially
+    """
+
+    mock_table_config_sub = mock_table_config.copy()
+    mock_table_config_sub["object_pattern"] = ["*2.parquet"]
+    mock_table_config_sub["table_name"] = "lineitem_sub"
+
+    for mock_table in [mock_table_config_sub, mock_table_config]:
+        with open("table_config.yaml", "w") as f:
+            f.write(yaml.dump(mock_table))
+
+        result = cli_runner.invoke(
+            main,
+            f"table create-external "
+            f"--file table_config.yaml "
+            f"--s3-url {s3_url}".split(),
+        )
+        assert result.exit_code == 0
+
+    result = cli_runner.invoke(
+        main,
+        f"table create-fact " f"--file table_config.yaml --add-file-metadata".split(),
+    )
+
+    assert result.exit_code == 0
+
+    fact_table_name = mock_table_config["table_name"]
+    external_table_name = f"ex_{mock_table_config['table_name']}"
+    external_table_name_sub = f"ex_{mock_table_config_sub['table_name']}"
+
+    result = cli_runner.invoke(
+        main,
+        f"ingest "
+        f"--fact-table-name {fact_table_name} "
+        f"--external-table-name {external_table_name_sub} "
+        f"--mode append".split(),
+    )
+    assert result.exit_code == 0
+
+    result = cli_runner.invoke(
+        main,
+        f"ingest "
+        f"--fact-table-name {fact_table_name} "
+        f"--external-table-name {external_table_name} "
+        f"--mode append".split(),
+    )
+    assert result.exit_code == 0
+
+    for table_name in [fact_table_name, external_table_name, external_table_name_sub]:
         drop_table(
             table_name,
             cli_runner,
