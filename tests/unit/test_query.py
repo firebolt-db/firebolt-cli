@@ -117,8 +117,8 @@ def test_query_csv_output(
     query_generic_test(
         ["--csv", "--engine-name", "engine-name"],
         check_csv_correctness,
-        expected_sql="query from input;",
-        input="query from input;",
+        expected_sql="SELECT 1;",
+        input="SELECT 1;",
         cursor_mock=cursor_mock,
     )
 
@@ -244,19 +244,21 @@ def test_sql_execution_multiline(
         header_mock.name = header_name
 
     cursor_mock.description = headers
-    expected_sql = "SELECT * FROM t1; SELECT * FROM t2"
 
     result = CliRunner().invoke(
         query,
         "--engine-name engine-name".split(),
-        input=expected_sql,
+        input="SELECT * FROM t1;SELECT * FROM t2;",
     )
     assert result.exit_code == 0
 
     assert cursor_mock.nextset.call_count == 2
     assert cursor_mock.fetchall.call_count == 2
 
-    cursor_mock.execute.assert_called_once_with(expected_sql)
+    assert cursor_mock.execute.mock_calls == [
+        mock.call("SELECT * FROM t1;"),
+        mock.call("SELECT * FROM t2;"),
+    ]
 
 
 def test_query_default_engine(
