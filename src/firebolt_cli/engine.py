@@ -525,7 +525,7 @@ def status(**raw_config_options: str) -> None:
     echo(f"Engine {engine.name} current status is: {current_status_name}")
 
 
-@command(name="list (ls)")
+@command(name="list", short_help="List existing engines (alias: ls)")
 @common_options
 @option(
     "--name-contains",

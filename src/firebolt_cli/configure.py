@@ -7,7 +7,11 @@ from firebolt_cli.utils import (
 )
 
 
-@group(name="configure (config)", invoke_without_command=True)
+@group(
+    name="configure",
+    short_help="Store firebolt configuration (alias: config)",
+    invoke_without_command=True,
+)
 @option("-u", "--username", help="Firebolt username")
 @option(
     "-p", "--password", is_flag=True, default=False, help="Prompt to enter the password"

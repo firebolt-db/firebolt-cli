@@ -16,10 +16,10 @@ from firebolt_cli.utils import (
 )
 
 
-@group(name="table (tb)")
+@group(name="table", short_help="Create tables (alias: tb)")
 def table() -> None:
     """
-    Create tables
+    Create tables.
     """
 
 

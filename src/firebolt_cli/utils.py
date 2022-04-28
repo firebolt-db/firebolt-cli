@@ -36,7 +36,7 @@ def construct_shortcuts(shortages: dict) -> Type[Group]:
                 return rv
 
             matches = [
-                x for x in self.list_commands(ctx) if x in shortages.get(cmd_name, None)
+                x for x in self.list_commands(ctx) if x in shortages.get(cmd_name, [])
             ]
 
             if not matches:
