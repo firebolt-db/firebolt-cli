@@ -51,20 +51,20 @@ _common_options: List[Callable] = [
         "--username",
         envvar="FIREBOLT_USERNAME",
         callback=default_from_config_file(required=True),
-        help="Firebolt username",
+        help="The username used for connecting to Firebolt.",
     ),
     option(
         "-p",
         "--password",
         is_flag=True,
         callback=password_from_config_file,
-        help="Firebolt password",
+        help=" The password used for connecting to Firebolt.",
     ),
     option(
         "--account-name",
         envvar="FIREBOLT_ACCOUNT_NAME",
         callback=default_from_config_file(required=False),
-        help="Name of Firebolt account",
+        help="The name of the Firebolt account.",
     ),
     option(
         "--api-endpoint",
@@ -75,8 +75,8 @@ _common_options: List[Callable] = [
     option(
         "--access-token",
         envvar="FIREBOLT_ACCESS_TOKEN",
-        help="Firebolt token for authentication, "
-        "if failed username/password will be used",
+        help="Firebolt token for authentication. "
+        "If the access-token fails, the username/password will be used instead.",
         required=False,
     ),
 ]
@@ -91,7 +91,7 @@ def common_options(command: Callable) -> Callable:
 def json_option(command: Callable) -> Callable:
     return option(
         "--json",
-        help="Provide output in json format",
+        help="Provide output in JSON format.",
         default=False,
         is_flag=True,
         multiple=False,

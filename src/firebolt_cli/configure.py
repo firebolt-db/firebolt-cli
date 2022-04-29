@@ -12,19 +12,25 @@ from firebolt_cli.utils import (
     short_help="Store firebolt configuration (alias: config)",
     invoke_without_command=True,
 )
-@option("-u", "--username", help="Firebolt username")
+@option("-u", "--username", help="The email address used for connecting to Firebolt.")
 @option(
-    "-p", "--password", is_flag=True, default=False, help="Prompt to enter the password"
+    "-p",
+    "--password",
+    is_flag=True,
+    default=False,
+    help="Opens a protected prompt to enter the Firebolt password.",
 )
-@option("--account-name", help="Name of Firebolt account")
-@option("--database-name", help="Database to use for SQL queries")
+@option("--account-name", help="The name of the Firebolt account.")
+@option(
+    "--database-name", help="The name of the database you would like to connect to."
+)
 @option("--api-endpoint", hidden=True)
-@option("--engine-name", help="Name or url of the engine to use for SQL queries")
+@option("--engine-name", help="The name or URL of the engine to use.")
 @exit_on_firebolt_exception
 @pass_context
 def configure(ctx: Context, **raw_config_options: str) -> None:
     """
-    Store firebolt configuration parameters in config file
+    Store firebolt configuration parameters in config file.
     """
     if ctx.invoked_subcommand is None:
         config = {k: v for k, v in raw_config_options.items() if v is not None}
