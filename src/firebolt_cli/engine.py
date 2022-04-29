@@ -1,7 +1,7 @@
 import os
 import sys
 from datetime import timedelta
-from typing import Callable
+from typing import Callable, Optional
 
 from click import (
     Choice,
@@ -22,11 +22,16 @@ from firebolt.service.types import (
     WarmupMethod,
 )
 
-from firebolt_cli.common_options import common_options, json_option
+from firebolt_cli.common_options import (
+    common_options,
+    default_from_config_file,
+    json_option,
+)
 from firebolt_cli.utils import (
     construct_resource_manager,
     construct_shortcuts,
     exit_on_firebolt_exception,
+    get_default_database_engine,
     prepare_execution_result_line,
     prepare_execution_result_table,
     string_to_int_or_none,
@@ -71,6 +76,22 @@ def engine() -> None:
     """
     Manage the engines
     """
+
+
+def get_engine_from_name_or_default(
+    rm: ResourceManager, engine_name: Optional[str], database_name: Optional[str]
+) -> Engine:
+    """
+    Returns engine either from its name, or a default engine deducted
+    from database_name. At least one engine_name or database_name should
+    be provided, raises an Error otherwise.
+    """
+    if engine_name is not None:
+        return rm.engines.get_by_name(name=engine_name)
+    elif database_name is not None:
+        return get_default_database_engine(rm, database_name)
+    else:
+        raise FireboltError("Either engine name or database name has to be specified")
 
 
 def start_stop_generic(
@@ -125,35 +146,41 @@ def start_stop_generic(
 @command()
 @common_options
 @option(
+    "--database-name",
+    envvar="FIREBOLT_DATABASE_NAME",
+    help="Alternatively to engine name, database name could be specified, "
+    "its default engine will be used",
+    hidden=True,
+    callback=default_from_config_file(required=False),
+)
+@option(
     "--wait/--no-wait",
     help="Wait until the engine is started",
     is_flag=True,
     default=False,
 )
-@argument(
-    "engine_name",
-    type=str,
-)
+@argument("engine_name", type=str, required=False)
 @exit_on_firebolt_exception
 def start(**raw_config_options: str) -> None:
     """
-    Start an existing engine
+    Start an existing ENGINE_NAME. If it is not set, the default engine of the
+    database will be started.
     """
 
     rm = construct_resource_manager(**raw_config_options)
-    engine = rm.engines.get_by_name(name=raw_config_options["engine_name"])
+    engine = get_engine_from_name_or_default(
+        rm, raw_config_options["engine_name"], raw_config_options["database_name"]
+    )
 
     if (
         engine.current_status_summary
         == EngineStatusSummary.ENGINE_STATUS_SUMMARY_FAILED
     ):
-        echo(
+        raise FireboltError(
             f"Engine {engine.name} is in a failed state.\n"
             f"You need to restart an engine first:\n"
-            f"$ firebolt restart --engine-name {engine.name}",
-            err=True,
+            f"$ firebolt restart {engine.name}"
         )
-        sys.exit(1)
 
     start_stop_generic(
         engine=engine,
@@ -178,23 +205,31 @@ def start(**raw_config_options: str) -> None:
 @command()
 @common_options
 @option(
+    "--database-name",
+    envvar="FIREBOLT_DATABASE_NAME",
+    help="Alternatively to engine name, database name could be specified, "
+    "its default engine will be used",
+    hidden=True,
+    callback=default_from_config_file(required=False),
+)
+@option(
     "--wait/--no-wait",
     help="Wait until the engine is stopped",
     is_flag=True,
     default=False,
 )
-@argument(
-    "engine_name",
-    type=str,
-)
+@argument("engine_name", type=str, required=False)
 @exit_on_firebolt_exception
 def stop(**raw_config_options: str) -> None:
     """
-    Stop an existing engine
+    Stop an existing ENGINE_NAME. If it is not set, the default engine of the
+    database will be stopped.
     """
 
     rm = construct_resource_manager(**raw_config_options)
-    engine = rm.engines.get_by_name(name=raw_config_options["engine_name"])
+    engine = get_engine_from_name_or_default(
+        rm, raw_config_options["engine_name"], raw_config_options["database_name"]
+    )
 
     start_stop_generic(
         engine=engine,
@@ -221,7 +256,7 @@ def engine_properties_options(create_mode: bool = True) -> Callable:
     """
     decorator for engine create/update common options
 
-    :param create_mode: True for create, will make some of the options required
+    :param create_mode: True for create, will make some options required
     """
     _ENGINE_OPTIONS = [
         option(
@@ -370,23 +405,32 @@ WARMUP_METHODS = {
 @command()
 @common_options
 @option(
+    "--database-name",
+    envvar="FIREBOLT_DATABASE_NAME",
+    help="Alternatively to engine name, database name could be specified, "
+    "its default engine will be used",
+    hidden=True,
+    callback=default_from_config_file(required=False),
+)
+@option(
     "--wait/--no-wait",
     help="Wait until the engine is restarted",
     is_flag=True,
     default=False,
 )
-@argument(
-    "engine_name",
-    type=str,
-)
+@argument("engine_name", type=str, required=False)
 @exit_on_firebolt_exception
 def restart(**raw_config_options: str) -> None:
     """
     Restart an existing engine
+    Restart an existing ENGINE_NAME. If it is not set, the default engine of the
+    database will be restarted.
     """
 
     rm = construct_resource_manager(**raw_config_options)
-    engine = rm.engines.get_by_name(name=raw_config_options["engine_name"])
+    engine = get_engine_from_name_or_default(
+        rm, raw_config_options["engine_name"], raw_config_options["database_name"]
+    )
 
     start_stop_generic(
         engine=engine,
@@ -509,18 +553,27 @@ def update(**raw_config_options: str) -> None:
 
 @command()
 @common_options
-@argument(
-    "engine_name",
-    type=str,
+@option(
+    "--database-name",
+    envvar="FIREBOLT_DATABASE_NAME",
+    help="Alternatively to engine name, database name could be specified, "
+    "its default engine will be used",
+    hidden=True,
+    callback=default_from_config_file(required=False),
 )
+@argument("engine_name", type=str, required=False)
 @exit_on_firebolt_exception
 def status(**raw_config_options: str) -> None:
     """
-    Check the engine status
+    Check the ENGINE_NAME status. If it is not set, the get the status of
+    the default engine.
     """
 
     rm = construct_resource_manager(**raw_config_options)
-    engine = rm.engines.get_by_name(name=raw_config_options["engine_name"])
+    engine = get_engine_from_name_or_default(
+        rm, raw_config_options["engine_name"], raw_config_options["database_name"]
+    )
+
     current_status_name = (
         engine.current_status_summary.name if engine.current_status_summary else ""
     )
