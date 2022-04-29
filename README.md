@@ -18,12 +18,12 @@ Also, you will need a firebolt account with information about username, password
 
 ### Installation
 Once you have all prerequisites in place, you can install the firebolt cli via pip:
-```
+```shell
 $ pip install firebolt-cli
 ```
 
 To verify the installation run:
-```
+```shell
 $ firebolt --version
 
 firebolt, version 0.2.0
@@ -31,7 +31,7 @@ firebolt, version 0.2.0
 
 ### Running
 The next step is to configure the firebolt cli:
-```
+```shell
 $ firebolt configure
 
 Username [None]: your_username
@@ -43,14 +43,14 @@ Successfully updated firebolt-cli configuration
 ```
 
 To run your first query, the engine has to be running. Check the status of the engine by executing the following command:
-```
+```shell
 $ firebolt engine status your_engine_name
 
 Engine your_engine_name current status is: ENGINE_STATUS_SUMMARY_STOPPED
 ```
 
 If the engine is stopped, you have to start the engine by executing the following command:
-```
+```shell
 $ firebolt engine start your_engine_name --wait
 
 Engine your_engine_name is successfully started
@@ -106,18 +106,19 @@ There are three ways to configure firebolt cli:
 1. Run `firebolt config` and setting all parameters from STDIN.
 
 Or you can set particular parameters by running configure with additional command-line arguments:
-```
-firebolt config --username your_user_name --account-name firebolt
+```shell
+$ firebolt config --username your_user_name --account-name firebolt
 ```
 
 2. Pass additional command-line arguments to each command.
 
-```
-firebolt query --username your_user_name --engine-name your_running_engine
+```shell
+$ firebolt query --username your_user_name \
+                 --engine-name your_running_engine
 ```
 
 3. Use environment variable
-```
+```shell
 $ export FIREBOLT_USERNAME=your_username
 $ export FIREBOLT_PASSWORD=your_password
 $ export FIREBOLT_ACCOUNT_NAME=your_account_name
@@ -171,27 +172,30 @@ firebolt>
 ```
 
 ### Managing resources
-With firebolt cli it is also possible to manage databases and engines, for the full set of available features please see `firebolt engine --help` and `firebolt database --help`.
+With `firebolt-cli` it is also possible to manage databases and engines, for the full set of available features please see `firebolt engine --help` and `firebolt database --help`.
+
+### Ingestion
+`firebolt-cli` also offers data ingestion functionality. For more information see [INGEST_GETTING_STARTED.md](https://github.com/firebolt-db/firebolt-cli/blob/main/INGEST_GETTING_STARTED.md).
 
 ### Enable shell completion
 Firebolt provides tab completion for Bash (version 4.4 and up), Zsh, and Fish. In order to enable the completion for your environment you have to follow one of the steps below.
 
 #### Bash
 Add this to ~/.bashrc:
-```
+```shell
 eval "$(_FIREBOLT_COMPLETE=bash_source firebolt)"
 ```
 
 #### Zsh
 Add this to ~/.zshrc:
-```
+```shell
 eval "$(_FIREBOLT_COMPLETE=zsh_source firebolt)"
 ```
 
 #### Fish
 Add this to ~/.config/fish/completions/firebolt.fish:
 
-```
+```shell
 eval (env _FIREBOLT_COMPLETE=fish_source firebolt)
 ```
 
@@ -200,14 +204,14 @@ The completion in `firebolt-cli` is based on `Click` library. For more informati
 ## Docker
 To start the work with docker, 
 you should first pull the docker from the repository.
-```
+```shell
 docker pull ghcr.io/firebolt-db/firebolt-cli:latest
 ```
 
 Afterward, you will be able to run the cli and passing all configuration variables as environment variables. 
 
 Here is an example of getting a list of available engines: 
-```
+```shell
 docker run -e FIREBOLT_USERNAME="your_username"\
            -e FIREBOLT_PASSWORD="your_password"\  
            ghcr.io/firebolt-db/firebolt-cli:latest engine list
