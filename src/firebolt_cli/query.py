@@ -189,6 +189,7 @@ def enter_interactive_session(cursor: Cursor, use_csv: bool) -> None:
     default=None,
     type=click.Path(exists=True),
 )
+@option("--sql", help="SQL statement, that will be executed", required=False)
 @exit_on_firebolt_exception
 def query(**raw_config_options: str) -> None:
     """
@@ -196,15 +197,17 @@ def query(**raw_config_options: str) -> None:
     """
     stdin_query = read_from_stdin_buffer()
     file_query = read_from_file(raw_config_options["file"])
+    args_query = raw_config_options["sql"]
 
-    if stdin_query and file_query:
+    if bool(stdin_query) + bool(file_query) + bool(args_query) > 1:
         echo(
-            "SQL request should be either read from stdin or file, both are specified",
+            "SQL request should be either read from stdin or file or "
+            "command line arguments. Multiple are specified",
             err=True,
         )
         sys.exit(os.EX_USAGE)
 
-    sql_query = stdin_query or file_query
+    sql_query = stdin_query or file_query or args_query
 
     # if engine_name is not set, use default engine
     if raw_config_options["engine_name"] is None:
