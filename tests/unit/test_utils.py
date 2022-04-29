@@ -1,9 +1,12 @@
 import json
+import os
 from collections import namedtuple
 from typing import Sequence
+from unittest import mock
 
 import pytest
 from appdirs import user_config_dir
+from click.testing import CliRunner
 from firebolt.common import Settings
 from firebolt.common.exception import FireboltError
 from firebolt.service.manager import ResourceManager
@@ -11,9 +14,13 @@ from httpx import HTTPStatusError
 from pyfakefs.fake_filesystem import FakeFilesystem
 from pytest_mock import MockerFixture
 
+from firebolt_cli.main import main
 from firebolt_cli.utils import (
     construct_resource_manager,
     convert_bytes,
+    create_aws_creds_from_environ,
+    create_connection,
+    format_short_statement,
     get_default_database_engine,
     prepare_execution_result_line,
     prepare_execution_result_table,
@@ -283,3 +290,176 @@ def test_database_get_default_engine_none(
         get_default_database_engine(ResourceManager(), "database_name")
 
     databases.get_by_name.assert_called_once_with(name="database_name")
+
+
+def test_create_connection_engine_name(
+    mock_connection_params: dict, mocker: MockerFixture
+):
+    """
+    Check create_connection with engine name and access_token
+    """
+    connect_function_mock = mocker.patch("firebolt_cli.utils.connect")
+    create_connection(**mock_connection_params)
+
+    connect_function_mock.assert_called_once_with(
+        access_token=mock_connection_params["access_token"],
+        account_name=mock_connection_params["account_name"],
+        api_endpoint=mock_connection_params["api_endpoint"],
+        database=mock_connection_params["database_name"],
+        engine_name=mock_connection_params["engine_name"],
+        engine_url=None,
+    )
+
+
+def test_create_connection_engine_url(
+    mock_connection_params: dict, mocker: MockerFixture
+):
+    """
+    Check create_connection with engine url and access_token
+    """
+    connect_function_mock = mocker.patch("firebolt_cli.utils.connect")
+    mock_connection_params["engine_name"] = "engine_url.firebolt.io"
+    create_connection(**mock_connection_params)
+
+    connect_function_mock.assert_called_once_with(
+        access_token=mock_connection_params["access_token"],
+        account_name=mock_connection_params["account_name"],
+        api_endpoint=mock_connection_params["api_endpoint"],
+        database=mock_connection_params["database_name"],
+        engine_name=None,
+        engine_url=mock_connection_params["engine_name"],
+    )
+
+
+def test_create_connection_user_password(
+    mock_connection_params: dict, mocker: MockerFixture
+):
+    """
+    Check create_connection with engine name and username/password
+    """
+    connect_function_mock = mocker.patch("firebolt_cli.utils.connect")
+    mock_connection_params["access_token"] = None
+    create_connection(**mock_connection_params)
+
+    connect_function_mock.assert_called_once_with(
+        username=mock_connection_params["username"],
+        password=mock_connection_params["password"],
+        account_name=mock_connection_params["account_name"],
+        api_endpoint=mock_connection_params["api_endpoint"],
+        database=mock_connection_params["database_name"],
+        engine_name=mock_connection_params["engine_name"],
+        engine_url=None,
+    )
+
+
+def test_create_aws_creds_from_environ_happy_path():
+    """
+    Test correct cases of construction of aws_creds
+    """
+    with mock.patch.dict(
+        os.environ,
+        {
+            "FIREBOLT_AWS_KEY_ID": "mock_key_id",
+            "FIREBOLT_AWS_SECRET_KEY": "mock_secret",
+        },
+    ):
+        aws_creds = create_aws_creds_from_environ()
+
+        assert aws_creds.key_secret_creds.aws_key_id == "mock_key_id"
+        assert (
+            aws_creds.key_secret_creds.aws_secret_key.get_secret_value()
+            == "mock_secret"
+        )
+
+    with mock.patch.dict(
+        os.environ,
+        {
+            "FIREBOLT_AWS_ROLE_ARN": "mock_role_arn",
+            "FIREBOLT_AWS_ROLE_EXTERNAL_ID": "mock_external_id",
+        },
+    ):
+        aws_creds = create_aws_creds_from_environ()
+
+        assert aws_creds.role_creds.role_arn.get_secret_value() == "mock_role_arn"
+        assert aws_creds.role_creds.external_id == "mock_external_id"
+
+    with mock.patch.dict(os.environ, {"FIREBOLT_AWS_ROLE_ARN": "mock_role_arn"}):
+        aws_creds = create_aws_creds_from_environ()
+
+        assert aws_creds.role_creds.role_arn.get_secret_value() == "mock_role_arn"
+        assert aws_creds.role_creds.external_id is None
+
+    with mock.patch.dict(os.environ, {}):
+        assert create_aws_creds_from_environ() is None
+
+
+def test_create_aws_creds_from_environ_invalide():
+    """
+    Test incorrect cases of construction of aws_creds
+    """
+    with mock.patch.dict(os.environ, {"FIREBOLT_AWS_KEY_ID": "mock_value"}):
+        with pytest.raises(FireboltError):
+            create_aws_creds_from_environ()
+
+    with mock.patch.dict(os.environ, {"FIREBOLT_AWS_SECRET_KEY": "mock_value"}):
+        with pytest.raises(FireboltError):
+            create_aws_creds_from_environ()
+
+    with mock.patch.dict(os.environ, {"FIREBOLT_AWS_ROLE_EXTERNAL_ID": "mock_value"}):
+        with pytest.raises(FireboltError):
+            create_aws_creds_from_environ()
+
+    with mock.patch.dict(
+        os.environ,
+        {
+            "FIREBOLT_AWS_KEY_ID": "mock_value",
+            "FIREBOLT_AWS_SECRET_KEY": "mock_value",
+            "FIREBOLT_AWS_ROLE_ARN": "mock_value",
+        },
+    ):
+        with pytest.raises(FireboltError):
+            create_aws_creds_from_environ()
+
+    with mock.patch.dict(
+        os.environ,
+        {
+            "FIREBOLT_AWS_SECRET_KEY": "mock_value",
+            "FIREBOLT_AWS_ROLE_EXTERNAL_ID": "mock_value",
+        },
+    ):
+        with pytest.raises(FireboltError):
+            create_aws_creds_from_environ()
+
+
+def test_main_incorrect_command():
+    """
+    test calling non_existing_command should result into an error and a help message
+    """
+    result = CliRunner().invoke(main, ["non_existing_command"])
+    assert result.exit_code != 0
+
+    assert "Usage:" in result.stdout
+    assert "Error: No such command" in result.stdout
+
+
+@pytest.mark.parametrize(
+    "argument, expected",
+    [
+        ("SELECT 1", "SELECT 1"),
+        ("/**/ SELECT 1", "SELECT 1"),
+        ("-- SELECT 1;\nSELECT 2", "SELECT 2"),
+        ("SELECT        23          \n FROM table\n", "SELECT 23 FROM table"),
+    ],
+)
+def test_format_short_statement(argument: str, expected: str):
+    """
+    test common cases of format_short_statement
+    """
+    assert format_short_statement(argument) == expected
+
+
+def test_format_short_statement_truncate():
+    """
+    test format_short_statement with truncate_long_string paramter
+    """
+    assert format_short_statement("SELECT 123", truncate_long_string=6) == "SELECT ..."

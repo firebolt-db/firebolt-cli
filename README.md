@@ -173,6 +173,30 @@ firebolt>
 ### Managing resources
 With firebolt cli it is also possible to manage databases and engines, for the full set of available features please see `firebolt engine --help` and `firebolt database --help`.
 
+### Enable shell completion
+Firebolt provides tab completion for Bash (version 4.4 and up), Zsh, and Fish. In order to enable the completion for your environment you have to follow one of the steps below.
+
+#### Bash
+Add this to ~/.bashrc:
+```
+eval "$(_FIREBOLT_COMPLETE=bash_source firebolt)"
+```
+
+#### Zsh
+Add this to ~/.zshrc:
+```
+eval "$(_FIREBOLT_COMPLETE=zsh_source firebolt)"
+```
+
+#### Fish
+Add this to ~/.config/fish/completions/firebolt.fish:
+
+```
+eval (env _FIREBOLT_COMPLETE=fish_source firebolt)
+```
+
+The completion in `firebolt-cli` is based on `Click` library. For more information please visit `Click` [documentation](https://click.palletsprojects.com/en/8.1.x/shell-completion/#enabling-completion).
+
 ## Docker
 To start the work with docker, 
 you should first pull the docker from the repository.

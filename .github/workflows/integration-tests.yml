@@ -34,6 +34,7 @@ jobs:
           firebolt-password: ${{ secrets.FIREBOLT_PASSWORD }}
           api-endpoint: "api.dev.firebolt.io"
           region: "us-east-1"
+          instance-type: "B2"
 
       - name: Run integration tests
         env:

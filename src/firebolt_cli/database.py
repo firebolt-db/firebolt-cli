@@ -47,13 +47,14 @@ def print_db_full_information(
 
 
 @group(
-    name="database (db)",
+    name="database",
     cls=construct_shortcuts(
         shortages={
             "list": "list (ls)",
             "ls": "list (ls)",
         }
     ),
+    short_help="Manage the databases (alias: db)",
 )
 def database() -> None:
     """
@@ -92,7 +93,7 @@ def create(**raw_config_options: str) -> None:
     print_db_full_information(rm, database, bool(raw_config_options["json"]))
 
 
-@command(name="list (ls)")
+@command(name="list", short_help="List existing databases (alias: ls)")
 @common_options
 @option(
     "--name-contains",

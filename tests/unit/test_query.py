@@ -31,7 +31,7 @@ def test_query_stdin_file_ambiguity(
         input="query from stdin",
     )
 
-    assert "both are specified" in result.stderr, "error message is incorrect"
+    assert "Multiple are specified" in result.stderr, "error message is incorrect"
     assert (
         result.exit_code != 0
     ), "the execution should fail, but cli returned success code"
@@ -117,8 +117,8 @@ def test_query_csv_output(
     query_generic_test(
         ["--csv", "--engine-name", "engine-name"],
         check_csv_correctness,
-        expected_sql="query from input;",
-        input="query from input;",
+        expected_sql="SELECT 1;",
+        input="SELECT 1;",
         cursor_mock=cursor_mock,
     )
 
@@ -163,6 +163,28 @@ def test_query_file(
     )
 
 
+def test_query_argument(
+    fs: FakeFilesystem, cursor_mock: unittest.mock.Mock, configure_cli: Callable
+) -> None:
+    """
+    test querying from command line argument;
+    """
+    configure_cli()
+
+    query_generic_test(
+        [
+            "--engine-name",
+            "engine_name",
+            "--sql",
+            "query from command-line\nsecond line",
+        ],
+        lambda x: None,
+        expected_sql="query from command-line\nsecond line",
+        input=None,
+        cursor_mock=cursor_mock,
+    )
+
+
 def test_connection_error(mocker: MockerFixture, configure_cli: Callable) -> None:
     """
     If the firebolt.db.connect raise an exception, cli should handle it properly
@@ -170,7 +192,8 @@ def test_connection_error(mocker: MockerFixture, configure_cli: Callable) -> Non
     configure_cli()
 
     connect_function_mock = mocker.patch(
-        "firebolt_cli.query.connect", side_effect=FireboltError("mocked error")
+        "firebolt_cli.query.create_connection",
+        side_effect=FireboltError("mocked error"),
     )
 
     result = CliRunner(mix_stderr=False).invoke(
@@ -243,19 +266,21 @@ def test_sql_execution_multiline(
         header_mock.name = header_name
 
     cursor_mock.description = headers
-    expected_sql = "SELECT * FROM t1; SELECT * FROM t2"
 
     result = CliRunner().invoke(
         query,
         "--engine-name engine-name".split(),
-        input=expected_sql,
+        input="SELECT * FROM t1;SELECT * FROM t2;",
     )
     assert result.exit_code == 0
 
     assert cursor_mock.nextset.call_count == 2
     assert cursor_mock.fetchall.call_count == 2
 
-    cursor_mock.execute.assert_called_once_with(expected_sql)
+    assert cursor_mock.execute.mock_calls == [
+        mock.call("SELECT * FROM t1;"),
+        mock.call("SELECT * FROM t2;"),
+    ]
 
 
 def test_query_default_engine(
@@ -274,8 +299,10 @@ def test_query_default_engine(
         "firebolt_cli.query.get_default_database_engine"
     )
 
-    _Engine = namedtuple("Engine", "name")
-    default_database_engine_mock.return_value = _Engine("default_engine_name")
+    _Engine = namedtuple("Engine", "endpoint")
+    default_database_engine_mock.return_value = _Engine(
+        "default_engine_endpoint.firebolt.io"
+    )
 
     query_generic_test(
         [],

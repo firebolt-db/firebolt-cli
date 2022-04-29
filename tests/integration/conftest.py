@@ -77,16 +77,22 @@ def api_endpoint() -> str:
 
 
 @fixture(scope="session")
+def s3_url() -> str:
+    return "s3://firebolt-publishing-public/samples/tpc-h/parquet/lineitem/"
+
+
+@fixture(scope="session")
 def configure_cli(
     api_endpoint: str,
     password: str,
     username: str,
     database_name: str,
+    engine_name: str,
 ) -> None:
     result = CliRunner().invoke(
         configure,
         [],
-        input=f"{username}\n{password}\n\n{database_name}\n\n",
+        input=f"{username}\n{password}\n\n{database_name}\n{engine_name}\n",
     )
     assert result.exit_code == 0
 
@@ -103,3 +109,31 @@ def configure_cli(
 @pytest.fixture
 def cli_runner() -> CliRunner:
     return CliRunner(mix_stderr=False)
+
+
+@pytest.fixture
+def mock_table_config() -> dict:
+    return {
+        "table_name": "lineitem",
+        "columns": [
+            {"name": "l_orderkey", "type": "LONG"},
+            {"name": "l_partkey", "type": "LONG"},
+            {"name": "l_suppkey", "type": "LONG"},
+            {"name": "l_linenumber", "type": "INT"},
+            {"name": "l_quantity", "type": "LONG"},
+            {"name": "l_extendedprice", "type": "LONG"},
+            {"name": "l_discount", "type": "LONG"},
+            {"name": "l_tax", "type": "LONG"},
+            {"name": "l_returnflag", "type": "TEXT"},
+            {"name": "l_linestatus", "type": "TEXT"},
+            {"name": "l_shipdate", "type": "TEXT"},
+            {"name": "l_commitdate", "type": "TEXT"},
+            {"name": "l_receiptdate", "type": "TEXT"},
+            {"name": "l_shipinstruct", "type": "TEXT"},
+            {"name": "l_shipmode", "type": "TEXT"},
+            {"name": "l_comment", "type": "TEXT"},
+        ],
+        "file_type": "PARQUET",
+        "object_pattern": ["*.parquet"],
+        "primary_index": ["l_orderkey", "l_linenumber"],
+    }
