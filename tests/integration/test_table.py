@@ -11,13 +11,7 @@ def drop_table(table_name: str, cli_runner: CliRunner):
     """
     sql = f"DROP table {table_name}"
 
-    with open("drop_table.sql", "w") as f:
-        f.write(sql)
-
-    result = cli_runner.invoke(
-        main,
-        f"query --file drop_table.sql ".split(),
-    )
+    result = cli_runner.invoke(main, ["query", "--sql", sql])
 
     assert result.exit_code == 0
 
@@ -37,13 +31,7 @@ def check_table_exists(
         f"WHERE table_name = '{table_config['table_name']}'"
     )
 
-    with open("num_columns.sql", "w") as f:
-        f.write(sql)
-
-    result = cli_runner.invoke(
-        main,
-        f"query --file num_columns.sql ".split(),
-    )
+    result = cli_runner.invoke(main, ["query", "--sql", sql])
 
     assert str(len(table_config["columns"]) + 2 * with_metadata) in result.stdout
     assert result.exit_code == 0

@@ -10,7 +10,7 @@ from firebolt_cli.utils import construct_resource_manager
 
 def query_simple_generic(
     additional_parameters: Sequence[str],
-    read_from_stdin: bool,
+    input_type: str,
     query: str,
     check_result: bool = True,
 ):
@@ -18,9 +18,12 @@ def query_simple_generic(
     Helper function for executing a query either from stdin or file
     """
 
-    stdin_query = query if read_from_stdin else None
-
-    if not read_from_stdin:
+    stdin_query = None
+    if input_type == "stdin":
+        stdin_query = query
+    elif input_type == "cli":
+        additional_parameters.extend(["--sql", query])
+    elif input_type == "file":
         additional_parameters.extend(["--file", "query.sql"])
         with open("query.sql", "w") as f:
             f.write(query)
@@ -39,36 +42,34 @@ def query_simple_generic(
     return result
 
 
-@pytest.mark.parametrize("read_from_stdin", [True, False])
+@pytest.mark.parametrize("input_type", ["stdin", "cli", "file"])
 def test_query_inputs(
-    configure_cli: None, engine_name: str, engine_url: str, read_from_stdin: bool
+    configure_cli: None, engine_name: str, engine_url: str, input_type: str
 ):
     """
     Execute simple from either stdin or file using both engine-name and engine-url
     """
     query_simple_generic(
         additional_parameters=["--engine-name", engine_name],
-        read_from_stdin=read_from_stdin,
+        input_type=input_type,
         query="SELECT 1;",
     )
 
     query_simple_generic(
         additional_parameters=["--engine-name", engine_url],
-        read_from_stdin=read_from_stdin,
+        input_type=input_type,
         query="SELECT 1;",
     )
 
 
-@pytest.mark.parametrize("read_from_stdin", [True, False])
-def test_query_inputs_multiline(
-    configure_cli: None, engine_url: str, read_from_stdin: bool
-):
+@pytest.mark.parametrize("input_type", ["stdin", "cli", "file"])
+def test_query_inputs_multiline(configure_cli: None, engine_url: str, input_type: str):
     """
     Execute a multiline query
     """
     query_simple_generic(
         additional_parameters=["--engine-name", engine_url],
-        read_from_stdin=read_from_stdin,
+        input_type=input_type,
         query="SELECT\n1;",
     )
 
@@ -83,7 +84,7 @@ def query_select_csv_table_configuration(engine_url: str):
 
     query_simple_generic(
         additional_parameters=["--engine-name", engine_url],
-        read_from_stdin=False,
+        input_type="cli",
         query=f"CREATE FACT TABLE {table_name} "
         "(c_id INT, c_name INT) PRIMARY INDEX c_id;",
     )
@@ -92,7 +93,7 @@ def query_select_csv_table_configuration(engine_url: str):
 
     query_simple_generic(
         additional_parameters=["--engine-name", engine_url],
-        read_from_stdin=False,
+        input_type="stdin",
         query=f"DROP TABLE {table_name};",
     )
 
@@ -112,19 +113,19 @@ def test_query_select_csv(
 
     query_simple_generic(
         additional_parameters=["--engine-name", engine_url],
-        read_from_stdin=True,
+        input_type="file",
         query=f"INSERT INTO {table_name} (c_id, c_name) VALUES (1, 213);",
     )
 
     query_simple_generic(
         additional_parameters=["--engine-name", engine_name],
-        read_from_stdin=False,
+        input_type="cli",
         query=f"INSERT INTO {table_name} (c_id, c_name) VALUES (2, 123);",
     )
 
     result = query_simple_generic(
         additional_parameters=["--engine-name", engine_name, "--csv"],
-        read_from_stdin=True,
+        input_type="stdin",
         query=f"SELECT c_id, c_name FROM {table_name} ORDER BY c_id;",
     )
 
@@ -136,14 +137,14 @@ def test_query_select_csv(
     assert data == [["1", "213"], ["2", "123"]]
 
 
-@pytest.mark.parametrize("read_from_stdin", [True, False])
-def test_query_incorrect(configure_cli: None, engine_url: str, read_from_stdin: bool):
+@pytest.mark.parametrize("input_type", ["stdin", "cli", "file"])
+def test_query_incorrect(configure_cli: None, engine_url: str, input_type: str):
     """
     Test incorrect query
     """
     result = query_simple_generic(
         additional_parameters=["--engine-name", engine_url],
-        read_from_stdin=read_from_stdin,
+        input_type=input_type,
         query="SELECT select;",
         check_result=False,
     )
@@ -182,7 +183,7 @@ def test_query_account_name(configure_cli: None, engine_name: str, account_name:
             "--account-name",
             account_name,
         ],
-        read_from_stdin=True,
+        input_type="stdin",
         query="SELECT 1;",
         check_result=True,
     )
@@ -194,7 +195,7 @@ def test_query_account_name(configure_cli: None, engine_name: str, account_name:
             "--account-name",
             "firebolt_non_existing",
         ],
-        read_from_stdin=True,
+        input_type="cli",
         query="SELECT 1;",
         check_result=False,
     )
@@ -226,7 +227,7 @@ def test_query_with_access_token(
             "--access-token",
             access_token,
         ],
-        read_from_stdin=True,
+        input_type="file",
         query="SELECT 1;",
         check_result=True,
     )

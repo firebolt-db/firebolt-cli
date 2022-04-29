@@ -31,7 +31,7 @@ def test_query_stdin_file_ambiguity(
         input="query from stdin",
     )
 
-    assert "both are specified" in result.stderr, "error message is incorrect"
+    assert "Multiple are specified" in result.stderr, "error message is incorrect"
     assert (
         result.exit_code != 0
     ), "the execution should fail, but cli returned success code"
@@ -158,6 +158,28 @@ def test_query_file(
         ["--file", "path_to_file.sql", "--engine-name", "engine_name"],
         lambda x: None,
         expected_sql="query from file\nsecond line",
+        input=None,
+        cursor_mock=cursor_mock,
+    )
+
+
+def test_query_argument(
+    fs: FakeFilesystem, cursor_mock: unittest.mock.Mock, configure_cli: Callable
+) -> None:
+    """
+    test querying from command line argument;
+    """
+    configure_cli()
+
+    query_generic_test(
+        [
+            "--engine-name",
+            "engine_name",
+            "--sql",
+            "query from command-line\nsecond line",
+        ],
+        lambda x: None,
+        expected_sql="query from command-line\nsecond line",
         input=None,
         cursor_mock=cursor_mock,
     )
