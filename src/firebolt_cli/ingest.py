@@ -78,8 +78,9 @@ def ingest(**raw_config_options: str) -> None:
             internal_table_name=raw_config_options["fact_table_name"],
         ):
             echo(
-                "Nevertheless some discrepancy between fact and external table were "
-                "found. It is recommended to do the full overwrite of the fact table.",
+                "WARNING: Nevertheless some discrepancy between fact and "
+                "external table were found. It is recommended to do the full "
+                "overwrite of the fact table.",
                 err=True,
             )
             sys.exit(os.EX_DATAERR)

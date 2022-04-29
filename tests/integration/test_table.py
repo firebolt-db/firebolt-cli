@@ -37,6 +37,26 @@ def check_table_exists(
     assert result.exit_code == 0
 
 
+def check_tables_equal_row_count(
+    cli_runner: CliRunner,
+    table_name_1: str,
+    table_name_2: str,
+):
+    """
+    Check that the provided tables have the same number of rows
+    """
+
+    sql = f"""
+        SELECT (SELECT count(*) FROM {table_name_1}) ==
+               (SELECT count(*) FROM {table_name_2}) as result
+        """
+
+    result = cli_runner.invoke(main, ["query", "--sql", sql, "--csv"])
+
+    assert result.exit_code == 0
+    assert "1" in result.stdout
+
+
 @pytest.mark.parametrize("with_metadata", [True, False])
 def test_create_internal_table(
     configure_cli: None,
@@ -147,6 +167,7 @@ def test_ingest_full_overwrite(
     )
     assert result.exit_code == 0, result.stderr
 
+    check_tables_equal_row_count(cli_runner, fact_table_name, external_table_name)
     for table_name in [fact_table_name, external_table_name]:
         drop_table(
             table_name,
@@ -199,6 +220,7 @@ def test_ingest_append(
         f"--mode append".split(),
     )
     assert result.exit_code == 0
+    check_tables_equal_row_count(cli_runner, fact_table_name, external_table_name_sub)
 
     result = cli_runner.invoke(
         main,
@@ -208,6 +230,7 @@ def test_ingest_append(
         f"--mode append".split(),
     )
     assert result.exit_code == 0
+    check_tables_equal_row_count(cli_runner, fact_table_name, external_table_name)
 
     for table_name in [fact_table_name, external_table_name, external_table_name_sub]:
         drop_table(
