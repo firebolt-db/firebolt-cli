@@ -1,6 +1,7 @@
 import csv
 import os
 import sys
+import time
 
 import click
 import sqlparse  # type: ignore
@@ -43,13 +44,48 @@ def is_data_statement(statement: sqlparse.sql.Statement) -> bool:
     return token in {"SHOW", "DESCRIBE", "EXPLAIN", "SELECT", "WITH"}
 
 
-def echo_execution_status(statement: str, success: bool) -> None:
+def format_time(execution_time: float) -> str:
+    """
+
+    Args:
+        execution_time:
+
+    Returns:
+
+    """
+    hours = int(execution_time // 3600)
+    execution_time -= hours * 3600
+
+    minutes = int(execution_time // 60)
+    execution_time -= minutes * 60
+
+    return (
+        (f"{hours}h " if hours > 0 else "")
+        + (f"{minutes}m " if minutes > 0 or hours > 0 else "")
+        + f"{execution_time:.2f}s"
+    )
+
+
+def echo_execution_status(
+    statement: str,
+    statement_idx: int,
+    statements_num: int,
+    execution_time: float,
+    success: bool,
+) -> None:
     """
     print execution summary result: Success or Error
     and a shortened statement to which it is referring
     """
     statement = format_short_statement(statement)
-    msg, color = ("Success:", "green") if success else ("Error:", "yellow")
+    counter = "" if statements_num < 2 else f"({statement_idx}/{statements_num}) "
+    formatted_time = format_time(execution_time)
+
+    msg, color = (
+        (f"{counter}Success ({formatted_time}):", "green")
+        if success
+        else (f"{counter}Error ({formatted_time}):", "yellow")
+    )
 
     echo("{} {}".format(click.style(msg, fg=color, bold=True), statement))
 
@@ -60,15 +96,22 @@ def execute_and_print(cursor: Cursor, query: str, use_csv: bool) -> None:
     and print it in csv or tabular format.
     """
     statements = sqlparse.parse(query)
-
-    for statement in statements:
+    for statement_idx, statement in enumerate(statements):
         try:
+            start_time = time.time()
             cursor.execute(str(statement))
+            execution_time = time.time() - start_time
 
             is_data = is_data_statement(statement)
 
             if not use_csv:
-                echo_execution_status(str(statement), success=True)
+                echo_execution_status(
+                    str(statement),
+                    statement_idx + 1,
+                    len(statements),
+                    execution_time,
+                    success=True,
+                )
 
             if cursor.description and is_data:
                 data = cursor.fetchall()
@@ -84,7 +127,14 @@ def execute_and_print(cursor: Cursor, query: str, use_csv: bool) -> None:
             cursor.nextset()
 
         except FireboltError as err:
-            echo_execution_status(str(statement), success=False)
+            execution_time = time.time() - start_time
+            echo_execution_status(
+                str(statement),
+                statement_idx + 1,
+                len(statements),
+                execution_time,
+                success=False,
+            )
             raise err
 
 
