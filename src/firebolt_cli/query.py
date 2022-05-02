@@ -46,12 +46,7 @@ def is_data_statement(statement: sqlparse.sql.Statement) -> bool:
 
 def format_time(execution_time: float) -> str:
     """
-
-    Args:
-        execution_time:
-
-    Returns:
-
+    format time from seconds into string in format: 99h 59m 59.99s
     """
     hours = int(execution_time // 3600)
     execution_time -= hours * 3600
