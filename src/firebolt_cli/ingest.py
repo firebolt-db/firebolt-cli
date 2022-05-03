@@ -50,7 +50,7 @@ from firebolt_cli.utils import create_connection, exit_on_firebolt_exception
 @exit_on_firebolt_exception
 def ingest(**raw_config_options: str) -> None:
     """
-    Ingest the data from external to fact table.
+    [Beta] Ingest the data from external to fact table.
     """
 
     with create_connection(**raw_config_options) as connection:

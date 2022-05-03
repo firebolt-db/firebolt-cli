@@ -26,7 +26,7 @@ To verify the installation run:
 ```shell
 $ firebolt --version
 
-firebolt, version 0.2.0
+firebolt, version 0.3.0
 ```
 
 ### Running
@@ -44,16 +44,16 @@ Successfully updated firebolt-cli configuration
 
 To run your first query, the engine has to be running. Check the status of the engine by executing the following command:
 ```shell
-$ firebolt engine status your_engine_name
+$ firebolt engine status ENGINE_NAME
 
-Engine your_engine_name current status is: ENGINE_STATUS_SUMMARY_STOPPED
+Engine ENGINE_NAME current status is: ENGINE_STATUS_SUMMARY_STOPPED
 ```
 
 If the engine is stopped, you have to start the engine by executing the following command:
 ```shell
-$ firebolt engine start your_engine_name --wait
+$ firebolt engine start ENGINE_NAME --wait
 
-Engine your_engine_name is successfully started
+Engine ENGINE_NAME is successfully started
 ```
 
 Now you are ready to run your first query, this could be done by opening the interactive query 
@@ -62,6 +62,7 @@ $ firebolt query
 
 Connection succeded
 firebolt> SELECT * FROM your_table LIMIT 5;
+Success: SELECT * FROM your_table LIMIT 5
 +--------------+-------------+-------------+--------------+
 |   l_orderkey |   l_partkey |   l_suppkey | l_shipdate   |
 +==============+=============+=============+==============+
@@ -94,10 +95,12 @@ Options:
   --help         Show this message and exit.
 
 Commands:
-  configure (config)  Store firebolt configuration parameters in config file
-  database (db)       Manage the databases
-  engine              Manage the engines
-  query               Execute sql queries
+  configure  Store firebolt configuration (alias: config)
+  database   Manage the databases (alias: db)
+  engine     Manage engines.
+  ingest     [Beta] Ingest the data from external to fact table.
+  query      Execute SQL queries.
+  table      Create tables (alias: tb)
 ```
 For more information about a specific command use flag `--help`, e.g. `firebolt database create --help`.
 
@@ -135,10 +138,9 @@ Then simply run
 $ firebolt query
 
 firebolt> .help
-.exit     Exit firebolt-cli
-.help     Show this help message
-.quit     Exit firebolt-cli
-.tables   Show tables in current database
+.help/.h       Show this help message.
+.exit/.quit/.q Exit firebolt-cli.
+.tables        Show tables in current database.
 firebolt>
 ```
 
@@ -147,6 +149,7 @@ Interactive SQL mode also supports multiline commands and multiple statements;
 firebolt> SELECT * FROM your_table
      ...> ORDER BY l_shipdate
      ...> LIMIT 2;
+Success: SELECT * FROM your_table ORDER BY l_shipdate LIMIT 2
 +--------------+-------------+-------------+--------------+
 |   l_orderkey |   l_partkey |   l_suppkey | l_shipdate   |
 +==============+=============+=============+==============+
@@ -156,11 +159,13 @@ firebolt> SELECT * FROM your_table
 +--------------+-------------+-------------+--------------+
 firebolt>
 firebolt> SELECT * FROM your_table1 LIMIT 1; SELECT * FROM your_table2 LIMIT 2;
+Success: SELECT * FROM your_table1 LIMIT 1
 +--------------+-------------+-------------+--------------+
 |   l_orderkey |   l_partkey |   l_suppkey | l_shipdate   |
 +==============+=============+=============+==============+
 |      5300614 |       66754 |        4273 | 1993-02-06   |
 +--------------+-------------+-------------+--------------+
+Success: SELECT * FROM your_table2 LIMIT 2
 +-------------+--------------+
 |   l_suppkey | l_shipdate   |
 +=============+==============+
@@ -174,8 +179,6 @@ firebolt>
 ### Managing resources
 With `firebolt-cli` it is also possible to manage databases and engines, for the full set of available features please see `firebolt engine --help` and `firebolt database --help`.
 
-### Ingestion
-`firebolt-cli` also offers data ingestion functionality. For more information see [INGEST_GETTING_STARTED.md](https://github.com/firebolt-db/firebolt-cli/blob/main/INGEST_GETTING_STARTED.md).
 
 ### Enable shell completion
 Firebolt provides tab completion for Bash (version 4.4 and up), Zsh, and Fish. In order to enable the completion for your environment you have to follow one of the steps below.
