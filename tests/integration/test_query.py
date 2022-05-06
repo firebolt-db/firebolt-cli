@@ -165,7 +165,7 @@ def test_incorrect_credentials(configure_cli: None, engine_name: str):
         env={"FIREBOLT_PASSWORD": "incorrect_password"},
     )
 
-    assert "403 Forbidden" in result.stderr
+    assert "401 Unauthorized" in result.stderr
     assert "Traceback" not in result.stderr
 
     assert result.exit_code != 0
