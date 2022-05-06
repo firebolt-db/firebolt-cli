@@ -30,38 +30,13 @@ from firebolt_cli.common_options import (
 from firebolt_cli.utils import (
     construct_resource_manager,
     construct_shortcuts,
+    convert_bytes,
     exit_on_firebolt_exception,
     get_default_database_engine,
     prepare_execution_result_line,
     prepare_execution_result_table,
     string_to_int_or_none,
 )
-
-NEW_ENGINE_SPEC = {
-    "C": list(range(1, 8)),
-    "S": list(range(1, 7)),
-    "B": list(range(1, 8)),
-    "M": list(range(1, 8)),
-}
-
-OLD_ENGINE_SPEC = {
-    "c5d": ["large", "xlarge", "2xlarge", "4xlarge", "9xlarge", "12xlarge", "metal"],
-    "i3": ["large", "xlarge", "2xlarge", "4xlarge", "8xlarge", "metal"],
-    "r5d": ["large", "xlarge", "2xlarge", "4xlarge", "8xlarge", "12xlarge", "metal"],
-    "m5d": ["large", "xlarge", "2xlarge", "4xlarge", "8xlarge", "12xlarge", "metal"],
-}
-
-AVAILABLE_OLD_ENGINES = [
-    f"{engine_family}.{engine_type}"
-    for engine_family, engine_types in OLD_ENGINE_SPEC.items()
-    for engine_type in engine_types
-]
-
-AVAILABLE_NEW_ENGINES = [
-    f"{engine_family}{engine_type}"
-    for engine_family, engine_types in NEW_ENGINE_SPEC.items()
-    for engine_type in engine_types
-]
 
 
 @group(
@@ -267,11 +242,9 @@ def engine_properties_options(create_mode: bool = True) -> Callable:
         ),
         option(
             "--spec",
-            help="Engine spec",
-            type=Choice(
-                AVAILABLE_OLD_ENGINES + AVAILABLE_NEW_ENGINES,
-                case_sensitive=False,
-            ),
+            help="Engine spec. Run 'firebolt engine get-instance-types' "
+            "to get a list of available spec",
+            type=str,
             required=create_mode,
         ),
         option(
@@ -673,6 +646,50 @@ def describe(**raw_config_options: str) -> None:
     echo_engine_information(rm, engine, bool(raw_config_options["json"]))
 
 
+@command()
+@common_options
+@option(
+    "--region",
+    help="Instances information relevant to this region.",
+    required=True,
+    type=str,
+)
+@json_option
+@exit_on_firebolt_exception
+def get_instance_types(**raw_config_options: str) -> None:
+    """
+    Get instance types (spec) available for your account
+    """
+    rm = construct_resource_manager(**raw_config_options)
+    if not raw_config_options["region"] in rm.regions.regions_by_name:
+        raise FireboltError(
+            f"Unknown region: {raw_config_options['region']}. "
+            f"Available regions: {', '.join(rm.regions.regions_by_name.keys())}"
+        )
+
+    region = rm.regions.get_by_name(name=raw_config_options["region"])
+
+    echo(
+        prepare_execution_result_table(
+            data=[
+                [
+                    spec.name,
+                    spec.cpu_virtual_cores_count,
+                    convert_bytes(spec.memory_size_bytes),
+                    convert_bytes(spec.storage_size_bytes),
+                ]
+                for spec in sorted(
+                    rm.instance_types.get_instance_types_per_region(region),
+                    key=lambda x: (x.name[0], x.cpu_virtual_cores_count),
+                )
+            ],
+            header=["name", "cpu", "memory", "storage"],
+            use_json=bool(raw_config_options["json"]),
+        )
+    )
+
+
+engine.add_command(get_instance_types)
 engine.add_command(create)
 engine.add_command(describe)
 engine.add_command(drop)
