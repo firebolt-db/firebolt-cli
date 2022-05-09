@@ -459,7 +459,6 @@ def restart(**raw_config_options: str) -> None:
 @command()
 @common_options
 @engine_properties_options(create_mode=True)
-@option("--name", help="Name of the engine.", type=str, required=True)
 @option(
     "--database-name",
     help="Name of the database the engine should be attached to.",
