@@ -82,7 +82,7 @@ firebolt>
 
 ## Usage
 
-With firebolt cli you can manage the databases and engines, as well as run SQL quires.
+With firebolt cli you can manage the databases and engines, as well as run SQL queries.
 ```
 $ firebolt --help
 
