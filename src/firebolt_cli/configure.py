@@ -74,6 +74,9 @@ def configure(ctx: Context, **raw_config_options: str) -> None:
                 )
                 config[key] = value
 
+        if "account_name" in config:
+            config["account_name"] = config["account_name"].lower()
+
         update_config(**config)
         echo("Successfully updated firebolt-cli configuration")
 

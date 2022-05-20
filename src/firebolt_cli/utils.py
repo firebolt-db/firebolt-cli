@@ -121,7 +121,7 @@ def construct_resource_manager(**raw_config_options: str) -> ResourceManager:
     settings_dict = {
         "server": raw_config_options["api_endpoint"],
         "default_region": raw_config_options.get("region", ""),
-        "account_name": raw_config_options["account_name"],
+        "account_name": raw_config_options["account_name"].lower(),
     }
 
     if raw_config_options["access_token"] is not None:
@@ -334,7 +334,7 @@ def create_connection(
         "engine_name": None,
         "database": database_name,
         "api_endpoint": api_endpoint,
-        "account_name": account_name,
+        "account_name": account_name.lower(),
     }
 
     # decide what to propagate engine_name or url
