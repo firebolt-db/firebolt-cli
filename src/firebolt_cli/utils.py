@@ -11,10 +11,10 @@ import sqlparse  # type: ignore
 from appdirs import user_config_dir
 from click import Command, Context, Group, echo
 from firebolt.common import Settings
-from firebolt.common.exception import FireboltError
 from firebolt.db.connection import Connection, connect
 from firebolt.model.engine import Engine
 from firebolt.service.manager import ResourceManager
+from firebolt.utils.exception import FireboltError
 from firebolt_ingest.aws_settings import (
     AWSCredentials,
     AWSCredentialsKeySecret,

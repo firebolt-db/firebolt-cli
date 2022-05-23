@@ -8,8 +8,8 @@ import pytest
 from appdirs import user_config_dir
 from click.testing import CliRunner
 from firebolt.common import Settings
-from firebolt.common.exception import FireboltError
 from firebolt.service.manager import ResourceManager
+from firebolt.utils.exception import FireboltError
 from httpx import HTTPStatusError
 from pyfakefs.fake_filesystem import FakeFilesystem
 from pytest_mock import MockerFixture

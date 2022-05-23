@@ -5,7 +5,7 @@ from unittest import mock
 
 import pytest
 from click.testing import CliRunner
-from firebolt.common.exception import AttachedEngineInUseError, FireboltError
+from firebolt.utils.exception import AttachedEngineInUseError, FireboltError
 from pyfakefs.fake_filesystem import FakeFilesystem
 
 from firebolt_cli.database import create, describe, drop, list, update

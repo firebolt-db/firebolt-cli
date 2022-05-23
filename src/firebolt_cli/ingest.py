@@ -3,7 +3,7 @@ import sys
 from typing import Any, Dict
 
 from click import Choice, command, echo, option
-from firebolt.common.exception import FireboltError
+from firebolt.utils.exception import FireboltError
 from firebolt_ingest.table_service import TableService
 
 from firebolt_cli.common_options import (

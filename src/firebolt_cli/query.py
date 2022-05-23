@@ -6,9 +6,10 @@ import time
 import click
 import sqlparse  # type: ignore
 from click import command, echo, option
-from firebolt.common.exception import FireboltError
 from firebolt.db import Cursor
+from firebolt.utils.exception import FireboltError
 from prompt_toolkit.application import get_app
+from prompt_toolkit.completion import DynamicCompleter, ThreadedCompleter
 from prompt_toolkit.enums import DEFAULT_BUFFER
 from prompt_toolkit.filters import Condition
 from prompt_toolkit.lexers import PygmentsLexer
@@ -20,6 +21,7 @@ from firebolt_cli.common_options import (
     common_options,
     default_from_config_file,
 )
+from firebolt_cli.completer import FireboltAutoCompleter
 from firebolt_cli.utils import (
     construct_resource_manager,
     create_connection,
@@ -184,10 +186,13 @@ def enter_interactive_session(cursor: Cursor, use_csv: bool) -> None:
     """
     echo("Connection succeeded.")
 
+    completer = FireboltAutoCompleter()
+
     session: PromptSession = PromptSession(
         message="firebolt> ",
         prompt_continuation="     ...> ",
         lexer=PygmentsLexer(PostgresLexer),
+        completer=ThreadedCompleter(DynamicCompleter(lambda: completer)),
         multiline=is_multiline_needed,
     )
 

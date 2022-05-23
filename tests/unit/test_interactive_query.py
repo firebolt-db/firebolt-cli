@@ -2,7 +2,7 @@ import unittest
 from unittest import mock
 
 import pytest
-from firebolt.common.exception import FireboltError
+from firebolt.utils.exception import FireboltError
 from prompt_toolkit.application import create_app_session
 from prompt_toolkit.input import create_pipe_input
 from prompt_toolkit.output import DummyOutput
