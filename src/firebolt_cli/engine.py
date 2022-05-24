@@ -13,6 +13,7 @@ from click import (
     group,
     option,
 )
+from firebolt.common.exception import FireboltError
 from firebolt.model.engine import Engine
 from firebolt.service.manager import ResourceManager
 from firebolt.service.types import (
@@ -20,7 +21,6 @@ from firebolt.service.types import (
     EngineType,
     WarmupMethod,
 )
-from firebolt.utils.exception import FireboltError
 
 from firebolt_cli.common_options import (
     common_options,

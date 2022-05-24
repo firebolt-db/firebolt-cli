@@ -6,8 +6,8 @@ import time
 import click
 import sqlparse  # type: ignore
 from click import command, echo, option
+from firebolt.common.exception import FireboltError
 from firebolt.db import Connection, Cursor
-from firebolt.utils.exception import FireboltError
 from prompt_toolkit.application import get_app
 from prompt_toolkit.completion import DynamicCompleter, ThreadedCompleter
 from prompt_toolkit.enums import DEFAULT_BUFFER

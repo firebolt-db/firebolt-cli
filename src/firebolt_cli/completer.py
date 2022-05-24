@@ -1,8 +1,8 @@
 import threading
 from typing import Iterator, List
 
+from firebolt.common.exception import FireboltError
 from firebolt.db import Cursor
-from firebolt.utils.exception import FireboltError
 from prompt_toolkit import HTML
 from prompt_toolkit.completion import CompleteEvent, Completer, Completion
 from prompt_toolkit.document import Document

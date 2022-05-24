@@ -5,12 +5,12 @@ from unittest.mock import ANY
 
 import pytest
 from click.testing import CliRunner, Result
+from firebolt.common.exception import FireboltError
 from firebolt.service.types import (
     EngineStatusSummary,
     EngineType,
     WarmupMethod,
 )
-from firebolt.utils.exception import FireboltError
 from pytest_mock import MockerFixture
 
 from firebolt_cli.engine import (

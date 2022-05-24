@@ -6,7 +6,7 @@ from unittest import mock
 
 import pytest
 from click.testing import CliRunner
-from firebolt.utils.exception import FireboltError
+from firebolt.common.exception import FireboltError
 from pyfakefs.fake_filesystem import FakeFilesystem
 from pytest_mock import MockerFixture
 
