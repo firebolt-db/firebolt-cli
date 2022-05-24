@@ -1,114 +1,47 @@
-from typing import Iterator
+import threading
+from typing import Iterator, List
 
+from firebolt.db import Cursor
+from firebolt.utils.exception import FireboltError
 from prompt_toolkit import HTML
 from prompt_toolkit.completion import CompleteEvent, Completer, Completion
 from prompt_toolkit.document import Document
 
-keywords = [
-    "ALTER DATABASE",
-    "ALTER ENGINE",
-    "ALTER TABLE",
-    "AND",
-    "AS",
-    "AS SELECT",
-    "ASC",
-    "ATTACH ENGINE",
-    "AUTO_STOP",
-    "CASCADE",
-    "COMPRESSION",
-    "COPY",
-    "CREATE AGGREGATING INDEX",
-    "CREATE AND GENERATE AGGREGATING INDEX",
-    "CREATE DATABASE",
-    "CREATE DIMENSION TABLE",
-    "CREATE ENGINE",
-    "CREATE EXTERNAL TABLE",
-    "CREATE FACT TABLE",
-    "CREATE JOIN INDEX",
-    "CREATE VIEW",
-    "CREDENTIALS",
-    "CSV",
-    "DEFAULT",
-    "DESC",
-    "DESCRIBE",
-    "DROP",
-    "DROP AGGREGATING INDEX",
-    "DROP DATABASE",
-    "DROP ENGINE",
-    "DROP INDEX",
-    "DROP JOIN INDEX",
-    "DROP PARTITION",
-    "DROP TABLE",
-    "DROP VIEW",
-    "EXPLAIN",
-    "EXPLAIN USING JSON",
-    "EXPLAIN USING TEXT",
-    "FALSE",
-    "FILE_NAME_PREFIX",
-    "FROM",
-    "GROUP BY",
-    "GZIP",
-    "HAVING",
-    "IF EXISTS",
-    "IF NOT EXISTS",
-    "IN",
-    "INCLUDE_QUERY_ID_IN_FILE_NAME",
-    "INSERT INTO",
-    "JSON",
-    "LIMIT",
-    "MAX_FILE_SIZE",
-    "NONE",
-    "NOT NULL",
-    "NULL",
-    "NULLS FIRST",
-    "NULLS LAST",
-    "OBJECT_PATTERN",
-    "OFFSET",
-    "ON",
-    "OR",
-    "OR REPLACE",
-    "ORDER BY",
-    "OVERWRITE_EXISTING_FILES",
-    "PARQUET",
-    "PARTITION",
-    "PARTITION BY",
-    "PRIMARY INDEX",
-    "REFRESH ALL JOIN INDEXES ON TABLE",
-    "REFRESH JOIN INDEX",
-    "RENAME TO",
-    "SCALE",
-    "SELECT",
-    "SELECT DISTINCT",
-    "SET",
-    "SHOW CACHE",
-    "SHOW COLUMNS",
-    "SHOW DATABASES",
-    "SHOW ENGINES",
-    "SHOW INDEXES",
-    "SHOW TABLES",
-    "SHOW VIEWS",
-    "SINGLE_FILE",
-    "SPEC",
-    "START ENGINE",
-    "STOP ENGINE",
-    "TO",
-    "TRUE",
-    "TSV",
-    "TYPE",
-    "UNION",
-    "UNIQUE",
-    "URL",
-    "VALUES",
-    "WARMUP",
-    "WHERE",
-    "WITH",
-]
+from firebolt_cli.keywords import KEYWORDS
 
 
 class FireboltAutoCompleter(Completer):
     """
     Implements autocompletion for firebolt cli
     """
+
+    def __init__(self, cursor: Cursor):
+        """
+        Args:
+            cursor: Cursor for executing queries and getting table and column names
+        """
+        self.column_names: List = []
+        self.table_names: List[str] = []
+
+        self.thread = threading.Thread(
+            target=self.get_table_and_column_names, args=(cursor,), kwargs={}
+        )
+        self.thread.start()
+
+    def get_table_and_column_names(self, cursor: Cursor) -> None:
+        """ """
+        try:
+            cursor.execute(
+                "SELECT table_name, column_name, data_type "
+                "FROM information_schema.columns"
+            )
+
+            data = cursor.fetchall()
+            self.table_names = list(set(str(d[0]) for d in data))
+            self.column_names = data
+
+        except FireboltError:
+            pass
 
     def get_completions(
         self, document: Document, complete_event: CompleteEvent
@@ -117,29 +50,38 @@ class FireboltAutoCompleter(Completer):
         Returns: a list of completions based on the document.text.
         Supports autocompletion by:
             - keywords
+            - table and columns names
 
         """
-
-        text = document.text
+        text = document.text_before_cursor
         delimiters = [" ", ",", "\n", ")", ";"]
         last_position = max([text.rfind(d) for d in delimiters])
 
         last_word = text[last_position + 1 :].upper()
-        keyword_suggestions = [
-            keyword for keyword in keywords if keyword.startswith(last_word)
-        ]
+
+        suggestions: List = []
+        suggestions.extend((table_name, "TABLE") for table_name in self.table_names)
+        suggestions.extend(
+            (column_name, f"COLUMN ({column_type}, {tb_name})")
+            for tb_name, column_name, column_type in self.column_names
+        )
+        suggestions.extend((keyword, "KEYWORD") for keyword in KEYWORDS)
 
         if len(last_word) == 0:
             return
 
         offset = len(last_word)
-        for keyword in keyword_suggestions:
+        for label, meta in suggestions:
+
+            if not label.upper().startswith(last_word):
+                continue
+
             yield Completion(
-                keyword,
+                label,
                 start_position=-offset,
                 display=HTML(
-                    f"<b><style color='red'>{keyword[:offset]}</style></b>"
-                    f"{keyword[offset:]}"
+                    f"<b><style color='red'>{label[:offset]}</style></b>"
+                    f"{label[offset:]}"
                 ),
-                display_meta="KEYWORD",
+                display_meta=meta,
             )

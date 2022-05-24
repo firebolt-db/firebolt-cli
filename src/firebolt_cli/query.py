@@ -6,7 +6,7 @@ import time
 import click
 import sqlparse  # type: ignore
 from click import command, echo, option
-from firebolt.db import Cursor
+from firebolt.db import Connection, Cursor
 from firebolt.utils.exception import FireboltError
 from prompt_toolkit.application import get_app
 from prompt_toolkit.completion import DynamicCompleter, ThreadedCompleter
@@ -180,13 +180,13 @@ def process_internal_command(internal_command: str) -> str:
     raise ValueError(f"Not known internal command: {internal_command}")
 
 
-def enter_interactive_session(cursor: Cursor, use_csv: bool) -> None:
+def enter_interactive_session(connection: Connection, use_csv: bool) -> None:
     """
     Enters an infinite loop of interactive shell.
     """
     echo("Connection succeeded.")
 
-    completer = FireboltAutoCompleter()
+    completer = FireboltAutoCompleter(connection.cursor())
 
     session: PromptSession = PromptSession(
         message="firebolt> ",
@@ -196,6 +196,7 @@ def enter_interactive_session(cursor: Cursor, use_csv: bool) -> None:
         multiline=is_multiline_needed,
     )
 
+    cursor = connection.cursor()
     while 1:
         try:
             sql_query = session.prompt()
@@ -269,11 +270,12 @@ def query(**raw_config_options: str) -> None:
         ).endpoint
 
     with create_connection(**raw_config_options) as connection:
-        cursor = connection.cursor()
 
         if sql_query:
             # if query is available, then execute, print result and exit
-            execute_and_print(cursor, sql_query, bool(raw_config_options["csv"]))
+            execute_and_print(
+                connection.cursor(), sql_query, bool(raw_config_options["csv"])
+            )
         else:
             # otherwise start the interactive session
-            enter_interactive_session(cursor, bool(raw_config_options["csv"]))
+            enter_interactive_session(connection, bool(raw_config_options["csv"]))
