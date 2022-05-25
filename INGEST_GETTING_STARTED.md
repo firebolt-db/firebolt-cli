@@ -1,11 +1,12 @@
 # Ingest with firebolt-cli 
+> **NOTE:**  The ingestion functionality is currently in beta testing.
 
 This is a getting started tutorial, how to use firebolt-cli for ingestion. It is based upon Firebolt [Getting started tutorial](https://docs.firebolt.io/getting-started.html). And it will teach you to create external and fact tables using `firebolt-cli` and also ingest the data from one to another.
 
 ### Prerequisites:
 Before starting, you must have:
 - `firebolt-cli` installed and configured.
-- Database in `us-east-1` region. 
+- Database in `us-east-1` region (for this tutorial, as the bucket is in `us-east-1`). 
 - General-purpose engine attached to the database and running (recommended `B2` instance type).
 
 ## Create an external and fact tables
