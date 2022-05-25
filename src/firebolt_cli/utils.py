@@ -3,7 +3,7 @@ import os
 import re
 import sys
 from configparser import ConfigParser
-from functools import wraps
+from functools import lru_cache, wraps
 from typing import Callable, Dict, Optional, Sequence, Tuple, Type
 
 import keyring
@@ -194,6 +194,7 @@ def read_from_stdin_buffer() -> Optional[str]:
     return sys.stdin.buffer.read().decode("utf-8") or None
 
 
+@lru_cache()
 def read_config() -> Dict[str, str]:
     """
     :return: dict with parameters from config file, or empty dict if no parameters found
@@ -264,6 +265,8 @@ def update_config(**kwargs: str) -> None:
 
         with open(config_file, "w") as cf:
             config.write(cf)
+
+        read_config.cache_clear()
 
 
 def exit_on_firebolt_exception(func: Callable) -> Callable:
