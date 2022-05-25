@@ -117,11 +117,14 @@ def construct_resource_manager(**raw_config_options: str) -> ResourceManager:
     Propagate raw_config_options to the settings and construct a resource manager
     :rtype: object
     """
+    account_name = raw_config_options.get("account_name", None)
+    if account_name is not None:
+        account_name = account_name.lower()
 
     settings_dict = {
         "server": raw_config_options["api_endpoint"],
         "default_region": raw_config_options.get("region", ""),
-        "account_name": raw_config_options["account_name"].lower(),
+        "account_name": account_name,
     }
 
     if raw_config_options["access_token"] is not None:
@@ -168,10 +171,6 @@ def convert_bytes(num: Optional[float]) -> str:
             return format_output(num, x)
 
     return format_output(num, x[::-1])
-
-
-def string_to_int_or_none(val: Optional[str]) -> Optional[int]:
-    return int(val) if val else None
 
 
 def read_from_file(fpath: Optional[str]) -> Optional[str]:
@@ -321,20 +320,22 @@ def create_connection(
     password: str,
     access_token: Optional[str],
     api_endpoint: str,
-    account_name: str,
+    account_name: Optional[str],
     **kwargs: str,
 ) -> Connection:
     """
     Create connection based on access_token if provided,
     in case of failure use username/password
     """
+    if account_name is not None:
+        account_name = account_name.lower()
 
     params = {
         "engine_url": None,
         "engine_name": None,
         "database": database_name,
         "api_endpoint": api_endpoint,
-        "account_name": account_name.lower(),
+        "account_name": account_name,
     }
 
     # decide what to propagate engine_name or url

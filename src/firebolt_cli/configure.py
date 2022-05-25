@@ -74,7 +74,7 @@ def configure(ctx: Context, **raw_config_options: str) -> None:
                 )
                 config[key] = value
 
-        if "account_name" in config:
+        if config.get("account_name", None) is not None:
             config["account_name"] = config["account_name"].lower()
 
         update_config(**config)
