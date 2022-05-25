@@ -13,9 +13,10 @@ from firebolt_cli.completer import FireboltAutoCompleter
         ("SOMETHING D", ["DROP"]),
         ("select 1;s", ["SELECT"]),
         ("     in", ["INSERT INTO"]),
+        ("select mi", ["MIN(<expr>)"]),
     ],
 )
-def test_complete_keywords(test_input, expected):
+def test_complete(test_input, expected):
     """
     test completer some cases
     """
@@ -43,6 +44,7 @@ def test_complete_table_names():
     suggestions = {i.text for i in completer.get_completions(document, None)}
     assert "table_name" in suggestions
 
-    document.text_before_cursor = "col"
+    document.text_before_cursor = "SELECT * FROM table_name WHERE col"
+    document.text = document.text_before_cursor
     suggestions = {i.text for i in completer.get_completions(document, None)}
     assert "column_name" in suggestions
