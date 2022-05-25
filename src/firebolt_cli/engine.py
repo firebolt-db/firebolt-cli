@@ -34,7 +34,6 @@ from firebolt_cli.utils import (
     get_default_database_engine,
     prepare_execution_result_line,
     prepare_execution_result_table,
-    string_to_int_or_none,
 )
 
 NEW_ENGINE_SPEC = {
@@ -357,13 +356,14 @@ def echo_engine_information(
     def _format_auto_stop(auto_stop: str) -> str:
         """
         auto_stop could be set either 0 or to a value with ending with m or s
-        if it is the case then we print its timedelta or "off"
+        if it is the case then we print its timedelta or "ALWAYS ON"
         if not the original auto_stop parameter is returned
         """
-        if auto_stop == "0":
-            return "off"
-
         val = int(auto_stop[:-1])
+
+        if val == 0:
+            return "ALWAYS ON"
+
         if auto_stop[-1] == "m":
             return str(timedelta(minutes=val))
         elif auto_stop[-1] == "s":
@@ -529,7 +529,9 @@ def create(**raw_config_options: str) -> None:
 )
 @json_option
 @exit_on_firebolt_exception
-def update(use_spot: Optional[bool], **raw_config_options: str) -> None:
+def update(
+    use_spot: Optional[bool], auto_stop: int, scale: int, **raw_config_options: str
+) -> None:
     """
     Update engine parameters. Engine should be stopped before updating.
     """
@@ -539,13 +541,13 @@ def update(use_spot: Optional[bool], **raw_config_options: str) -> None:
             for param in [
                 "spec",
                 "type",
-                "scale",
-                "auto_stop",
                 "warmup",
                 "description",
             ]
         )
+        or scale is not None
         or use_spot is not None
+        or auto_stop is not None
     )
 
     if not something_to_update:
@@ -560,8 +562,8 @@ def update(use_spot: Optional[bool], **raw_config_options: str) -> None:
         name=raw_config_options["new_engine_name"],
         spec=raw_config_options["spec"],
         engine_type=ENGINE_TYPES.get(raw_config_options["type"], None),
-        scale=string_to_int_or_none(raw_config_options["scale"]),
-        auto_stop=string_to_int_or_none(raw_config_options["auto_stop"]),
+        scale=scale,
+        auto_stop=auto_stop,
         warmup=WARMUP_METHODS.get(raw_config_options["warmup"], None),
         description=raw_config_options["description"],
         use_spot=use_spot,
