@@ -173,10 +173,6 @@ def convert_bytes(num: Optional[float]) -> str:
     return format_output(num, x[::-1])
 
 
-def string_to_int_or_none(val: Optional[str]) -> Optional[int]:
-    return int(val) if val else None
-
-
 def read_from_file(fpath: Optional[str]) -> Optional[str]:
     """
     read from file, if fpath is not None, otherwise return empty string
