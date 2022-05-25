@@ -1,8 +1,10 @@
 import csv
 import os
 import sys
+import time
 
 import click
+import sqlparse  # type: ignore
 from click import command, echo, option
 from firebolt.common.exception import FireboltError
 from firebolt.db import Cursor
@@ -22,6 +24,7 @@ from firebolt_cli.utils import (
     construct_resource_manager,
     create_connection,
     exit_on_firebolt_exception,
+    format_short_statement,
     get_default_database_engine,
     read_from_file,
     read_from_stdin_buffer,
@@ -33,28 +36,105 @@ TABLES_COMMAND = ".tables"
 INTERNAL_COMMANDS = EXIT_COMMANDS + HELP_COMMANDS + [TABLES_COMMAND]
 
 
-def print_result_if_any(cursor: Cursor, use_csv: bool) -> None:
+def is_data_statement(statement: sqlparse.sql.Statement) -> bool:
     """
-    Fetch the data from cursor and print it in csv or tabular format
+    true if the statement is supposed to output some data
     """
-    while 1:
-        if cursor.description:
-            data = cursor.fetchall()
+    token = statement.token_first(skip_cm=True, skip_ws=True).normalized
+    return token in {"SHOW", "DESCRIBE", "EXPLAIN", "SELECT", "WITH"}
 
-            headers = [i.name for i in cursor.description]
-            if use_csv:
-                writer = csv.writer(sys.stdout)
-                writer.writerow(headers)
-                writer.writerows(data)
-            else:
-                echo(tabulate(data, headers=headers, tablefmt="grid"))
 
-        if not cursor.nextset():
-            break
+def format_time(execution_time: float) -> str:
+    """
+    format time from seconds into string in format: 99h 59m 59.99s
+    """
+    hours = int(execution_time // 3600)
+    execution_time -= hours * 3600
+
+    minutes = int(execution_time // 60)
+    execution_time -= minutes * 60
+
+    return (
+        (f"{hours}h " if hours > 0 else "")
+        + (f"{minutes}m " if minutes > 0 or hours > 0 else "")
+        + f"{execution_time:.2f}s"
+    )
+
+
+def echo_execution_status(
+    statement: str,
+    statement_idx: int,
+    statements_num: int,
+    execution_time: float,
+    success: bool,
+) -> None:
+    """
+    print execution summary result: Success or Error
+    and a shortened statement to which it is referring
+    """
+    statement = format_short_statement(statement)
+    counter = "" if statements_num < 2 else f"({statement_idx}/{statements_num}) "
+    formatted_time = format_time(execution_time)
+
+    msg, color = (
+        (f"{counter}Success ({formatted_time}):", "green")
+        if success
+        else (f"{counter}Error ({formatted_time}):", "yellow")
+    )
+
+    echo("{} {}".format(click.style(msg, fg=color, bold=True), statement))
+
+
+def execute_and_print(cursor: Cursor, query: str, use_csv: bool) -> None:
+    """
+    Execute multiple queries one by one, fetch the data from cursor
+    and print it in csv or tabular format.
+    """
+    statements = sqlparse.parse(query)
+    for statement_idx, statement in enumerate(statements):
+        try:
+            start_time = time.time()
+            cursor.execute(str(statement))
+            execution_time = time.time() - start_time
+
+            is_data = is_data_statement(statement)
+
+            if not use_csv:
+                echo_execution_status(
+                    str(statement),
+                    statement_idx + 1,
+                    len(statements),
+                    execution_time,
+                    success=True,
+                )
+
+            if cursor.description and is_data:
+                data = cursor.fetchall()
+
+                headers = [i.name for i in cursor.description]
+                if use_csv:
+                    writer = csv.writer(sys.stdout)
+                    writer.writerow(headers)
+                    writer.writerows(data)
+                else:
+                    echo(tabulate(data, headers=headers, tablefmt="grid"))
+
+            cursor.nextset()
+
+        except FireboltError as err:
+            execution_time = time.time() - start_time
+            echo_execution_status(
+                str(statement),
+                statement_idx + 1,
+                len(statements),
+                execution_time,
+                success=False,
+            )
+            raise err
 
 
 @Condition
-def is_multilne_needed() -> bool:
+def is_multiline_needed() -> bool:
     """
     function reads the buffer of the interactive prompt
     and return true if the continuation of the request is required
@@ -72,9 +152,9 @@ def show_help() -> None:
     Print help message with internal commands of interactive sql execution
     """
     rows = [
-        ["/".join(HELP_COMMANDS), "Show this help message"],
-        ["/".join(EXIT_COMMANDS), "Exit firebolt-cli"],
-        [TABLES_COMMAND, "Show tables in current database"],
+        ["/".join(HELP_COMMANDS), "Show this help message."],
+        ["/".join(EXIT_COMMANDS), "Exit firebolt-cli."],
+        [TABLES_COMMAND, "Show tables in current database."],
     ]
 
     for internal_command, help_message in rows:
@@ -100,15 +180,15 @@ def process_internal_command(internal_command: str) -> str:
 
 def enter_interactive_session(cursor: Cursor, use_csv: bool) -> None:
     """
-    Enters an infinite loop of interactive shell
+    Enters an infinite loop of interactive shell.
     """
-    echo("Connection succeeded")
+    echo("Connection succeeded.")
 
     session: PromptSession = PromptSession(
         message="firebolt> ",
         prompt_continuation="     ...> ",
         lexer=PygmentsLexer(PostgresLexer),
-        multiline=is_multilne_needed,
+        multiline=is_multiline_needed,
     )
 
     while 1:
@@ -122,8 +202,7 @@ def enter_interactive_session(cursor: Cursor, use_csv: bool) -> None:
             if len(sql_query) == 0:
                 continue
 
-            cursor.execute(sql_query)
-            print_result_if_any(cursor, use_csv=use_csv)
+            execute_and_print(cursor, sql_query, use_csv)
         except FireboltError as err:
             echo(err)
             continue
@@ -142,35 +221,40 @@ def enter_interactive_session(cursor: Cursor, use_csv: bool) -> None:
     envvar="FIREBOLT_ENGINE_NAME",
     callback=default_from_config_file(required=False),
 )
-@option("--csv", help="Provide query output in csv format", is_flag=True, default=False)
+@option(
+    "--csv", help="Provide query output in CSV format.", is_flag=True, default=False
+)
 @option(
     "--database-name",
     envvar="FIREBOLT_DATABASE_NAME",
-    help="Database name to use for SQL queries",
+    help="Database name to use for SQL queries.",
     callback=default_from_config_file(),
 )
 @option(
     "--file",
-    help="Path to the file with the sql query to be executed",
+    help="Path to the file with the SQL query to be executed.",
     default=None,
     type=click.Path(exists=True),
 )
+@option("--sql", help="SQL statement, that will be executed", required=False)
 @exit_on_firebolt_exception
 def query(**raw_config_options: str) -> None:
     """
-    Execute sql queries
+    Execute SQL queries.
     """
     stdin_query = read_from_stdin_buffer()
     file_query = read_from_file(raw_config_options["file"])
+    args_query = raw_config_options["sql"]
 
-    if stdin_query and file_query:
+    if bool(stdin_query) + bool(file_query) + bool(args_query) > 1:
         echo(
-            "SQL request should be either read from stdin or file, both are specified",
+            "SQL request should be either read from stdin or file or "
+            "command line arguments. Multiple are specified.",
             err=True,
         )
         sys.exit(os.EX_USAGE)
 
-    sql_query = stdin_query or file_query
+    sql_query = stdin_query or file_query or args_query
 
     # if engine_name is not set, use default engine
     if raw_config_options["engine_name"] is None:
@@ -184,8 +268,7 @@ def query(**raw_config_options: str) -> None:
 
         if sql_query:
             # if query is available, then execute, print result and exit
-            cursor.execute(sql_query)
-            print_result_if_any(cursor, bool(raw_config_options["csv"]))
+            execute_and_print(cursor, sql_query, bool(raw_config_options["csv"]))
         else:
             # otherwise start the interactive session
             enter_interactive_session(cursor, bool(raw_config_options["csv"]))

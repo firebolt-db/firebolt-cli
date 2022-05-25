@@ -6,6 +6,7 @@ from firebolt.common.exception import FireboltError
 from prompt_toolkit.application import create_app_session
 from prompt_toolkit.input import create_pipe_input
 from prompt_toolkit.output import DummyOutput
+from pytest_mock import MockerFixture
 
 from firebolt_cli.query import (
     INTERNAL_COMMANDS,
@@ -127,11 +128,12 @@ def test_process_internal_command_help(capsys):
         assert command in captured.out
 
 
-def test_interactive_multi_statement() -> None:
+def test_interactive_multi_statement(mocker: MockerFixture) -> None:
     """
     Test interactive sql happy path,
     multistatement is passed
     """
+    execute_and_print_mock = mocker.patch("firebolt_cli.query.execute_and_print")
     with create_pipe_input() as inp:
         cursor_mock = unittest.mock.MagicMock()
         cursor_mock.nextset.side_effect = [True, None]
@@ -143,6 +145,6 @@ def test_interactive_multi_statement() -> None:
         with create_app_session(input=inp, output=DummyOutput()):
             enter_interactive_session(cursor_mock, False)
 
-    cursor_mock.execute.assert_called_once_with("SELECT 1; SELECT 2")
-
-    assert cursor_mock.nextset.call_count == 2
+    execute_and_print_mock.assert_called_once_with(
+        cursor_mock, "SELECT 1; SELECT 2", False
+    )

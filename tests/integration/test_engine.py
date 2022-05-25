@@ -101,6 +101,7 @@ def test_engine_update_single_parameter(database_name: str) -> None:
         "description": _ParamValue(
             "new_engine_description", "new_engine_description", "description"
         ),
+        "use-spot": _ParamValue("", True, "is_spot_instance"),
     }
 
     for param, value in ENGINE_UPDATE_PARAMS.items():

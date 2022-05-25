@@ -4,12 +4,13 @@ from collections import namedtuple
 from typing import Callable, Optional, Sequence
 from unittest import mock
 
+import pytest
 from click.testing import CliRunner
 from firebolt.common.exception import FireboltError
 from pyfakefs.fake_filesystem import FakeFilesystem
 from pytest_mock import MockerFixture
 
-from firebolt_cli.query import query
+from firebolt_cli.query import format_time, query
 
 
 def test_query_stdin_file_ambiguity(
@@ -31,7 +32,7 @@ def test_query_stdin_file_ambiguity(
         input="query from stdin",
     )
 
-    assert "both are specified" in result.stderr, "error message is incorrect"
+    assert "Multiple are specified" in result.stderr, "error message is incorrect"
     assert (
         result.exit_code != 0
     ), "the execution should fail, but cli returned success code"
@@ -117,8 +118,8 @@ def test_query_csv_output(
     query_generic_test(
         ["--csv", "--engine-name", "engine-name"],
         check_csv_correctness,
-        expected_sql="query from input;",
-        input="query from input;",
+        expected_sql="SELECT 1;",
+        input="SELECT 1;",
         cursor_mock=cursor_mock,
     )
 
@@ -158,6 +159,28 @@ def test_query_file(
         ["--file", "path_to_file.sql", "--engine-name", "engine_name"],
         lambda x: None,
         expected_sql="query from file\nsecond line",
+        input=None,
+        cursor_mock=cursor_mock,
+    )
+
+
+def test_query_argument(
+    fs: FakeFilesystem, cursor_mock: unittest.mock.Mock, configure_cli: Callable
+) -> None:
+    """
+    test querying from command line argument;
+    """
+    configure_cli()
+
+    query_generic_test(
+        [
+            "--engine-name",
+            "engine_name",
+            "--sql",
+            "query from command-line\nsecond line",
+        ],
+        lambda x: None,
+        expected_sql="query from command-line\nsecond line",
         input=None,
         cursor_mock=cursor_mock,
     )
@@ -244,19 +267,21 @@ def test_sql_execution_multiline(
         header_mock.name = header_name
 
     cursor_mock.description = headers
-    expected_sql = "SELECT * FROM t1; SELECT * FROM t2"
 
     result = CliRunner().invoke(
         query,
         "--engine-name engine-name".split(),
-        input=expected_sql,
+        input="SELECT * FROM t1;SELECT * FROM t2;",
     )
     assert result.exit_code == 0
 
     assert cursor_mock.nextset.call_count == 2
     assert cursor_mock.fetchall.call_count == 2
 
-    cursor_mock.execute.assert_called_once_with(expected_sql)
+    assert cursor_mock.execute.mock_calls == [
+        mock.call("SELECT * FROM t1;"),
+        mock.call("SELECT * FROM t2;"),
+    ]
 
 
 def test_query_default_engine(
@@ -290,3 +315,20 @@ def test_query_default_engine(
 
     construct_resource_manager_mock.assert_called_once()
     default_database_engine_mock.assert_called_once()
+
+
+@pytest.mark.parametrize(
+    "execution_time, formatted_time",
+    [
+        (0.23, "0.23s"),
+        (3.12, "3.12s"),
+        (345.03, "5m 45.03s"),
+        (3600.32, "1h 0m 0.32s"),
+        (7264.3, "2h 1m 4.30s"),
+    ],
+)
+def test_format_time(execution_time: float, formatted_time: str):
+    """
+    test format time of query execution
+    """
+    assert format_time(execution_time) == formatted_time

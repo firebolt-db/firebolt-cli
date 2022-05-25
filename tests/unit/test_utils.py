@@ -6,6 +6,7 @@ from unittest import mock
 
 import pytest
 from appdirs import user_config_dir
+from click.testing import CliRunner
 from firebolt.common import Settings
 from firebolt.common.exception import FireboltError
 from firebolt.service.manager import ResourceManager
@@ -13,11 +14,13 @@ from httpx import HTTPStatusError
 from pyfakefs.fake_filesystem import FakeFilesystem
 from pytest_mock import MockerFixture
 
+from firebolt_cli.main import main
 from firebolt_cli.utils import (
     construct_resource_manager,
     convert_bytes,
     create_aws_creds_from_environ,
     create_connection,
+    format_short_statement,
     get_default_database_engine,
     prepare_execution_result_line,
     prepare_execution_result_table,
@@ -426,3 +429,37 @@ def test_create_aws_creds_from_environ_invalide():
     ):
         with pytest.raises(FireboltError):
             create_aws_creds_from_environ()
+
+
+def test_main_incorrect_command():
+    """
+    test calling non_existing_command should result into an error and a help message
+    """
+    result = CliRunner().invoke(main, ["non_existing_command"])
+    assert result.exit_code != 0
+
+    assert "Usage:" in result.stdout
+    assert "Error: No such command" in result.stdout
+
+
+@pytest.mark.parametrize(
+    "argument, expected",
+    [
+        ("SELECT 1", "SELECT 1"),
+        ("/**/ SELECT 1", "SELECT 1"),
+        ("-- SELECT 1;\nSELECT 2", "SELECT 2"),
+        ("SELECT        23          \n FROM table\n", "SELECT 23 FROM table"),
+    ],
+)
+def test_format_short_statement(argument: str, expected: str):
+    """
+    test common cases of format_short_statement
+    """
+    assert format_short_statement(argument) == expected
+
+
+def test_format_short_statement_truncate():
+    """
+    test format_short_statement with truncate_long_string paramter
+    """
+    assert format_short_statement("SELECT 123", truncate_long_string=6) == "SELECT ..."
