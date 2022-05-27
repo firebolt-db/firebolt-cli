@@ -119,6 +119,7 @@ def test_engine_update_single_parameter(database_name: str) -> None:
     assert result.exit_code == 0
 
 
+@pytest.mark.skip(reason="firebolt-sdk 0.8.0 is required")
 def test_engine_update_auto_stop(stopped_engine_name: str) -> None:
     """
     test engine update --auto_stop, set to zero means it is always on
