@@ -1,8 +1,9 @@
 import threading
-from typing import Iterator, List
+from typing import Dict, Iterator, List
 
 from firebolt.common.exception import FireboltError
 from firebolt.db import Cursor
+from httpx import HTTPStatusError
 from prompt_toolkit import HTML
 from prompt_toolkit.completion import CompleteEvent, Completer, Completion
 from prompt_toolkit.document import Document
@@ -40,7 +41,7 @@ class FireboltAutoCompleter(Completer):
         Args:
             cursor: Cursor for executing queries and getting table and column names
         """
-        self.column_names: List = []
+        self.table_columns_mapping: Dict[str, List] = {}
         self.suggestions: List = []
         self.suggestions.extend((keyword, "KEYWORD") for keyword in KEYWORDS)
         self.suggestions.extend((function, "FUNCTION") for function in FUNCTIONS)
@@ -61,12 +62,19 @@ class FireboltAutoCompleter(Completer):
             )
 
             data = cursor.fetchall()
-            self.column_names = data
+            for tb_name, col_name, dtype in data:
+                tb_name = str(tb_name)
+                if tb_name not in self.table_columns_mapping:
+                    self.table_columns_mapping[tb_name] = []
 
-            table_names = list(set(str(d[0]) for d in data))
-            self.suggestions.extend((table_name, "TABLE") for table_name in table_names)
+                self.table_columns_mapping[tb_name].append((col_name, dtype))
 
-        except FireboltError:
+            self.suggestions.extend(
+                (table_name, "TABLE")
+                for table_name in self.table_columns_mapping.keys()
+            )
+
+        except (FireboltError, HTTPStatusError):
             pass
 
     def get_completions(
@@ -83,11 +91,14 @@ class FireboltAutoCompleter(Completer):
         if len(last_word) == 0:
             return
 
-        current_suggestions: List = self.suggestions + [
-            (column_name, f"COLUMN ({column_type}, {tb_name})")
-            for tb_name, column_name, column_type in self.column_names
-            if tb_name in document.text
-        ]
+        current_suggestions: List = self.suggestions.copy()
+
+        for tb_name, columns in self.table_columns_mapping.items():
+            if tb_name in document.text:
+                current_suggestions.extend(
+                    (column_name, f"COLUMN ({column_type}, {tb_name})")
+                    for column_name, column_type in columns
+                )
 
         offset = len(last_word)
         for label, meta in current_suggestions:
