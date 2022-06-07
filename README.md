@@ -11,13 +11,13 @@ Firebolt cli is a tool for connecting to firebolt, managing firebolt resources, 
 
 ## Quickstart
 
-For detailed installation and usage instructions, see [Using the CLI](https://docs.firebolt.io/firebolt-doc-staging/using-the-cli.html) in Firebolt documentation.
+For detailed installation and usage instructions, see [Using the CLI](https://docs.firebolt.io/using-the-cli.html) in Firebolt documentation.
 
 ### Prerequisites
 
 * `python>=3.7` and `pip` are required. See the [Python web page](https://www.python.org/downloads/).
 
-* Running commands requires an active Firebolt account and a user with privileges to perform operations. For more information, see [Subscribing to Firebolt and creating an account](https://docs.firebolt.io/firebolt-doc-staging/managing-your-account/creating-an-account.html).
+* Running commands requires an active Firebolt account and a user with privileges to perform operations. For more information, see [Subscribing to Firebolt and creating an account](https://docs.firebolt.io/managing-your-account/creating-an-account.html).
 
 ### Installing using pip
 
@@ -37,7 +37,7 @@ firebolt, version 0.3.0q
 
 ### Setting configuration parameters
 
-Use the `firebolt configure` command to set configuration defaults. You can override these when using a specific commands. For more information, see [Configuring CLI parameters](https://docs.firebolt.io/firebolt-doc-staging/using-the-cli.html#configuring-cli-parameters) in Firebolt documentation.
+Use the `firebolt configure` command to set configuration defaults. You can override these when using a specific commands. For more information, see [Configuring CLI parameters](https://docs.firebolt.io/using-the-cli.html#configuring-cli-parameters) in Firebolt documentation.
 
 ## Contributing
 
