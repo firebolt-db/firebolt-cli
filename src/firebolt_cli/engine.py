@@ -235,15 +235,15 @@ def stop(**raw_config_options: str) -> None:
         action="stop",
         accepted_initial_states={
             EngineStatusSummary.ENGINE_STATUS_SUMMARY_RUNNING,
-            EngineStatusSummary.ENGINE_STATUS_SUMMARY_STARTING,
+            EngineStatusSummary.ENGINE_STATUS_SUMMARY_STARTING_INITIALIZING,
         },
         accepted_final_states={EngineStatusSummary.ENGINE_STATUS_SUMMARY_STOPPED},
         accepted_final_nowait_states={
             EngineStatusSummary.ENGINE_STATUS_SUMMARY_STOPPING,
             EngineStatusSummary.ENGINE_STATUS_SUMMARY_STOPPED,
         },
-        wrong_initial_state_error="Engine {name} is not in a running or starting state."
-        " The current engine state is {state}.",
+        wrong_initial_state_error="Engine {name} is not in a "
+        "running or initializing state. The current engine state is {state}.",
         success_message="Engine {name} is successfully stopped.",
         success_message_nowait="Stop request for engine {name} is successfully sent.",
         failure_message="Engine {name} failed to stop. Engine status: {status}.",
@@ -702,5 +702,4 @@ engine.add_command(restart)
 engine.add_command(stop)
 engine.add_command(status)
 engine.add_command(update)
-engine.add_command(start)
 engine.add_command(list)
