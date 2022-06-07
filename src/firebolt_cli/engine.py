@@ -613,6 +613,12 @@ def status(**raw_config_options: str) -> None:
     default=None,
     type=str,
 )
+@option(
+    "--database",
+    help="Only list engines attached to this database.",
+    default=None,
+    type=str,
+)
 @json_option
 @exit_on_firebolt_exception
 def list(**raw_config_options: str) -> None:
@@ -622,10 +628,27 @@ def list(**raw_config_options: str) -> None:
 
     rm = construct_resource_manager(**raw_config_options)
 
-    engines = rm.engines.get_many(
-        name_contains=raw_config_options["name_contains"],
-        order_by="ENGINE_ORDER_NAME_ASC",
-    )
+    if raw_config_options["database"]:
+        database = rm.databases.get_by_name(raw_config_options["database"])
+        engines = rm.bindings.get_engines_bound_to_database(database)
+
+        # Filter engines by name
+        if raw_config_options["name_contains"]:
+            name_contains = raw_config_options["name_contains"].lower()
+            engines = [
+                engine
+                for engine in engines
+                if engine.name
+                if name_contains in engine.name.lower()
+            ]
+
+        # Sort engines in alphabetical order
+        engines = sorted(engines, key=lambda x: x.name)
+    else:
+        engines = rm.engines.get_many(
+            name_contains=raw_config_options["name_contains"],
+            order_by="ENGINE_ORDER_NAME_ASC",
+        )
 
     if not raw_config_options["json"]:
         echo("Found {num_engines} engines".format(num_engines=len(engines)))

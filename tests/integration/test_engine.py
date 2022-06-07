@@ -255,3 +255,29 @@ def test_engine_list(engine_name: str, stopped_engine_name: str) -> None:
     output = json.loads(result.stdout)
     assert len(output) >= 1
     assert all([stopped_engine_name in engine["name"] for engine in output])
+
+
+def test_engine_list_database(
+    engine_name: str, stopped_engine_name: str, database_name: str
+) -> None:
+    """
+    test engine list with filter by database
+    """
+    result = CliRunner(mix_stderr=False).invoke(
+        main, f"engine list --database {database_name} --json".split()
+    )
+    output = json.loads(result.stdout)
+
+    assert len(output) == 2
+    assert engine_name in {engine["name"] for engine in output}
+    assert stopped_engine_name in {engine["name"] for engine in output}
+
+    result = CliRunner(mix_stderr=False).invoke(
+        main,
+        f"engine list --database {database_name} --json "
+        f"--name-contains {stopped_engine_name}".split(),
+    )
+    output = json.loads(result.stdout)
+
+    assert len(output) == 1
+    assert output[0]["name"] == stopped_engine_name
