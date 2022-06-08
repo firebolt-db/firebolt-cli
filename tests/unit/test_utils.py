@@ -3,11 +3,12 @@ import os
 from collections import namedtuple
 from typing import Sequence
 from unittest import mock
+from unittest.mock import ANY
 
 import pytest
 from appdirs import user_config_dir
 from click.testing import CliRunner
-from firebolt.common import Settings
+from firebolt.client.auth import Token, UsernamePassword
 from firebolt.common.exception import FireboltError
 from firebolt.service.manager import ResourceManager
 from httpx import HTTPStatusError
@@ -183,16 +184,15 @@ def test_construct_resource_manager_password(mocker: MockerFixture):
         account_name="firebolt",
         access_token=None,
     )
-    rm.assert_called_once_with(
-        Settings(
-            user="username",
-            password="password",
-            default_region="",
-            account_name="firebolt",
-            server="endpoint.firebolt.io",
-            access_token=None,
-        )
-    )
+
+    settings_arg = rm.call_args.args[0]
+    assert settings_arg.default_region == ""
+    assert settings_arg.account_name == "firebolt"
+    assert settings_arg.server == "endpoint.firebolt.io"
+
+    assert isinstance(settings_arg.auth, UsernamePassword)
+    assert settings_arg.auth.username == "username"
+    assert settings_arg.auth.password == "password"
 
 
 def test_construct_resource_manager_token(mocker: MockerFixture):
@@ -205,16 +205,14 @@ def test_construct_resource_manager_token(mocker: MockerFixture):
         account_name="firebolt",
         access_token="access_token",
     )
-    rm.assert_called_once_with(
-        Settings(
-            user=None,
-            password=None,
-            default_region="",
-            account_name="firebolt",
-            server="endpoint.firebolt.io",
-            access_token="access_token",
-        )
-    )
+
+    settings_arg = rm.call_args.args[0]
+    assert settings_arg.default_region == ""
+    assert settings_arg.account_name == "firebolt"
+    assert settings_arg.server == "endpoint.firebolt.io"
+
+    assert isinstance(settings_arg.auth, Token)
+    assert settings_arg.auth.token == "access_token"
 
 
 def test_construct_resource_manager_invalid_token(mocker: MockerFixture):
@@ -231,27 +229,22 @@ def test_construct_resource_manager_invalid_token(mocker: MockerFixture):
 
     assert rm.call_count == 2
 
-    rm.assert_any_call(
-        Settings(
-            user=None,
-            password=None,
-            default_region="",
-            account_name="firebolt",
-            server="endpoint.firebolt.io",
-            access_token="invalid_access_token",
-        )
-    )
+    settings_arg = rm.call_args_list[0].args[0]
+    assert settings_arg.default_region == ""
+    assert settings_arg.account_name == "firebolt"
+    assert settings_arg.server == "endpoint.firebolt.io"
 
-    rm.assert_any_call(
-        Settings(
-            user="username",
-            password="password",
-            default_region="",
-            account_name="firebolt",
-            server="endpoint.firebolt.io",
-            access_token=None,
-        )
-    )
+    assert isinstance(settings_arg.auth, Token)
+    assert settings_arg.auth.token == "invalid_access_token"
+
+    settings_arg = rm.call_args_list[1].args[0]
+    assert settings_arg.default_region == ""
+    assert settings_arg.account_name == "firebolt"
+    assert settings_arg.server == "endpoint.firebolt.io"
+
+    assert isinstance(settings_arg.auth, UsernamePassword)
+    assert settings_arg.auth.username == "username"
+    assert settings_arg.auth.password == "password"
 
 
 def test_database_get_default_engine_happy_path(
@@ -317,13 +310,17 @@ def test_create_connection_engine_name(
     create_connection(**mock_connection_params)
 
     connect_function_mock.assert_called_once_with(
-        access_token=mock_connection_params["access_token"],
+        auth=ANY,
         account_name=mock_connection_params["account_name"],
         api_endpoint=mock_connection_params["api_endpoint"],
         database=mock_connection_params["database_name"],
         engine_name=mock_connection_params["engine_name"],
         engine_url=None,
     )
+    auth_arg = connect_function_mock.call_args.kwargs["auth"]
+
+    assert isinstance(auth_arg, Token)
+    assert auth_arg.token == mock_connection_params["access_token"]
 
 
 def test_create_connection_engine_url(
@@ -337,13 +334,18 @@ def test_create_connection_engine_url(
     create_connection(**mock_connection_params)
 
     connect_function_mock.assert_called_once_with(
-        access_token=mock_connection_params["access_token"],
+        auth=ANY,
         account_name=mock_connection_params["account_name"],
         api_endpoint=mock_connection_params["api_endpoint"],
         database=mock_connection_params["database_name"],
         engine_name=None,
         engine_url=mock_connection_params["engine_name"],
     )
+
+    auth_arg = connect_function_mock.call_args.kwargs["auth"]
+
+    assert isinstance(auth_arg, Token)
+    assert auth_arg.token == mock_connection_params["access_token"]
 
 
 def test_create_connection_user_password(
@@ -357,14 +359,19 @@ def test_create_connection_user_password(
     create_connection(**mock_connection_params)
 
     connect_function_mock.assert_called_once_with(
-        username=mock_connection_params["username"],
-        password=mock_connection_params["password"],
+        auth=ANY,
         account_name=mock_connection_params["account_name"],
         api_endpoint=mock_connection_params["api_endpoint"],
         database=mock_connection_params["database_name"],
         engine_name=mock_connection_params["engine_name"],
         engine_url=None,
     )
+
+    auth_arg = connect_function_mock.call_args.kwargs["auth"]
+
+    assert isinstance(auth_arg, UsernamePassword)
+    assert auth_arg.username == mock_connection_params["username"]
+    assert auth_arg.password == mock_connection_params["password"]
 
 
 def test_create_aws_creds_from_environ_happy_path():
