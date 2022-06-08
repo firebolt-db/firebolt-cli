@@ -10,6 +10,7 @@ import keyring
 import sqlparse  # type: ignore
 from appdirs import user_config_dir
 from click import Command, Context, Group, echo
+from firebolt.client.auth import Token, UsernamePassword
 from firebolt.common import Settings
 from firebolt.common.exception import FireboltError
 from firebolt.db.connection import Connection, connect
@@ -132,9 +133,7 @@ def construct_resource_manager(**raw_config_options: str) -> ResourceManager:
             return ResourceManager(
                 Settings(
                     **settings_dict,
-                    user=None,
-                    password=None,
-                    access_token=raw_config_options["access_token"],
+                    auth=Token(raw_config_options["access_token"]),
                 )
             )
         except HTTPStatusError:
@@ -143,9 +142,9 @@ def construct_resource_manager(**raw_config_options: str) -> ResourceManager:
     return ResourceManager(
         Settings(
             **settings_dict,
-            user=raw_config_options["username"],
-            password=raw_config_options["password"],
-            access_token=None,
+            auth=UsernamePassword(
+                raw_config_options["username"], raw_config_options["password"]
+            ),
         )
     )
 
@@ -334,8 +333,6 @@ def create_connection(
         account_name = account_name.lower()
 
     params = {
-        "engine_url": None,
-        "engine_name": None,
         "database": database_name,
         "api_endpoint": api_endpoint,
         "account_name": account_name,
@@ -346,11 +343,11 @@ def create_connection(
 
     if access_token:
         try:
-            return connect(**params, access_token=access_token)
+            return connect(**params, auth=Token(access_token))
         except FireboltError:
             pass
 
-    return connect(**params, username=username, password=password)
+    return connect(**params, auth=UsernamePassword(username, password))
 
 
 def create_aws_key_secret_creds_from_environ() -> Optional[AWSCredentialsKeySecret]:
