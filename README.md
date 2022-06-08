@@ -32,12 +32,15 @@ $ firebolt --version
 ```
 
 ```shell
-firebolt, version 0.3.0q
+firebolt, version 0.3.0
 ```
 
 ### Setting configuration parameters
 
 Use the `firebolt configure` command to set configuration defaults. You can override these when using a specific commands. For more information, see [Configuring CLI parameters](https://docs.firebolt.io/using-the-cli.html#configuring-cli-parameters) in Firebolt documentation.
+
+## Interactive query
+![Interactive query demo](firebolt-cli.gif)
 
 ## Contributing
 
