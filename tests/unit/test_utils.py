@@ -16,6 +16,7 @@ from pytest_mock import MockerFixture
 
 from firebolt_cli.main import main
 from firebolt_cli.utils import (
+    config_file,
     construct_resource_manager,
     convert_bytes,
     create_aws_creds_from_environ,
@@ -156,6 +157,20 @@ def test_config_get_set_all(fs: FakeFilesystem) -> None:
     assert config["engine_name"] == "engine_name_value"
     assert config["database_name"] == "database_name_value"
     assert config["password"] == "password_value"
+
+
+def test_config_caching(fs: FakeFilesystem) -> None:
+    """
+    Check that read_config function actually uses cached information, and returns
+    the same config even after config file was deleted
+    """
+    fs.create_dir(user_config_dir())
+    update_config(username="username_value")
+
+    old_config = read_config()
+    fs.remove(config_file)
+    new_config = read_config()
+    assert old_config == new_config
 
 
 def test_construct_resource_manager_password(mocker: MockerFixture):

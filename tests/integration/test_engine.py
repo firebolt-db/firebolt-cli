@@ -101,6 +101,7 @@ def test_engine_update_single_parameter(database_name: str) -> None:
         "description": _ParamValue(
             "new_engine_description", "new_engine_description", "description"
         ),
+        "use-spot": _ParamValue("", True, "is_spot_instance"),
     }
 
     for param, value in ENGINE_UPDATE_PARAMS.items():
@@ -116,6 +117,28 @@ def test_engine_update_single_parameter(database_name: str) -> None:
 
     runner.invoke(main, f"engine drop {engine_name} --yes")
     assert result.exit_code == 0
+
+
+@pytest.mark.skip(reason="firebolt-sdk 0.8.0 is required")
+def test_engine_update_auto_stop(stopped_engine_name: str) -> None:
+    """
+    test engine update --auto_stop, set to zero means it is always on
+    """
+    runner = CliRunner(mix_stderr=False)
+
+    result = runner.invoke(
+        main,
+        f"engine update --name {stopped_engine_name} --auto-stop 0".split(),
+    )
+    assert "ALWAYS ON" in result.stdout
+    assert result.exit_code == 0
+
+    result = runner.invoke(
+        main,
+        f"engine update --name {stopped_engine_name} --auto-stop 313".split(),
+    )
+    assert result.exit_code == 0
+    assert "5:13:00" in result.stdout
 
 
 def test_engine_restart_stopped(

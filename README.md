@@ -11,214 +11,33 @@ Firebolt cli is a tool for connecting to firebolt, managing firebolt resources, 
 
 ## Quickstart
 
+For detailed installation and usage instructions, see [Using the CLI](https://docs.firebolt.io/using-the-cli.html) in Firebolt documentation.
+
 ### Prerequisites
-`python>=3.7` and `pip` should be installed beforehand. For this go to [Python official page](https://www.python.org/downloads/). 
 
-Also, you will need a firebolt account with information about username, password, database, and engine. For more information go to [Firebolt](https://firebolt.io).
+* `python>=3.7` and `pip` are required. See the [Python web page](https://www.python.org/downloads/).
 
-### Installation
-Once you have all prerequisites in place, you can install the firebolt cli via pip:
+* Running commands requires an active Firebolt account and a user with privileges to perform operations. For more information, see [Subscribing to Firebolt and creating an account](https://docs.firebolt.io/managing-your-account/creating-an-account.html).
+
+### Installing using pip
+
 ```shell
 $ pip install firebolt-cli
 ```
 
-To verify the installation run:
+To verify, check the version.
+
 ```shell
 $ firebolt --version
-
-firebolt, version 0.3.0
 ```
-
-### Running
-The next step is to configure the firebolt cli:
-```shell
-$ firebolt configure
-
-Username [None]: your_username
-Password [None]: ********
-Account name [None]: your_firebolt_account_name
-Database name [None]: your_database
-Engine name or URL [None]: your_engine_name_or_url
-Successfully updated firebolt-cli configuration
-```
-
-To run your first query, the engine has to be running. Check the status of the engine by executing the following command:
-```shell
-$ firebolt engine status ENGINE_NAME
-
-Engine ENGINE_NAME current status is: ENGINE_STATUS_SUMMARY_STOPPED
-```
-
-If the engine is stopped, you have to start the engine by executing the following command:
-```shell
-$ firebolt engine start ENGINE_NAME --wait
-
-Engine ENGINE_NAME is successfully started
-```
-
-Now you are ready to run your first query, this could be done by opening the interactive query 
-```
-$ firebolt query
-
-Connection succeded
-firebolt> SELECT * FROM your_table LIMIT 5;
-Success: SELECT * FROM your_table LIMIT 5
-+--------------+-------------+-------------+--------------+
-|   l_orderkey |   l_partkey |   l_suppkey | l_shipdate   |
-+==============+=============+=============+==============+
-|      5300614 |       66754 |        4273 | 1993-02-06   |
-+--------------+-------------+-------------+--------------+
-|      5300614 |      131772 |        6799 | 1993-02-21   |
-+--------------+-------------+-------------+--------------+
-|      5300615 |      106001 |        8512 | 1997-12-10   |
-+--------------+-------------+-------------+--------------+
-|      5300615 |      157833 |        7834 | 1997-12-01   |
-+--------------+-------------+-------------+--------------+
-|      5300640 |       36106 |        8610 | 1994-09-10   |
-+--------------+-------------+-------------+--------------+
-firebolt>
-```
-
-
-## Usage
-
-With firebolt cli you can manage the databases and engines, as well as run SQL quires.
-```
-$ firebolt --help
-
-Usage: firebolt [OPTIONS] COMMAND [ARGS]...
-
-  Firebolt command line utility.
-
-Options:
-  -V, --version  Show the version and exit.
-  --help         Show this message and exit.
-
-Commands:
-  configure  Store firebolt configuration (alias: config)
-  database   Manage the databases (alias: db)
-  engine     Manage engines.
-  ingest     [Beta] Ingest the data from external to fact table.
-  query      Execute SQL queries.
-  table      Create tables (alias: tb)
-```
-For more information about a specific command use flag `--help`, e.g. `firebolt database create --help`.
-
-### Configure 
-There are three ways to configure firebolt cli:
-1. Run `firebolt config` and setting all parameters from STDIN.
-
-Or you can set particular parameters by running configure with additional command-line arguments:
-```shell
-$ firebolt config --username your_user_name --account-name firebolt
-```
-
-2. Pass additional command-line arguments to each command.
 
 ```shell
-$ firebolt query --username your_user_name \
-                 --engine-name your_running_engine
+firebolt, version 0.3.0q
 ```
 
-3. Use environment variable
-```shell
-$ export FIREBOLT_USERNAME=your_username
-$ export FIREBOLT_PASSWORD=your_password
-$ export FIREBOLT_ACCOUNT_NAME=your_account_name
-$ export FIREBOLT_API_ENDPOINT=api_endpoint
-$ export FIREBOLT_ENGINE_NAME_URL=your_engine_name_or_url
-$ export FIREBOLT_ACCESS_TOKEN=access_token
-$ firebolt query
-```
+### Setting configuration parameters
 
-### Interactive SQL
-To enter interactive SQL, firebolt CLI has to be configured using one of three methods from [configuration section](#configure).
-Then simply run 
-```
-$ firebolt query
-
-firebolt> .help
-.help/.h       Show this help message.
-.exit/.quit/.q Exit firebolt-cli.
-.tables        Show tables in current database.
-firebolt>
-```
-
-Interactive SQL mode also supports multiline commands and multiple statements;  
-```
-firebolt> SELECT * FROM your_table
-     ...> ORDER BY l_shipdate
-     ...> LIMIT 2;
-Success: SELECT * FROM your_table ORDER BY l_shipdate LIMIT 2
-+--------------+-------------+-------------+--------------+
-|   l_orderkey |   l_partkey |   l_suppkey | l_shipdate   |
-+==============+=============+=============+==============+
-|      1552449 |      159307 |        1823 | 1992-01-02   |
-+--------------+-------------+-------------+--------------+
-|      5431079 |       78869 |        6391 | 1992-01-02   |
-+--------------+-------------+-------------+--------------+
-firebolt>
-firebolt> SELECT * FROM your_table1 LIMIT 1; SELECT * FROM your_table2 LIMIT 2;
-Success: SELECT * FROM your_table1 LIMIT 1
-+--------------+-------------+-------------+--------------+
-|   l_orderkey |   l_partkey |   l_suppkey | l_shipdate   |
-+==============+=============+=============+==============+
-|      5300614 |       66754 |        4273 | 1993-02-06   |
-+--------------+-------------+-------------+--------------+
-Success: SELECT * FROM your_table2 LIMIT 2
-+-------------+--------------+
-|   l_suppkey | l_shipdate   |
-+=============+==============+
-|        8189 | 1996-03-03   |
-+-------------+--------------+
-|        8656 | 1996-02-27   |
-+-------------+--------------+
-firebolt> 
-```
-
-### Managing resources
-With `firebolt-cli` it is also possible to manage databases and engines, for the full set of available features please see `firebolt engine --help` and `firebolt database --help`.
-
-
-### Enable shell completion
-Firebolt provides tab completion for Bash (version 4.4 and up), Zsh, and Fish. In order to enable the completion for your environment you have to follow one of the steps below.
-
-#### Bash
-Add this to ~/.bashrc:
-```shell
-eval "$(_FIREBOLT_COMPLETE=bash_source firebolt)"
-```
-
-#### Zsh
-Add this to ~/.zshrc:
-```shell
-eval "$(_FIREBOLT_COMPLETE=zsh_source firebolt)"
-```
-
-#### Fish
-Add this to ~/.config/fish/completions/firebolt.fish:
-
-```shell
-eval (env _FIREBOLT_COMPLETE=fish_source firebolt)
-```
-
-The completion in `firebolt-cli` is based on `Click` library. For more information please visit `Click` [documentation](https://click.palletsprojects.com/en/8.1.x/shell-completion/#enabling-completion).
-
-## Docker
-To start the work with docker, 
-you should first pull the docker from the repository.
-```shell
-docker pull ghcr.io/firebolt-db/firebolt-cli:latest
-```
-
-Afterward, you will be able to run the cli and passing all configuration variables as environment variables. 
-
-Here is an example of getting a list of available engines: 
-```shell
-docker run -e FIREBOLT_USERNAME="your_username"\
-           -e FIREBOLT_PASSWORD="your_password"\  
-           ghcr.io/firebolt-db/firebolt-cli:latest engine list
-```
+Use the `firebolt configure` command to set configuration defaults. You can override these when using a specific commands. For more information, see [Configuring CLI parameters](https://docs.firebolt.io/using-the-cli.html#configuring-cli-parameters) in Firebolt documentation.
 
 ## Contributing
 
