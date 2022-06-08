@@ -17,6 +17,7 @@ from firebolt_cli.engine import (
     create,
     describe,
     drop,
+    get_instance_types,
     restart,
     start,
     status,
@@ -813,3 +814,21 @@ def test_engine_describe_not_found(configure_resource_manager: Sequence) -> None
 
     assert result.stderr != ""
     assert result.exit_code != 0
+
+
+def test_engine_get_instance_types(configure_resource_manager: Sequence) -> None:
+    """
+    Happy path of getting a list of instance types
+    """
+
+    rm, _, _, _, _ = configure_resource_manager
+
+    result = CliRunner(mix_stderr=False).invoke(
+        get_instance_types, ["--region", "us-east-1", "--json"]
+    )
+
+    output = json.loads(result.stdout)
+    assert len(output) == 1
+
+    assert result.stderr == ""
+    assert result.exit_code == 0

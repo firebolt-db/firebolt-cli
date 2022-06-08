@@ -172,10 +172,20 @@ def test_engine_restart_running(engine_name: str, cli_runner: CliRunner) -> None
     assert "running" in result.stdout.lower()
 
 
-def test_engine_create_minimal(engine_name: str, database_name: str):
+def test_engine_create_minimal(
+    engine_name: str, database_name: str, default_region: str
+):
     """
     test engine create/drop with minimum amount of parameters
     """
+    result = CliRunner(mix_stderr=False).invoke(
+        main,
+        f"engine get-instance-types --json " f"--region {default_region} ".split(),
+    )
+    assert result.exit_code == 0
+    instance_list = json.loads(result.stdout)
+    instance_spec = instance_list[0]["name"]
+
     engine_name = f"{engine_name}_test"
 
     result = CliRunner(mix_stderr=False).invoke(
@@ -183,7 +193,7 @@ def test_engine_create_minimal(engine_name: str, database_name: str):
         f"engine create --json "
         f"--name {engine_name} "
         f"--database-name {database_name} "
-        f"--spec C1 ".split(),
+        f"--spec {instance_spec}".split(),
     )
     assert result.exit_code == 0
     create_output = json.loads(result.stdout)

@@ -53,14 +53,25 @@ def configure_resource_manager(mocker: MockerFixture) -> ResourceManager:
     rm = mocker.patch.object(ResourceManager, "__init__", return_value=None)
 
     databases_mock = mocker.patch.object(ResourceManager, "databases", create=True)
+    instance_types_mock = mocker.patch.object(
+        ResourceManager, "instance_types", create=True
+    )
     engines_mock = mocker.patch.object(ResourceManager, "engines", create=True)
     mocker.patch.object(ResourceManager, "bindings", create=True)
     regions_mock = mocker.patch.object(ResourceManager, "regions", create=True)
     mocker.patch.object(ResourceManager, "engine_revisions", create=True)
-    mocker.patch.object(ResourceManager, "instance_types", create=True)
 
     _Region = namedtuple("Region", "name")
     regions_mock.get_by_key.return_value = _Region("us-east-1")
+    regions_mock.regions_by_name = dict({"us-east-1": _Region("us-east-1")})
+
+    _InstanceType = namedtuple(
+        "InstanceType",
+        "name, cpu_virtual_cores_count, memory_size_bytes, storage_size_bytes",
+    )
+    instance_types_mock.get_instance_types_per_region.return_value = [
+        _InstanceType("B1", 2, 123, 321)
+    ]
 
     database_mock = unittest.mock.MagicMock()
     database_mock.name = "mock_db_name"
