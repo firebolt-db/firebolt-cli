@@ -1,4 +1,5 @@
 import json
+from collections import namedtuple
 from typing import Callable, Optional, Sequence
 from unittest import mock
 from unittest.mock import ANY
@@ -17,6 +18,7 @@ from firebolt_cli.engine import (
     create,
     describe,
     drop,
+    get_instance_types,
     restart,
     start,
     status,
@@ -836,3 +838,29 @@ def test_engine_describe_not_found(configure_resource_manager: Sequence) -> None
 
     assert result.stderr != ""
     assert result.exit_code != 0
+
+
+def test_engine_get_instance_types(configure_resource_manager: Sequence) -> None:
+    """
+    Happy path of getting a list of instance types
+    """
+
+    rm, _, _ = configure_resource_manager
+
+    _InstanceType = namedtuple(
+        "InstanceType",
+        "name, cpu_virtual_cores_count, memory_size_bytes, storage_size_bytes",
+    )
+    rm.instance_types.get_instance_types_per_region.return_value = [
+        _InstanceType("B1", 2, 123, 321)
+    ]
+
+    result = CliRunner(mix_stderr=False).invoke(
+        get_instance_types, ["--region", "us-east-1", "--json"]
+    )
+
+    output = json.loads(result.stdout)
+    assert len(output) == 1
+
+    assert result.stderr == ""
+    assert result.exit_code == 0
