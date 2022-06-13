@@ -1,4 +1,4 @@
-from typing import Callable
+from typing import Callable, Optional
 
 import pytest
 from click.testing import CliRunner
@@ -9,13 +9,21 @@ from pytest_mock import MockerFixture
 from firebolt_cli.ingest import ingest
 
 
-@pytest.mark.parametrize("mode", ["overwrite", "append"])
+@pytest.mark.parametrize(
+    "mode, ex_table_name",
+    [
+        ("overwrite", None),
+        ("overwrite", "custom_ex_table"),
+        ("append", "custom_ex_table"),
+    ],
+)
 def test_ingest_happy_path(
     configure_cli: Callable,
     mocker: MockerFixture,
     fs: FakeFilesystem,
     mock_table_config: str,
     mode: str,
+    ex_table_name: Optional[str],
 ):
     """check calling insert_full_overwrite"""
     configure_cli()
@@ -37,33 +45,35 @@ def test_ingest_happy_path(
     result = CliRunner().invoke(
         ingest,
         [
-            "--external-table-name",
-            "ex_table",
             "--fact-table-name",
             "table",
             "--engine-name",
             "engine_name",
             "--mode",
             mode,
-        ],
+        ]
+        + (["--external-table-name", ex_table_name] if ex_table_name else []),
     )
+
+    ex_table_name = ex_table_name or "ex_table"
+
     connect_function_mock.assert_called_once()
     ts.assert_called_once()
     if mode == "overwrite":
         ts_ingest_full.assert_called_once_with(
-            external_table_name="ex_table",
+            external_table_name=ex_table_name,
             internal_table_name="table",
             firebolt_dont_wait_for_upload_to_s3=False,
         )
     else:
         ts_ingest_append.assert_called_once_with(
-            external_table_name="ex_table",
+            external_table_name=ex_table_name,
             internal_table_name="table",
             firebolt_dont_wait_for_upload_to_s3=False,
         )
 
     ts_verify_ingestion.assert_called_once_with(
-        external_table_name="ex_table", internal_table_name="table"
+        external_table_name=ex_table_name, internal_table_name="table"
     )
 
     assert result.exit_code == 0
