@@ -28,15 +28,16 @@ from firebolt_cli.utils import create_connection, exit_on_firebolt_exception
     callback=default_from_config_file(required=True),
 )
 @option(
-    "--external-table-name",
-    help="Name of external table from which the data will be fetched.",
-    required=True,
-)
-@option(
     "--fact-table-name",
     help="Name of the fact table where the data will be ingested. "
     "The table must exist.",
     required=True,
+)
+@option(
+    "--external-table-name",
+    help="Name of external table from which the data will be fetched. "
+    'If left empty, fact-table-name with "ex_" prefix is used.',
+    required=False,
 )
 @option(
     "--mode",
@@ -56,9 +57,14 @@ def ingest(**raw_config_options: str) -> None:
     with create_connection(**raw_config_options) as connection:
         ts = TableService(connection)
 
+        fact_table_name = raw_config_options["fact_table_name"]
+        external_table_name = (
+            raw_config_options["external_table_name"] or f"ex_{fact_table_name}"
+        )
+
         params: Dict[str, Any] = {
-            "internal_table_name": raw_config_options["fact_table_name"],
-            "external_table_name": raw_config_options["external_table_name"],
+            "internal_table_name": fact_table_name,
+            "external_table_name": external_table_name,
             "firebolt_dont_wait_for_upload_to_s3": False,
         }
         if raw_config_options["mode"] == "overwrite":
@@ -69,13 +75,13 @@ def ingest(**raw_config_options: str) -> None:
             raise FireboltError(f"Mode: {raw_config_options['mode']} unknown.")
 
         echo(
-            f"Ingestion from '{raw_config_options['external_table_name']}' "
-            f"to '{raw_config_options['fact_table_name']}' was successful."
+            f"Ingestion from '{external_table_name}' "
+            f"to '{fact_table_name}' was successful."
         )
 
         if not ts.verify_ingestion(
-            external_table_name=raw_config_options["external_table_name"],
-            internal_table_name=raw_config_options["fact_table_name"],
+            external_table_name=external_table_name,
+            internal_table_name=fact_table_name,
         ):
             echo(
                 "WARNING: Nevertheless some discrepancy between fact and "
