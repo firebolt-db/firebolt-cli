@@ -1,5 +1,6 @@
 import unittest
 from unittest import mock
+from unittest.mock import ANY
 
 import pytest
 from firebolt.common.exception import FireboltError
@@ -72,10 +73,10 @@ def test_interactive_multiple_requests() -> None:
 
         cursor_mock.execute.assert_has_calls(
             [
-                mock.call("SELECT 1"),
-                mock.call("SELECT 2"),
-                mock.call("SELECT 3"),
-                mock.call("SELECT 4"),
+                mock.call("SELECT 1", skip_parsing=ANY),
+                mock.call("SELECT 2", skip_parsing=ANY),
+                mock.call("SELECT 3", skip_parsing=ANY),
+                mock.call("SELECT 4", skip_parsing=ANY),
             ],
             any_order=False,
         )
@@ -102,7 +103,7 @@ def test_interactive_raise_error() -> None:
         with create_app_session(input=inp, output=DummyOutput()):
             enter_interactive_session(connection_mock, False)
 
-    cursor_mock.execute.assert_called_with("wrong sql")
+    cursor_mock.execute.assert_called_with("wrong sql", skip_parsing=ANY)
 
 
 def test_process_internal_command():

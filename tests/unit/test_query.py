@@ -96,7 +96,7 @@ def query_generic_test(
     if check_output_callback:
         check_output_callback(result.stdout)
 
-    cursor_mock.execute.assert_called_once_with(expected_sql)
+    cursor_mock.execute.assert_called_once_with(expected_sql, skip_parsing=mock.ANY)
 
     assert result.exit_code == 0
 
@@ -235,7 +235,7 @@ def test_sql_execution_error(
         input="wrong sql;",
     )
 
-    cursor_mock.execute.assert_called_once_with("wrong sql;")
+    cursor_mock.execute.assert_called_once_with("wrong sql;", skip_parsing=mock.ANY)
 
     assert result.stderr != "", "error message is missing"
     assert (
@@ -279,8 +279,8 @@ def test_sql_execution_multiline(
     assert cursor_mock.fetchall.call_count == 2
 
     assert cursor_mock.execute.mock_calls == [
-        mock.call("SELECT * FROM t1;"),
-        mock.call("SELECT * FROM t2;"),
+        mock.call("SELECT * FROM t1;", skip_parsing=mock.ANY),
+        mock.call("SELECT * FROM t2;", skip_parsing=mock.ANY),
     ]
 
 

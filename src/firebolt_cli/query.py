@@ -96,7 +96,7 @@ def execute_and_print(cursor: Cursor, query: str, use_csv: bool) -> None:
     for statement_idx, statement in enumerate(statements):
         try:
             start_time = time.time()
-            cursor.execute(str(statement))
+            cursor.execute(str(statement), skip_parsing=True)
             execution_time = time.time() - start_time
 
             is_data = is_data_statement(statement)
