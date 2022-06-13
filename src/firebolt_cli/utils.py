@@ -126,6 +126,8 @@ def construct_resource_manager(**raw_config_options: str) -> ResourceManager:
         "server": raw_config_options["api_endpoint"],
         "default_region": raw_config_options.get("region", ""),
         "account_name": account_name,
+        "user": None,
+        "password": None,
     }
 
     if raw_config_options["access_token"] is not None:
