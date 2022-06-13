@@ -1,4 +1,3 @@
-import threading
 from typing import Dict, Iterator, List
 
 from firebolt.common.exception import FireboltError
@@ -46,10 +45,7 @@ class FireboltAutoCompleter(Completer):
         self.suggestions.extend((keyword, "KEYWORD") for keyword in KEYWORDS)
         self.suggestions.extend((function, "FUNCTION") for function in FUNCTIONS)
 
-        self.thread = threading.Thread(
-            target=self.populate_table_and_column_names, args=(cursor,), kwargs={}
-        )
-        self.thread.start()
+        self.populate_table_and_column_names(cursor)
 
     def populate_table_and_column_names(self, cursor: Cursor) -> None:
         """
