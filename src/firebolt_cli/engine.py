@@ -153,7 +153,7 @@ def start(**raw_config_options: str) -> None:
         raise FireboltError(
             f"Engine {engine.name} is in a failed state.\n"
             f"You need to restart an engine first:\n"
-            f"$ firebolt restart {engine.name}"
+            f"$ firebolt engine restart {engine.name}"
         )
 
     start_stop_generic(
