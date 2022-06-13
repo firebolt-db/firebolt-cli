@@ -80,7 +80,7 @@ def test_interactive_multiple_requests() -> None:
             any_order=False,
         )
 
-    assert cursor_mock.execute.call_count == 5
+    assert cursor_mock.execute.call_count == 7
 
 
 def test_interactive_raise_error() -> None:
