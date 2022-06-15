@@ -4,7 +4,7 @@ import re
 import sys
 from configparser import ConfigParser
 from functools import lru_cache, wraps
-from typing import Callable, Dict, Optional, Sequence, Tuple, Type
+from typing import Callable, Dict, List, Optional, Sequence, Tuple, Type
 
 import keyring
 import sqlparse  # type: ignore
@@ -151,27 +151,50 @@ def construct_resource_manager(**raw_config_options: str) -> ResourceManager:
     )
 
 
-def convert_bytes(num: Optional[float]) -> str:
+def represent_human_readable(
+    num: Optional[float], step_unit: int, labels: List[str]
+) -> str:
     """
-    this function will convert bytes to KB, MB, GB, TB, PB, EB, ZB, YB
+    converts a long string into its short human-readable
+    representation, e.g. 1233212 -> 1.2 M
+
+    Args:
+        num: number to be converted
+        step_unit: threshold for moving to the next label
+        labels: labels, that should be used for each next step
+
     """
     if num is None:
         return ""
 
     if num < 0:
-        raise ValueError("Byte size cannot be negative")
+        raise ValueError("Value cannot be negative")
 
     def format_output(bytes: float, dim: str) -> str:
         return "{} {}".format(f"{bytes:.2f}".rstrip("0").rstrip("."), dim)
 
-    step_unit = 1024
-
-    for x in ["KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"]:
+    for x in labels:
         num /= step_unit
         if num < step_unit:
             return format_output(num, x)
 
     return format_output(num, x[::-1])
+
+
+def convert_bytes(num: Optional[float]) -> str:
+    """
+    this function will convert bytes to KB, MB, GB, TB, PB, EB, ZB, YB
+    """
+    return represent_human_readable(
+        num, step_unit=1024, labels=["KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"]
+    )
+
+
+def convert_num_human_readable(num: Optional[float]) -> str:
+    """
+    this function will convert number to human-readable form
+    """
+    return represent_human_readable(num, step_unit=1000, labels=["K", "M", "G", "T"])
 
 
 def read_from_file(fpath: Optional[str]) -> Optional[str]:

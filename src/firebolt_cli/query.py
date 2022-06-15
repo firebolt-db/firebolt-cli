@@ -2,10 +2,12 @@ import csv
 import os
 import sys
 import time
+from typing import Optional
 
 import click
 import sqlparse  # type: ignore
 from click import command, echo, option
+from firebolt.async_db.cursor import Statistics
 from firebolt.common.exception import FireboltError
 from firebolt.db import Connection, Cursor
 from prompt_toolkit.application import get_app
@@ -24,6 +26,8 @@ from firebolt_cli.common_options import (
 from firebolt_cli.completer import FireboltAutoCompleter
 from firebolt_cli.utils import (
     construct_resource_manager,
+    convert_bytes,
+    convert_num_human_readable,
     create_connection,
     exit_on_firebolt_exception,
     format_short_statement,
@@ -69,7 +73,7 @@ def echo_execution_status(
     statements_num: int,
     execution_time: float,
     success: bool,
-    statistics: str,
+    statistics: Optional[Statistics],
 ) -> None:
     """
     print execution summary result: Success or Error
@@ -77,15 +81,46 @@ def echo_execution_status(
     """
     statement = format_short_statement(statement)
     counter = "" if statements_num < 2 else f"({statement_idx}/{statements_num}) "
-    format_time(execution_time)
+
+    statistics_message = ""
+    if statistics:
+        # Calculate cached data ratio
+        cached_data_ratio = None
+        if (
+            statistics.scanned_bytes_cache is not None
+            and statistics.scanned_bytes_storage is not None
+        ):
+            scanned_bytes_total = (
+                statistics.scanned_bytes_cache + statistics.scanned_bytes_storage
+            )
+            cached_data_ratio = (
+                statistics.scanned_bytes_cache / scanned_bytes_total
+                if scanned_bytes_total
+                else 1
+            )
+        rows_per_second = statistics.rows_read / statistics.elapsed
+
+        statistics_message = (
+            f"\nTotal elapsed time    : {format_time(execution_time)}"
+            f"\nFirebolt elapsed time : {format_time(statistics.elapsed)}"
+            f"\nScanned bytes         : {convert_bytes(statistics.bytes_read)}"
+            f"\nRows / Second         : {convert_num_human_readable(rows_per_second)}"
+            + (
+                f"\nCached data ratio     : {cached_data_ratio * 100:.2f}%"
+                if cached_data_ratio
+                else ""
+            )
+        )
 
     msg, color = (
-        (f"{counter}Success ({statistics}):", "green")
-        if success
-        else (f"{counter}Error ({statistics}):", "yellow")
+        (f"{counter}Success", "green") if success else (f"{counter}Error", "yellow")
     )
 
-    echo("{} {}".format(click.style(msg, fg=color, bold=True), statement))
+    echo(
+        "{} ({}) {}".format(
+            click.style(msg, fg=color, bold=True), statement, statistics_message
+        )
+    )
 
 
 def execute_and_print(cursor: Cursor, query: str, use_csv: bool) -> None:
