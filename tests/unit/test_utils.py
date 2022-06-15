@@ -259,9 +259,8 @@ def test_construct_resource_manager_invalid_token(mocker: MockerFixture):
 def test_database_get_default_engine_happy_path(
     configure_resource_manager: Sequence, mocker: MockerFixture
 ):
-    rm, databases, database, engines, engine = configure_resource_manager
+    rm, database, engine = configure_resource_manager
 
-    rm.bindings = mocker.patch.object(ResourceManager, "bindings", create=True)
     _Engine = namedtuple("Engine", "engine_id is_default_engine")
     rm.bindings.get_many.return_value = [
         _Engine(11, False),
@@ -271,31 +270,29 @@ def test_database_get_default_engine_happy_path(
 
     get_default_database_engine(ResourceManager(), "database_name")
 
-    engines.get.assert_called_once_with(12)
-    databases.get_by_name.assert_called_once_with(name="database_name")
+    rm.engines.get.assert_called_once_with(12)
+    rm.databases.get_by_name.assert_called_once_with(name="database_name")
 
 
 def test_database_get_default_engine_empty(
     configure_resource_manager: Sequence, mocker: MockerFixture
 ):
-    rm, databases, database, engines, engine = configure_resource_manager
+    rm, database, engine = configure_resource_manager
 
-    rm.bindings = mocker.patch.object(ResourceManager, "bindings", create=True)
     namedtuple("Engine", "engine_id is_default_engine")
     rm.bindings.get_many.return_value = []
 
     with pytest.raises(FireboltError):
         get_default_database_engine(ResourceManager(), "database_name")
 
-    databases.get_by_name.assert_called_once_with(name="database_name")
+    rm.databases.get_by_name.assert_called_once_with(name="database_name")
 
 
 def test_database_get_default_engine_none(
     configure_resource_manager: Sequence, mocker: MockerFixture
 ):
-    rm, databases, database, engines, engine = configure_resource_manager
+    rm, database, engine = configure_resource_manager
 
-    rm.bindings = mocker.patch.object(ResourceManager, "bindings", create=True)
     _Engine = namedtuple("Engine", "engine_id is_default_engine")
     rm.bindings.get_many.return_value = [
         _Engine(11, False),
@@ -306,7 +303,7 @@ def test_database_get_default_engine_none(
     with pytest.raises(FireboltError):
         get_default_database_engine(ResourceManager(), "database_name")
 
-    databases.get_by_name.assert_called_once_with(name="database_name")
+    rm.databases.get_by_name.assert_called_once_with(name="database_name")
 
 
 def test_create_connection_engine_name(
