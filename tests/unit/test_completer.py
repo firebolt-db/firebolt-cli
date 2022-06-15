@@ -48,3 +48,25 @@ def test_complete_table_names():
     document.text = document.text_before_cursor
     suggestions = {i.text for i in completer.get_completions(document, None)}
     assert "column_name" in suggestions
+
+
+def test_complete_set_statements():
+    """
+    test completer with table and column names
+    """
+    cursor = MagicMock()
+    cursor.fetchall.side_effect = [
+        [["table_name", "column_name", "INT"]],
+        [["use_standard_sql"]],
+    ]
+    completer = FireboltAutoCompleter(cursor)
+
+    document = MagicMock()
+
+    document.text_before_cursor = "set "
+    suggestions = {i.text for i in completer.get_completions(document, None)}
+    assert "use_standard_sql" in suggestions
+
+    document.text_before_cursor = "set use"
+    suggestions = {i.text for i in completer.get_completions(document, None)}
+    assert "use_standard_sql" in suggestions
