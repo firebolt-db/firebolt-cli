@@ -69,6 +69,7 @@ def echo_execution_status(
     statements_num: int,
     execution_time: float,
     success: bool,
+    statistics: str,
 ) -> None:
     """
     print execution summary result: Success or Error
@@ -76,12 +77,12 @@ def echo_execution_status(
     """
     statement = format_short_statement(statement)
     counter = "" if statements_num < 2 else f"({statement_idx}/{statements_num}) "
-    formatted_time = format_time(execution_time)
+    format_time(execution_time)
 
     msg, color = (
-        (f"{counter}Success ({formatted_time}):", "green")
+        (f"{counter}Success ({statistics}):", "green")
         if success
-        else (f"{counter}Error ({formatted_time}):", "yellow")
+        else (f"{counter}Error ({statistics}):", "yellow")
     )
 
     echo("{} {}".format(click.style(msg, fg=color, bold=True), statement))
@@ -108,6 +109,7 @@ def execute_and_print(cursor: Cursor, query: str, use_csv: bool) -> None:
                     len(statements),
                     execution_time,
                     success=True,
+                    statistics=cursor.statistics,
                 )
 
             if cursor.description and is_data:
@@ -131,6 +133,7 @@ def execute_and_print(cursor: Cursor, query: str, use_csv: bool) -> None:
                 len(statements),
                 execution_time,
                 success=False,
+                statistics=cursor.statistics,
             )
             raise err
 
