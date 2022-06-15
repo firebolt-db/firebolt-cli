@@ -1,4 +1,5 @@
 import re
+from logging import getLogger
 from typing import Dict, Iterator, List
 
 from firebolt.common.exception import FireboltError
@@ -9,6 +10,8 @@ from prompt_toolkit.completion import CompleteEvent, Completer, Completion
 from prompt_toolkit.document import Document
 
 from firebolt_cli.keywords import FUNCTIONS, KEYWORDS
+
+logger = getLogger(__name__)
 
 
 def prepare_display_html(text: str, offset: int) -> HTML:
@@ -80,8 +83,11 @@ class FireboltAutoCompleter(Completer):
                 for table_name in self.table_columns_mapping.keys()
             )
 
-        except (FireboltError, HTTPStatusError):
-            pass
+        except (FireboltError, HTTPStatusError) as e:
+            logger.info(
+                f"Extraction of the list of table "
+                f"and columns names failed with: {str(e)}"
+            )
 
     def populate_set_statemets(self, cursor: Cursor) -> None:
         """
@@ -96,8 +102,11 @@ class FireboltAutoCompleter(Completer):
                 (set_statement[0], "SET KEYWORD") for set_statement in data
             )
 
-        except (FireboltError, HTTPStatusError):
-            pass
+        except (FireboltError, HTTPStatusError) as e:
+            logger.info(
+                f"Extraction of the list of available "
+                f"set parameters failed with: {str(e)}"
+            )
 
     def get_completions(
         self, document: Document, complete_event: CompleteEvent
@@ -115,8 +124,7 @@ class FireboltAutoCompleter(Completer):
         current_suggestions: List = []
         if last_full_word == "SET":
             current_suggestions.extend(self.set_statements)
-
-        if len(last_word) != 0:
+        elif len(last_word) != 0:
             current_suggestions.extend(self.suggestions)
 
             for tb_name, columns in self.table_columns_mapping.items():
