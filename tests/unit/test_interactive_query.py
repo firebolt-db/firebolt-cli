@@ -57,6 +57,8 @@ def test_interactive_multiple_requests() -> None:
     with create_pipe_input() as inp:
         connection_mock = unittest.mock.MagicMock()
         cursor_mock = unittest.mock.MagicMock()
+        cursor_mock.data = []
+        cursor_mock.description = []
         connection_mock.cursor.return_value = cursor_mock
 
         cursor_mock.nextset.return_value = None
