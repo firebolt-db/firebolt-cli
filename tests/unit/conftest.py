@@ -1,5 +1,6 @@
 import unittest
 from collections import namedtuple
+from unittest.mock import MagicMock
 
 import pytest
 from appdirs import user_config_dir
@@ -50,14 +51,15 @@ def configure_resource_manager(mocker: MockerFixture) -> ResourceManager:
     """
     Configure resource manager mock
     """
-    rm = mocker.patch.object(ResourceManager, "__init__", return_value=None)
+    rm_init = mocker.patch.object(ResourceManager, "__init__", return_value=None)
+    rm = MagicMock()
 
-    databases_mock = mocker.patch.object(ResourceManager, "databases", create=True)
-    instance_types_mock = mocker.patch.object(
+    rm.databases = mocker.patch.object(ResourceManager, "databases", create=True)
+    rm.engines = mocker.patch.object(ResourceManager, "engines", create=True)
+    rm.bindings = mocker.patch.object(ResourceManager, "bindings", create=True)
+    rm.instance_types = mocker.patch.object(
         ResourceManager, "instance_types", create=True
     )
-    engines_mock = mocker.patch.object(ResourceManager, "engines", create=True)
-    mocker.patch.object(ResourceManager, "bindings", create=True)
     regions_mock = mocker.patch.object(ResourceManager, "regions", create=True)
     mocker.patch.object(ResourceManager, "engine_revisions", create=True)
 
@@ -65,28 +67,20 @@ def configure_resource_manager(mocker: MockerFixture) -> ResourceManager:
     regions_mock.get_by_key.return_value = _Region("us-east-1")
     regions_mock.regions_by_name = dict({"us-east-1": _Region("us-east-1")})
 
-    _InstanceType = namedtuple(
-        "InstanceType",
-        "name, cpu_virtual_cores_count, memory_size_bytes, storage_size_bytes",
-    )
-    instance_types_mock.get_instance_types_per_region.return_value = [
-        _InstanceType("B1", 2, 123, 321)
-    ]
-
     database_mock = unittest.mock.MagicMock()
     database_mock.name = "mock_db_name"
     database_mock.data_size_full = 2048
 
-    databases_mock.create.return_value = database_mock
-    databases_mock.get_by_name.return_value = database_mock
+    rm.databases.create.return_value = database_mock
+    rm.databases.get_by_name.return_value = database_mock
 
     engine_mock = unittest.mock.MagicMock()
-    engines_mock.create.return_value = engine_mock
-    engines_mock.get_by_name.return_value = engine_mock
+    rm.engines.create.return_value = engine_mock
+    rm.engines.get_by_name.return_value = engine_mock
 
-    yield rm, databases_mock, database_mock, engines_mock, engine_mock
+    yield rm, database_mock, engine_mock
 
-    rm.assert_called_once()
+    rm_init.assert_called_once()
 
 
 @pytest.fixture()
