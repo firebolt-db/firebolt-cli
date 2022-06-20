@@ -3,13 +3,14 @@ import os
 import re
 import sys
 from configparser import ConfigParser
-from functools import wraps
+from functools import lru_cache, wraps
 from typing import Callable, Dict, Optional, Sequence, Tuple, Type
 
 import keyring
 import sqlparse  # type: ignore
 from appdirs import user_config_dir
 from click import Command, Context, Group, echo
+from firebolt.client.auth import Token, UsernamePassword
 from firebolt.common import Settings
 from firebolt.common.exception import FireboltError
 from firebolt.db.connection import Connection, connect
@@ -117,11 +118,16 @@ def construct_resource_manager(**raw_config_options: str) -> ResourceManager:
     Propagate raw_config_options to the settings and construct a resource manager
     :rtype: object
     """
+    account_name = raw_config_options.get("account_name", None)
+    if account_name is not None:
+        account_name = account_name.lower()
 
     settings_dict = {
         "server": raw_config_options["api_endpoint"],
         "default_region": raw_config_options.get("region", ""),
-        "account_name": raw_config_options["account_name"],
+        "account_name": account_name,
+        "user": None,
+        "password": None,
     }
 
     if raw_config_options["access_token"] is not None:
@@ -129,9 +135,7 @@ def construct_resource_manager(**raw_config_options: str) -> ResourceManager:
             return ResourceManager(
                 Settings(
                     **settings_dict,
-                    user=None,
-                    password=None,
-                    access_token=raw_config_options["access_token"],
+                    auth=Token(raw_config_options["access_token"]),
                 )
             )
         except HTTPStatusError:
@@ -140,9 +144,9 @@ def construct_resource_manager(**raw_config_options: str) -> ResourceManager:
     return ResourceManager(
         Settings(
             **settings_dict,
-            user=raw_config_options["username"],
-            password=raw_config_options["password"],
-            access_token=None,
+            auth=UsernamePassword(
+                raw_config_options["username"], raw_config_options["password"]
+            ),
         )
     )
 
@@ -170,10 +174,6 @@ def convert_bytes(num: Optional[float]) -> str:
     return format_output(num, x[::-1])
 
 
-def string_to_int_or_none(val: Optional[str]) -> Optional[int]:
-    return int(val) if val else None
-
-
 def read_from_file(fpath: Optional[str]) -> Optional[str]:
     """
     read from file, if fpath is not None, otherwise return empty string
@@ -195,6 +195,7 @@ def read_from_stdin_buffer() -> Optional[str]:
     return sys.stdin.buffer.read().decode("utf-8") or None
 
 
+@lru_cache()
 def read_config() -> Dict[str, str]:
     """
     :return: dict with parameters from config file, or empty dict if no parameters found
@@ -266,6 +267,8 @@ def update_config(**kwargs: str) -> None:
         with open(config_file, "w") as cf:
             config.write(cf)
 
+        read_config.cache_clear()
+
 
 def exit_on_firebolt_exception(func: Callable) -> Callable:
     """
@@ -321,17 +324,17 @@ def create_connection(
     password: str,
     access_token: Optional[str],
     api_endpoint: str,
-    account_name: str,
+    account_name: Optional[str],
     **kwargs: str,
 ) -> Connection:
     """
     Create connection based on access_token if provided,
     in case of failure use username/password
     """
+    if account_name is not None:
+        account_name = account_name.lower()
 
     params = {
-        "engine_url": None,
-        "engine_name": None,
         "database": database_name,
         "api_endpoint": api_endpoint,
         "account_name": account_name,
@@ -342,11 +345,11 @@ def create_connection(
 
     if access_token:
         try:
-            return connect(**params, access_token=access_token)
+            return connect(**params, auth=Token(access_token))
         except FireboltError:
             pass
 
-    return connect(**params, username=username, password=password)
+    return connect(**params, auth=UsernamePassword(username, password))
 
 
 def create_aws_key_secret_creds_from_environ() -> Optional[AWSCredentialsKeySecret]:

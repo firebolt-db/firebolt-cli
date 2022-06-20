@@ -3,10 +3,12 @@ import os
 from collections import namedtuple
 from typing import Sequence
 from unittest import mock
+from unittest.mock import ANY
 
 import pytest
 from appdirs import user_config_dir
 from click.testing import CliRunner
+from firebolt.client.auth import Token, UsernamePassword
 from firebolt.common import Settings
 from firebolt.common.exception import FireboltError
 from firebolt.service.manager import ResourceManager
@@ -16,6 +18,7 @@ from pytest_mock import MockerFixture
 
 from firebolt_cli.main import main
 from firebolt_cli.utils import (
+    config_file,
     construct_resource_manager,
     convert_bytes,
     create_aws_creds_from_environ,
@@ -158,8 +161,24 @@ def test_config_get_set_all(fs: FakeFilesystem) -> None:
     assert config["password"] == "password_value"
 
 
+def test_config_caching(fs: FakeFilesystem) -> None:
+    """
+    Check that read_config function actually uses cached information, and returns
+    the same config even after config file was deleted
+    """
+    fs.create_dir(user_config_dir())
+    update_config(username="username_value")
+
+    old_config = read_config()
+    fs.remove(config_file)
+    new_config = read_config()
+    assert old_config == new_config
+
+
 def test_construct_resource_manager_password(mocker: MockerFixture):
     rm = mocker.patch.object(ResourceManager, "__init__", return_value=None)
+    userpass_mock = mocker.patch.object(UsernamePassword, "__init__", return_value=None)
+    settings_mock = mocker.patch.object(Settings, "__init__", return_value=None)
 
     construct_resource_manager(
         username="username",
@@ -168,20 +187,22 @@ def test_construct_resource_manager_password(mocker: MockerFixture):
         account_name="firebolt",
         access_token=None,
     )
-    rm.assert_called_once_with(
-        Settings(
-            user="username",
-            password="password",
-            default_region="",
-            account_name="firebolt",
-            server="endpoint.firebolt.io",
-            access_token=None,
-        )
+    rm.assert_called_once()
+    userpass_mock.assert_called_once_with("username", "password")
+    settings_mock.assert_called_once_with(
+        auth=ANY,
+        account_name="firebolt",
+        server="endpoint.firebolt.io",
+        default_region="",
+        user=None,
+        password=None,
     )
 
 
 def test_construct_resource_manager_token(mocker: MockerFixture):
     rm = mocker.patch.object(ResourceManager, "__init__", return_value=None)
+    token_mock = mocker.patch.object(Token, "__init__", return_value=None)
+    settings_mock = mocker.patch.object(Settings, "__init__", return_value=None)
 
     construct_resource_manager(
         username="username",
@@ -190,20 +211,26 @@ def test_construct_resource_manager_token(mocker: MockerFixture):
         account_name="firebolt",
         access_token="access_token",
     )
-    rm.assert_called_once_with(
-        Settings(
-            user=None,
-            password=None,
-            default_region="",
-            account_name="firebolt",
-            server="endpoint.firebolt.io",
-            access_token="access_token",
-        )
+
+    token_mock.assert_called_once_with("access_token")
+
+    settings_mock.assert_called_once_with(
+        auth=ANY,
+        default_region="",
+        account_name="firebolt",
+        server="endpoint.firebolt.io",
+        user=None,
+        password=None,
     )
+    rm.assert_called_once()
 
 
 def test_construct_resource_manager_invalid_token(mocker: MockerFixture):
     rm = mocker.patch.object(ResourceManager, "__init__", return_value=None)
+    token_mock = mocker.patch.object(Token, "__init__", return_value=None)
+    settings_mock = mocker.patch.object(Settings, "__init__", return_value=None)
+
+    userpass_mock = mocker.patch.object(UsernamePassword, "__init__", return_value=None)
 
     rm.side_effect = [HTTPStatusError(message="", request=None, response=None), None]
     construct_resource_manager(
@@ -216,35 +243,24 @@ def test_construct_resource_manager_invalid_token(mocker: MockerFixture):
 
     assert rm.call_count == 2
 
-    rm.assert_any_call(
-        Settings(
-            user=None,
-            password=None,
-            default_region="",
-            account_name="firebolt",
-            server="endpoint.firebolt.io",
-            access_token="invalid_access_token",
-        )
-    )
+    token_mock.assert_called_once_with("invalid_access_token")
+    userpass_mock.assert_called_once_with("username", "password")
 
-    rm.assert_any_call(
-        Settings(
-            user="username",
-            password="password",
-            default_region="",
-            account_name="firebolt",
-            server="endpoint.firebolt.io",
-            access_token=None,
-        )
+    settings_mock.assert_called_with(
+        auth=ANY,
+        default_region="",
+        account_name="firebolt",
+        server="endpoint.firebolt.io",
+        user=None,
+        password=None,
     )
 
 
 def test_database_get_default_engine_happy_path(
     configure_resource_manager: Sequence, mocker: MockerFixture
 ):
-    rm, databases, database, engines, engine = configure_resource_manager
+    rm, database, engine = configure_resource_manager
 
-    rm.bindings = mocker.patch.object(ResourceManager, "bindings", create=True)
     _Engine = namedtuple("Engine", "engine_id is_default_engine")
     rm.bindings.get_many.return_value = [
         _Engine(11, False),
@@ -254,31 +270,29 @@ def test_database_get_default_engine_happy_path(
 
     get_default_database_engine(ResourceManager(), "database_name")
 
-    engines.get.assert_called_once_with(12)
-    databases.get_by_name.assert_called_once_with(name="database_name")
+    rm.engines.get.assert_called_once_with(12)
+    rm.databases.get_by_name.assert_called_once_with(name="database_name")
 
 
 def test_database_get_default_engine_empty(
     configure_resource_manager: Sequence, mocker: MockerFixture
 ):
-    rm, databases, database, engines, engine = configure_resource_manager
+    rm, database, engine = configure_resource_manager
 
-    rm.bindings = mocker.patch.object(ResourceManager, "bindings", create=True)
     namedtuple("Engine", "engine_id is_default_engine")
     rm.bindings.get_many.return_value = []
 
     with pytest.raises(FireboltError):
         get_default_database_engine(ResourceManager(), "database_name")
 
-    databases.get_by_name.assert_called_once_with(name="database_name")
+    rm.databases.get_by_name.assert_called_once_with(name="database_name")
 
 
 def test_database_get_default_engine_none(
     configure_resource_manager: Sequence, mocker: MockerFixture
 ):
-    rm, databases, database, engines, engine = configure_resource_manager
+    rm, database, engine = configure_resource_manager
 
-    rm.bindings = mocker.patch.object(ResourceManager, "bindings", create=True)
     _Engine = namedtuple("Engine", "engine_id is_default_engine")
     rm.bindings.get_many.return_value = [
         _Engine(11, False),
@@ -289,7 +303,7 @@ def test_database_get_default_engine_none(
     with pytest.raises(FireboltError):
         get_default_database_engine(ResourceManager(), "database_name")
 
-    databases.get_by_name.assert_called_once_with(name="database_name")
+    rm.databases.get_by_name.assert_called_once_with(name="database_name")
 
 
 def test_create_connection_engine_name(
@@ -299,16 +313,20 @@ def test_create_connection_engine_name(
     Check create_connection with engine name and access_token
     """
     connect_function_mock = mocker.patch("firebolt_cli.utils.connect")
+    token_mock = mocker.patch.object(Token, "__init__", return_value=None)
+
     create_connection(**mock_connection_params)
 
     connect_function_mock.assert_called_once_with(
-        access_token=mock_connection_params["access_token"],
+        auth=ANY,
         account_name=mock_connection_params["account_name"],
         api_endpoint=mock_connection_params["api_endpoint"],
         database=mock_connection_params["database_name"],
         engine_name=mock_connection_params["engine_name"],
         engine_url=None,
     )
+
+    token_mock.assert_called_once_with(mock_connection_params["access_token"])
 
 
 def test_create_connection_engine_url(
@@ -318,17 +336,20 @@ def test_create_connection_engine_url(
     Check create_connection with engine url and access_token
     """
     connect_function_mock = mocker.patch("firebolt_cli.utils.connect")
+    token_mock = mocker.patch.object(Token, "__init__", return_value=None)
+
     mock_connection_params["engine_name"] = "engine_url.firebolt.io"
     create_connection(**mock_connection_params)
 
     connect_function_mock.assert_called_once_with(
-        access_token=mock_connection_params["access_token"],
+        auth=ANY,
         account_name=mock_connection_params["account_name"],
         api_endpoint=mock_connection_params["api_endpoint"],
         database=mock_connection_params["database_name"],
         engine_name=None,
         engine_url=mock_connection_params["engine_name"],
     )
+    token_mock.assert_called_once_with(mock_connection_params["access_token"])
 
 
 def test_create_connection_user_password(
@@ -338,17 +359,21 @@ def test_create_connection_user_password(
     Check create_connection with engine name and username/password
     """
     connect_function_mock = mocker.patch("firebolt_cli.utils.connect")
+    auth_mock = mocker.patch.object(UsernamePassword, "__init__", return_value=None)
+
     mock_connection_params["access_token"] = None
     create_connection(**mock_connection_params)
 
     connect_function_mock.assert_called_once_with(
-        username=mock_connection_params["username"],
-        password=mock_connection_params["password"],
+        auth=ANY,
         account_name=mock_connection_params["account_name"],
         api_endpoint=mock_connection_params["api_endpoint"],
         database=mock_connection_params["database_name"],
         engine_name=mock_connection_params["engine_name"],
         engine_url=None,
+    )
+    auth_mock.assert_called_once_with(
+        mock_connection_params["username"], mock_connection_params["password"]
     )
 
 

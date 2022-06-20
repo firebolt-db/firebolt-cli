@@ -1,13 +1,15 @@
 import csv
 import os
 import sys
+import time
 
 import click
 import sqlparse  # type: ignore
 from click import command, echo, option
 from firebolt.common.exception import FireboltError
-from firebolt.db import Cursor
+from firebolt.db import Connection, Cursor
 from prompt_toolkit.application import get_app
+from prompt_toolkit.completion import DynamicCompleter, ThreadedCompleter
 from prompt_toolkit.enums import DEFAULT_BUFFER
 from prompt_toolkit.filters import Condition
 from prompt_toolkit.lexers import PygmentsLexer
@@ -19,6 +21,7 @@ from firebolt_cli.common_options import (
     common_options,
     default_from_config_file,
 )
+from firebolt_cli.completer import FireboltAutoCompleter
 from firebolt_cli.utils import (
     construct_resource_manager,
     create_connection,
@@ -43,13 +46,43 @@ def is_data_statement(statement: sqlparse.sql.Statement) -> bool:
     return token in {"SHOW", "DESCRIBE", "EXPLAIN", "SELECT", "WITH"}
 
 
-def echo_execution_status(statement: str, success: bool) -> None:
+def format_time(execution_time: float) -> str:
+    """
+    format time from seconds into string in format: 99h 59m 59.99s
+    """
+    hours = int(execution_time // 3600)
+    execution_time -= hours * 3600
+
+    minutes = int(execution_time // 60)
+    execution_time -= minutes * 60
+
+    return (
+        (f"{hours}h " if hours > 0 else "")
+        + (f"{minutes}m " if minutes > 0 or hours > 0 else "")
+        + f"{execution_time:.2f}s"
+    )
+
+
+def echo_execution_status(
+    statement: str,
+    statement_idx: int,
+    statements_num: int,
+    execution_time: float,
+    success: bool,
+) -> None:
     """
     print execution summary result: Success or Error
     and a shortened statement to which it is referring
     """
     statement = format_short_statement(statement)
-    msg, color = ("Success:", "green") if success else ("Error:", "yellow")
+    counter = "" if statements_num < 2 else f"({statement_idx}/{statements_num}) "
+    formatted_time = format_time(execution_time)
+
+    msg, color = (
+        (f"{counter}Success ({formatted_time}):", "green")
+        if success
+        else (f"{counter}Error ({formatted_time}):", "yellow")
+    )
 
     echo("{} {}".format(click.style(msg, fg=color, bold=True), statement))
 
@@ -60,15 +93,22 @@ def execute_and_print(cursor: Cursor, query: str, use_csv: bool) -> None:
     and print it in csv or tabular format.
     """
     statements = sqlparse.parse(query)
-
-    for statement in statements:
+    for statement_idx, statement in enumerate(statements):
         try:
+            start_time = time.time()
             cursor.execute(str(statement))
+            execution_time = time.time() - start_time
 
             is_data = is_data_statement(statement)
 
             if not use_csv:
-                echo_execution_status(str(statement), success=True)
+                echo_execution_status(
+                    str(statement),
+                    statement_idx + 1,
+                    len(statements),
+                    execution_time,
+                    success=True,
+                )
 
             if cursor.description and is_data:
                 data = cursor.fetchall()
@@ -84,7 +124,14 @@ def execute_and_print(cursor: Cursor, query: str, use_csv: bool) -> None:
             cursor.nextset()
 
         except FireboltError as err:
-            echo_execution_status(str(statement), success=False)
+            execution_time = time.time() - start_time
+            echo_execution_status(
+                str(statement),
+                statement_idx + 1,
+                len(statements),
+                execution_time,
+                success=False,
+            )
             raise err
 
 
@@ -133,19 +180,23 @@ def process_internal_command(internal_command: str) -> str:
     raise ValueError(f"Not known internal command: {internal_command}")
 
 
-def enter_interactive_session(cursor: Cursor, use_csv: bool) -> None:
+def enter_interactive_session(connection: Connection, use_csv: bool) -> None:
     """
     Enters an infinite loop of interactive shell.
     """
     echo("Connection succeeded.")
 
+    completer = FireboltAutoCompleter(connection.cursor())
+
     session: PromptSession = PromptSession(
         message="firebolt> ",
         prompt_continuation="     ...> ",
         lexer=PygmentsLexer(PostgresLexer),
+        completer=ThreadedCompleter(DynamicCompleter(lambda: completer)),
         multiline=is_multiline_needed,
     )
 
+    cursor = connection.cursor()
     while 1:
         try:
             sql_query = session.prompt()
@@ -219,11 +270,12 @@ def query(**raw_config_options: str) -> None:
         ).endpoint
 
     with create_connection(**raw_config_options) as connection:
-        cursor = connection.cursor()
 
         if sql_query:
             # if query is available, then execute, print result and exit
-            execute_and_print(cursor, sql_query, bool(raw_config_options["csv"]))
+            execute_and_print(
+                connection.cursor(), sql_query, bool(raw_config_options["csv"])
+            )
         else:
             # otherwise start the interactive session
-            enter_interactive_session(cursor, bool(raw_config_options["csv"]))
+            enter_interactive_session(connection, bool(raw_config_options["csv"]))

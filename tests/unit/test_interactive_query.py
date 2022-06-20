@@ -55,7 +55,10 @@ def test_interactive_multiple_requests() -> None:
     multiple requests are passed one by one to the cursor
     """
     with create_pipe_input() as inp:
+        connection_mock = unittest.mock.MagicMock()
         cursor_mock = unittest.mock.MagicMock()
+        connection_mock.cursor.return_value = cursor_mock
+
         cursor_mock.nextset.return_value = None
 
         inp.send_text("SELECT 1;\n")
@@ -65,7 +68,7 @@ def test_interactive_multiple_requests() -> None:
         inp.send_text(".quit\n")
 
         with create_app_session(input=inp, output=DummyOutput()):
-            enter_interactive_session(cursor_mock, False)
+            enter_interactive_session(connection_mock, False)
 
         cursor_mock.execute.assert_has_calls(
             [
@@ -77,14 +80,16 @@ def test_interactive_multiple_requests() -> None:
             any_order=False,
         )
 
-    assert cursor_mock.execute.call_count == 4
+    assert cursor_mock.execute.call_count == 7
 
 
 def test_interactive_raise_error() -> None:
     """
     Test wrong sql, raise an error, but the execution continues
     """
+    connection_mock = unittest.mock.MagicMock()
     cursor_mock = unittest.mock.MagicMock()
+    connection_mock.cursor.return_value = cursor_mock
 
     cursor_mock.attach_mock(
         unittest.mock.Mock(side_effect=FireboltError("sql execution failed")), "execute"
@@ -95,9 +100,9 @@ def test_interactive_raise_error() -> None:
         inp.send_text(".quit\n")
 
         with create_app_session(input=inp, output=DummyOutput()):
-            enter_interactive_session(cursor_mock, False)
+            enter_interactive_session(connection_mock, False)
 
-    cursor_mock.execute.assert_called_once_with("wrong sql")
+    cursor_mock.execute.assert_called_with("wrong sql")
 
 
 def test_process_internal_command():
@@ -135,7 +140,10 @@ def test_interactive_multi_statement(mocker: MockerFixture) -> None:
     """
     execute_and_print_mock = mocker.patch("firebolt_cli.query.execute_and_print")
     with create_pipe_input() as inp:
+        connection_mock = unittest.mock.MagicMock()
         cursor_mock = unittest.mock.MagicMock()
+        connection_mock.cursor.return_value = cursor_mock
+
         cursor_mock.nextset.side_effect = [True, None]
         cursor_mock.description = None
 
@@ -143,7 +151,7 @@ def test_interactive_multi_statement(mocker: MockerFixture) -> None:
         inp.send_text(".exit\n")
 
         with create_app_session(input=inp, output=DummyOutput()):
-            enter_interactive_session(cursor_mock, False)
+            enter_interactive_session(connection_mock, False)
 
     execute_and_print_mock.assert_called_once_with(
         cursor_mock, "SELECT 1; SELECT 2", False

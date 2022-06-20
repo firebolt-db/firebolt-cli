@@ -4,12 +4,13 @@ from collections import namedtuple
 from typing import Callable, Optional, Sequence
 from unittest import mock
 
+import pytest
 from click.testing import CliRunner
 from firebolt.common.exception import FireboltError
 from pyfakefs.fake_filesystem import FakeFilesystem
 from pytest_mock import MockerFixture
 
-from firebolt_cli.query import query
+from firebolt_cli.query import format_time, query
 
 
 def test_query_stdin_file_ambiguity(
@@ -314,3 +315,20 @@ def test_query_default_engine(
 
     construct_resource_manager_mock.assert_called_once()
     default_database_engine_mock.assert_called_once()
+
+
+@pytest.mark.parametrize(
+    "execution_time, formatted_time",
+    [
+        (0.23, "0.23s"),
+        (3.12, "3.12s"),
+        (345.03, "5m 45.03s"),
+        (3600.32, "1h 0m 0.32s"),
+        (7264.3, "2h 1m 4.30s"),
+    ],
+)
+def test_format_time(execution_time: float, formatted_time: str):
+    """
+    test format time of query execution
+    """
+    assert format_time(execution_time) == formatted_time

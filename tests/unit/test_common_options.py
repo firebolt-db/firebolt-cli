@@ -12,7 +12,12 @@ from firebolt.client import DEFAULT_API_URL
 from pyfakefs.fake_filesystem import FakeFilesystem
 
 from firebolt_cli.common_options import _common_options
-from firebolt_cli.utils import config_file, config_section, update_config
+from firebolt_cli.utils import (
+    config_file,
+    config_section,
+    read_config,
+    update_config,
+)
 
 
 @contextmanager
@@ -24,6 +29,7 @@ def create_config_file(fs: FakeFilesystem, config: dict) -> None:
     cp.write(content)
 
     fs.create_file(config_file, contents=content.getvalue())
+    read_config.cache_clear()
 
     yield
 

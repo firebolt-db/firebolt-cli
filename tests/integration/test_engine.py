@@ -101,6 +101,7 @@ def test_engine_update_single_parameter(database_name: str) -> None:
         "description": _ParamValue(
             "new_engine_description", "new_engine_description", "description"
         ),
+        "use-spot": _ParamValue("", True, "is_spot_instance"),
     }
 
     for param, value in ENGINE_UPDATE_PARAMS.items():
@@ -116,6 +117,28 @@ def test_engine_update_single_parameter(database_name: str) -> None:
 
     runner.invoke(main, f"engine drop {engine_name} --yes")
     assert result.exit_code == 0
+
+
+@pytest.mark.skip(reason="firebolt-sdk 0.8.0 is required")
+def test_engine_update_auto_stop(stopped_engine_name: str) -> None:
+    """
+    test engine update --auto_stop, set to zero means it is always on
+    """
+    runner = CliRunner(mix_stderr=False)
+
+    result = runner.invoke(
+        main,
+        f"engine update --name {stopped_engine_name} --auto-stop 0".split(),
+    )
+    assert "ALWAYS ON" in result.stdout
+    assert result.exit_code == 0
+
+    result = runner.invoke(
+        main,
+        f"engine update --name {stopped_engine_name} --auto-stop 313".split(),
+    )
+    assert result.exit_code == 0
+    assert "5:13:00" in result.stdout
 
 
 def test_engine_restart_stopped(
@@ -149,10 +172,20 @@ def test_engine_restart_running(engine_name: str, cli_runner: CliRunner) -> None
     assert "running" in result.stdout.lower()
 
 
-def test_engine_create_minimal(engine_name: str, database_name: str):
+def test_engine_create_minimal(
+    engine_name: str, database_name: str, default_region: str
+):
     """
     test engine create/drop with minimum amount of parameters
     """
+    result = CliRunner(mix_stderr=False).invoke(
+        main,
+        f"engine get-instance-types --json " f"--region {default_region} ".split(),
+    )
+    assert result.exit_code == 0
+    instance_list = json.loads(result.stdout)
+    instance_spec = instance_list[0]["name"]
+
     engine_name = f"{engine_name}_test"
 
     result = CliRunner(mix_stderr=False).invoke(
@@ -160,7 +193,7 @@ def test_engine_create_minimal(engine_name: str, database_name: str):
         f"engine create --json "
         f"--name {engine_name} "
         f"--database-name {database_name} "
-        f"--spec C1 ".split(),
+        f"--spec {instance_spec}".split(),
     )
     assert result.exit_code == 0
     create_output = json.loads(result.stdout)
@@ -232,3 +265,29 @@ def test_engine_list(engine_name: str, stopped_engine_name: str) -> None:
     output = json.loads(result.stdout)
     assert len(output) >= 1
     assert all([stopped_engine_name in engine["name"] for engine in output])
+
+
+def test_engine_list_database(
+    engine_name: str, stopped_engine_name: str, database_name: str
+) -> None:
+    """
+    test engine list with filter by database
+    """
+    result = CliRunner(mix_stderr=False).invoke(
+        main, f"engine list --database {database_name} --json".split()
+    )
+    output = json.loads(result.stdout)
+
+    assert len(output) == 2
+    assert engine_name in {engine["name"] for engine in output}
+    assert stopped_engine_name in {engine["name"] for engine in output}
+
+    result = CliRunner(mix_stderr=False).invoke(
+        main,
+        f"engine list --database {database_name} --json "
+        f"--name-contains {stopped_engine_name}".split(),
+    )
+    output = json.loads(result.stdout)
+
+    assert len(output) == 1
+    assert output[0]["name"] == stopped_engine_name
