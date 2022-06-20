@@ -8,6 +8,59 @@ from click.testing import CliRunner
 from firebolt_cli.main import main
 
 
+def test_engine_list(engine_name: str, stopped_engine_name: str) -> None:
+    """
+    Test engine list with and without filter
+    """
+
+    # Test without filter
+    result = CliRunner(mix_stderr=False).invoke(main, f"engine list --json".split())
+    assert result.exit_code == 0
+    assert result.stderr == ""
+
+    output = json.loads(result.stdout)
+    assert len(output) >= 2
+    assert engine_name in {engine["name"] for engine in output}
+    assert stopped_engine_name in {engine["name"] for engine in output}
+
+    # Test with filter
+    result = CliRunner(mix_stderr=False).invoke(
+        main, f"engine list --json --name-contains {stopped_engine_name}".split()
+    )
+    assert result.exit_code == 0
+    assert result.stderr == ""
+
+    output = json.loads(result.stdout)
+    assert len(output) >= 1
+    assert all([stopped_engine_name in engine["name"] for engine in output])
+
+
+def test_engine_list_database(
+    engine_name: str, stopped_engine_name: str, database_name: str
+) -> None:
+    """
+    test engine list with filter by database
+    """
+    result = CliRunner(mix_stderr=False).invoke(
+        main, f"engine list --database {database_name} --json".split()
+    )
+    output = json.loads(result.stdout)
+
+    assert len(output) == 2
+    assert engine_name in {engine["name"] for engine in output}
+    assert stopped_engine_name in {engine["name"] for engine in output}
+
+    result = CliRunner(mix_stderr=False).invoke(
+        main,
+        f"engine list --database {database_name} --json "
+        f"--name-contains {stopped_engine_name}".split(),
+    )
+    output = json.loads(result.stdout)
+
+    assert len(output) == 1
+    assert output[0]["name"] == stopped_engine_name
+
+
 def test_engine_start_running(engine_name: str, cli_runner: CliRunner) -> None:
     """
     Test start engine, which is running should fail
@@ -119,7 +172,6 @@ def test_engine_update_single_parameter(database_name: str) -> None:
     assert result.exit_code == 0
 
 
-@pytest.mark.skip(reason="firebolt-sdk 0.8.0 is required")
 def test_engine_update_auto_stop(stopped_engine_name: str) -> None:
     """
     test engine update --auto_stop, set to zero means it is always on
@@ -238,56 +290,3 @@ def test_engine_drop_not_existing(engine_name: str):
     )
     assert result.exit_code != 0
     assert "not found" in result.stderr.lower()
-
-
-def test_engine_list(engine_name: str, stopped_engine_name: str) -> None:
-    """
-    Test engine list with and without filter
-    """
-
-    # Test without filter
-    result = CliRunner(mix_stderr=False).invoke(main, f"engine list --json".split())
-    assert result.exit_code == 0
-    assert result.stderr == ""
-
-    output = json.loads(result.stdout)
-    assert len(output) >= 2
-    assert engine_name in {engine["name"] for engine in output}
-    assert stopped_engine_name in {engine["name"] for engine in output}
-
-    # Test with filter
-    result = CliRunner(mix_stderr=False).invoke(
-        main, f"engine list --json --name-contains {stopped_engine_name}".split()
-    )
-    assert result.exit_code == 0
-    assert result.stderr == ""
-
-    output = json.loads(result.stdout)
-    assert len(output) >= 1
-    assert all([stopped_engine_name in engine["name"] for engine in output])
-
-
-def test_engine_list_database(
-    engine_name: str, stopped_engine_name: str, database_name: str
-) -> None:
-    """
-    test engine list with filter by database
-    """
-    result = CliRunner(mix_stderr=False).invoke(
-        main, f"engine list --database {database_name} --json".split()
-    )
-    output = json.loads(result.stdout)
-
-    assert len(output) == 2
-    assert engine_name in {engine["name"] for engine in output}
-    assert stopped_engine_name in {engine["name"] for engine in output}
-
-    result = CliRunner(mix_stderr=False).invoke(
-        main,
-        f"engine list --database {database_name} --json "
-        f"--name-contains {stopped_engine_name}".split(),
-    )
-    output = json.loads(result.stdout)
-
-    assert len(output) == 1
-    assert output[0]["name"] == stopped_engine_name

@@ -280,9 +280,10 @@ def engine_properties_options(create_mode: bool = True) -> Callable:
         option(
             "--auto-stop",
             help="Stop engine automatically after specified time in minutes."
-            "Value entered must be between 1 and 43200"
-            "(max value is equal to 30 days).",
-            type=IntRange(1, 30 * 24 * 60, clamp=False),
+            "Value entered must be between 0 and 43200"
+            "(max value is equal to 30 days). "
+            "Setting auto-stop to zero disables auto-stop.",
+            type=IntRange(0, 30 * 24 * 60, clamp=False),
             default=20 if create_mode else None,
             required=False,
             show_default=True,
