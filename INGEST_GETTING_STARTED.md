@@ -15,6 +15,7 @@ First you have to create a YAML file `lineitem_table.yaml`. The purpose of this 
 table_name: lineitem
 columns:
 - name: l_orderkey
+  alias: id
   type: LONG
 - name: l_partkey
   type: LONG
@@ -50,9 +51,12 @@ file_type: PARQUET
 object_pattern:
 - '*.parquet'
 primary_index:
-- l_orderkey
+- id
 - l_linenumber
 ```
+
+Note, you can additionally specify an alias for a column. In this case, the column in the internal table will be named after the alias. 
+Specifying an alias is optional, unless you are using parquet grouping and referring to the columns as e.g. "time.member". 
 
 #### Create an external table:
 ```shell
@@ -62,7 +66,12 @@ $ firebolt table create-external \
 
 External table (ex_lineitem) was successfully created                           
 ```
-External tables automatically get an `ex_` prefix. 
+External tables automatically get an `ex_` prefix.
+
+If s3 bucket is private, you can pass credentials by setting corresponding environment variables:
+- Either `FIREBOLT_AWS_KEY_ID` and `FIREBOLT_AWS_SECRET_KEY` 
+- Or `FIREBOLT_AWS_ROLE_ARN`, in this case you can also specify `FIREBOLT_AWS_ROLE_EXTERNAL_ID` environment variable  
+
 
 #### Create fact table:
 ```shell
@@ -76,11 +85,20 @@ The `--add-file-metadata` flag is optional. It adds `source_file_name` and `sour
 ### Ingestion
 Now, you are ready to do the ingestion.
 ```shell
-$ firebolt ingest --external-table-name ex_lineitem \
-                  --fact-table-name lineitem \
+$ firebolt ingest --file lineitem_table.yaml \
                   --mode overwrite
                   
 Ingestion from 'ex_lineitem' to 'lineitem' was successful.
 ```
 
-After the ingestion, `firebolt-cli` validates the ingestion. In case of data discrepancy between external and fact tables after the ingestion, the cli outputs an error message and returns non-zero exit code.  
+After the ingestion, `firebolt-cli` validates the ingestion. In case of data discrepancy between external and fact tables after the ingestion, the cli outputs an error message and returns non-zero exit code.
+
+Ingestion could be done in two different modes:
+- overwrite - fully recreates the internal table from external (slow)
+- append - ingest only the newest files from the external table (fast). Uses `source_file_name` and `source_file_timestamp` meta-columns to figure out the missing information. This mode doesn't guarantee correct ingestion.
+If some data discrepancy will be found, cli will output a warning and return a non-zero exit code. In this case you will have to recreate the table by using overwrite mode.
+
+For better control of the ingestion you can set following flags, which will be executed as a set statement:
+- firebolt_dont_wait_for_upload_to_s3: Don't wait for upload part to S3 on insert query finish.
+- advanced_mode: execute set advanced_mode=1
+- use_short_column_path_parquet: Use short parquet column path (skipping repeated nodes and their child node).
