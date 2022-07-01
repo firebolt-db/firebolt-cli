@@ -67,6 +67,45 @@ def format_time(execution_time: float) -> str:
     )
 
 
+def format_statistics(statistics: Statistics, execution_time: float) -> str:
+    """
+    format statistics from the query execution request to a string
+    Args:
+        statistics: query execution statistics
+        execution_time: real execution time
+
+    Returns:
+        a formatted string
+    """
+    # Calculate cached data ratio
+    cached_data_ratio = None
+    if (
+        statistics.scanned_bytes_cache is not None
+        and statistics.scanned_bytes_storage is not None
+    ):
+        scanned_bytes_total = (
+            statistics.scanned_bytes_cache + statistics.scanned_bytes_storage
+        )
+        cached_data_ratio = (
+            statistics.scanned_bytes_cache / scanned_bytes_total
+            if scanned_bytes_total
+            else 1
+        )
+    rows_per_second = statistics.rows_read / statistics.elapsed
+
+    return (
+        f"\nTotal elapsed time    : {format_time(execution_time)}"
+        f"\nFirebolt elapsed time : {format_time(statistics.elapsed)}"
+        f"\nScanned bytes         : {convert_bytes(statistics.bytes_read)}"
+        f"\nRows / Second         : {convert_num_human_readable(rows_per_second)}"
+        + (
+            f"\nCached data ratio     : {cached_data_ratio * 100:.2f}%"
+            if cached_data_ratio
+            else ""
+        )
+    )
+
+
 def echo_execution_status(
     statement: str,
     statement_idx: int,
@@ -82,35 +121,9 @@ def echo_execution_status(
     statement = format_short_statement(statement)
     counter = "" if statements_num < 2 else f"({statement_idx}/{statements_num}) "
 
-    statistics_message = ""
-    if statistics:
-        # Calculate cached data ratio
-        cached_data_ratio = None
-        if (
-            statistics.scanned_bytes_cache is not None
-            and statistics.scanned_bytes_storage is not None
-        ):
-            scanned_bytes_total = (
-                statistics.scanned_bytes_cache + statistics.scanned_bytes_storage
-            )
-            cached_data_ratio = (
-                statistics.scanned_bytes_cache / scanned_bytes_total
-                if scanned_bytes_total
-                else 1
-            )
-        rows_per_second = statistics.rows_read / statistics.elapsed
-
-        statistics_message = (
-            f"\nTotal elapsed time    : {format_time(execution_time)}"
-            f"\nFirebolt elapsed time : {format_time(statistics.elapsed)}"
-            f"\nScanned bytes         : {convert_bytes(statistics.bytes_read)}"
-            f"\nRows / Second         : {convert_num_human_readable(rows_per_second)}"
-            + (
-                f"\nCached data ratio     : {cached_data_ratio * 100:.2f}%"
-                if cached_data_ratio
-                else ""
-            )
-        )
+    statistics_message = (
+        format_statistics(statistics, execution_time) if statistics else ""
+    )
 
     msg, color = (
         (f"{counter}Success", "green") if success else (f"{counter}Error", "yellow")

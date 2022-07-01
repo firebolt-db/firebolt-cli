@@ -151,12 +151,10 @@ def construct_resource_manager(**raw_config_options: str) -> ResourceManager:
     )
 
 
-def represent_human_readable(
-    num: Optional[float], step_unit: int, labels: List[str]
-) -> str:
+def to_human_readable(num: Optional[float], step_unit: int, labels: List[str]) -> str:
     """
-    converts a long string into its short human-readable
-    representation, e.g. 1233212 -> 1.2 M
+    converts a long number to a short human-readable string representation
+    e.g. 1233212 -> 1.2 M
 
     Args:
         num: number to be converted
@@ -178,14 +176,14 @@ def represent_human_readable(
         if num < step_unit:
             return format_output(num, x)
 
-    return format_output(num, x[::-1])
+    return format_output(num, x)
 
 
 def convert_bytes(num: Optional[float]) -> str:
     """
     this function will convert bytes to KB, MB, GB, TB, PB, EB, ZB, YB
     """
-    return represent_human_readable(
+    return to_human_readable(
         num, step_unit=1024, labels=["KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"]
     )
 
@@ -194,7 +192,7 @@ def convert_num_human_readable(num: Optional[float]) -> str:
     """
     this function will convert number to human-readable form
     """
-    return represent_human_readable(num, step_unit=1000, labels=["K", "M", "G", "T"])
+    return to_human_readable(num, step_unit=1000, labels=["K", "M", "G", "T"])
 
 
 def read_from_file(fpath: Optional[str]) -> Optional[str]:

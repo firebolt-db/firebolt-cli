@@ -28,6 +28,7 @@ from firebolt_cli.utils import (
     prepare_execution_result_line,
     prepare_execution_result_table,
     read_config,
+    to_human_readable,
     update_config,
 )
 
@@ -101,6 +102,17 @@ def test_convert_bytes() -> None:
     assert "1.2 GB" == convert_bytes(1.2 * 2**30)
     assert "9.99 GB" == convert_bytes(9.99 * 2**30)
     assert "19.99 EB" == convert_bytes(19.99 * 2**60)
+
+
+def test_to_human_readable() -> None:
+    """
+    more cases for testing converting to human-readable
+    """
+    assert "0.5 x2" == to_human_readable(1, 2, ["x2", "x4", "x8"])
+    assert "1.5 x2" == to_human_readable(3, 2, ["x2", "x4", "x8"])
+    assert "1 x4" == to_human_readable(4, 2, ["x2", "x4", "x8"])
+    assert "2 x8" == to_human_readable(16, 2, ["x2", "x4", "x8"])
+    assert "32 x8" == to_human_readable(256, 2, ["x2", "x4", "x8"])
 
 
 ALL_CONFIG_PARAMS = [
