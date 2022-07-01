@@ -6,6 +6,7 @@ from unittest import mock
 
 import pytest
 from click.testing import CliRunner
+from firebolt.async_db.cursor import Statistics
 from firebolt.common.exception import FireboltError
 from pyfakefs.fake_filesystem import FakeFilesystem
 from pytest_mock import MockerFixture
@@ -82,6 +83,15 @@ def query_generic_test(
         header_mock.name = header_name
 
     cursor_mock.description = headers
+    cursor_mock.statistics = Statistics(
+        elapsed=0.2,
+        rows_read=2,
+        bytes_read=32132,
+        time_before_execution=0.1,
+        time_to_execute=0.1,
+        scanned_bytes_cache=None,
+        scanned_bytes_storage=None,
+    )
 
     result = CliRunner().invoke(
         query,
@@ -135,6 +145,8 @@ def test_query_tabular_output(
 
     def check_tabular_correctness(output: str) -> None:
         assert len(output) != 0
+        assert "Firebolt elapsed time : 0.20s" in output
+        assert "Scanned bytes         : 31.38 KB" in output
 
     query_generic_test(
         ["--engine-name", "engine-name"],
@@ -267,6 +279,7 @@ def test_sql_execution_multiline(
         header_mock.name = header_name
 
     cursor_mock.description = headers
+    cursor_mock.statistics = None
 
     result = CliRunner().invoke(
         query,
