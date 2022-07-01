@@ -32,7 +32,7 @@ $ firebolt --version
 ```
 
 ```shell
-firebolt, version 0.3.0
+firebolt, version 0.6.0
 ```
 
 ### Setting configuration parameters
