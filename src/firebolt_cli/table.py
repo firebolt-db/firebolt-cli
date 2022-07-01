@@ -61,7 +61,7 @@ def create_external(**raw_config_options: str) -> None:
     table = Table.parse_yaml(read_from_file(raw_config_options["file"]))
 
     with create_connection(**raw_config_options) as connection:
-        TableService(connection).create_external_table(table, aws_settings)
+        TableService(table, connection).create_external_table(aws_settings)
         echo(f"External table (ex_{table.table_name}) was successfully created")
 
 
@@ -100,8 +100,8 @@ def create_fact(**raw_config_options: str) -> None:
     table = Table.parse_yaml(read_from_file(raw_config_options["file"]))
 
     with create_connection(**raw_config_options) as connection:
-        TableService(connection).create_internal_table(
-            table=table, add_file_metadata=raw_config_options["add_file_metadata"]
+        TableService(table, connection).create_internal_table(
+            add_file_metadata=raw_config_options["add_file_metadata"]
         )
         echo(f"Fact table ({table.table_name}) was successfully created")
 

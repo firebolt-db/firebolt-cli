@@ -1,6 +1,7 @@
 from typing import Callable, Optional
 
 import pytest
+import yaml
 from click.testing import CliRunner
 from firebolt_ingest.table_service import TableService
 from pyfakefs.fake_filesystem import FakeFilesystem
@@ -39,42 +40,31 @@ def test_ingest_happy_path(
     ts_verify_ingestion = mocker.patch.object(
         TableService, "verify_ingestion", return_value=True
     )
+    fs.create_file("table_config.yaml", contents=yaml.dump(mock_table_config))
 
     connect_function_mock = mocker.patch("firebolt_cli.ingest.create_connection")
 
     result = CliRunner().invoke(
         ingest,
-        [
-            "--fact-table-name",
-            "table",
-            "--engine-name",
-            "engine_name",
-            "--mode",
-            mode,
-        ]
-        + (["--external-table-name", ex_table_name] if ex_table_name else []),
+        f"--file table_config.yaml --engine-name engine_name --mode {mode}".split(),
     )
-
-    ex_table_name = ex_table_name or "ex_table"
 
     connect_function_mock.assert_called_once()
     ts.assert_called_once()
     if mode == "overwrite":
         ts_ingest_full.assert_called_once_with(
-            external_table_name=ex_table_name,
-            internal_table_name="table",
             firebolt_dont_wait_for_upload_to_s3=False,
+            advanced_mode=False,
+            use_short_column_path_parquet=False,
         )
     else:
         ts_ingest_append.assert_called_once_with(
-            external_table_name=ex_table_name,
-            internal_table_name="table",
             firebolt_dont_wait_for_upload_to_s3=False,
+            advanced_mode=False,
+            use_short_column_path_parquet=False,
         )
 
-    ts_verify_ingestion.assert_called_once_with(
-        external_table_name=ex_table_name, internal_table_name="table"
-    )
+    ts_verify_ingestion.assert_called_once_with()
 
     assert result.exit_code == 0
 
@@ -97,29 +87,20 @@ def test_ingest_verify_failed(
     )
 
     connect_function_mock = mocker.patch("firebolt_cli.ingest.create_connection")
+    fs.create_file("table_config.yaml", contents=yaml.dump(mock_table_config))
 
     result = CliRunner(mix_stderr=False).invoke(
-        ingest,
-        [
-            "--external-table-name",
-            "ex_table",
-            "--fact-table-name",
-            "table",
-            "--engine-name",
-            "engine_name",
-        ],
+        ingest, f"--file table_config.yaml --engine-name engine_name".split()
     )
     connect_function_mock.assert_called_once()
     ts.assert_called_once()
     ts_ingest_full.assert_called_once_with(
-        external_table_name="ex_table",
-        internal_table_name="table",
         firebolt_dont_wait_for_upload_to_s3=False,
+        advanced_mode=False,
+        use_short_column_path_parquet=False,
     )
 
-    ts_verify_ingestion.assert_called_once_with(
-        external_table_name="ex_table", internal_table_name="table"
-    )
+    ts_verify_ingestion.assert_called_once_with()
 
     assert result.exit_code != 0
     assert "discrepancy" in result.stderr
