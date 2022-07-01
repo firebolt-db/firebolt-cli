@@ -156,7 +156,14 @@ def execute_and_print(cursor: Cursor, query: str, use_csv: bool) -> None:
                     writer.writerow(headers)
                     writer.writerows(data)
                 else:
-                    echo(tabulate(data, headers=headers, tablefmt="grid"))
+                    echo(
+                        tabulate(
+                            data,
+                            headers=headers,
+                            tablefmt="github",
+                            disable_numparse=True,
+                        )
+                    )
 
             cursor.nextset()
 

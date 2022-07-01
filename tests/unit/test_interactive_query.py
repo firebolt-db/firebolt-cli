@@ -58,6 +58,8 @@ def test_interactive_multiple_requests() -> None:
         connection_mock = unittest.mock.MagicMock()
         cursor_mock = unittest.mock.MagicMock()
         cursor_mock.statistics = None
+        cursor_mock.data = []
+        cursor_mock.description = []
         connection_mock.cursor.return_value = cursor_mock
 
         cursor_mock.nextset.return_value = None
