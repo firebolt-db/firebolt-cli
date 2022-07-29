@@ -27,6 +27,7 @@ jobs:
       uses: actions/checkout@v2
       with:
         fetch-depth: 0 
+        token: ${{ secrets.RELEASE_PAT }}
     
     - name: 'Publish action'
       uses: firebolt-db/action-python-release@main
