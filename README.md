@@ -5,7 +5,7 @@
 [![Code quality checks](https://github.com/firebolt-db/firebolt-cli/actions/workflows/code-check.yml/badge.svg)](https://github.com/firebolt-db/firebolt-cli/actions/workflows/code-check.yml)
 [![Firebolt Security Scan](https://github.com/firebolt-db/firebolt-cli/actions/workflows/security-scan.yml/badge.svg)](https://github.com/firebolt-db/firebolt-cli/actions/workflows/security-scan.yml)
 [![Integration tests](https://github.com/firebolt-db/firebolt-cli/actions/workflows/integration-tests.yml/badge.svg)](https://github.com/firebolt-db/firebolt-cli/actions/workflows/integration-tests.yml)
-![Coverage](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/ptiurin/bddce7ae8fba7b63a4d5d0921e8e34af/raw/firebolt-cli-coverage.json)
+![Coverage](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/yuryfirebolt/54357e681f193cee7807a96cb49d7910/raw/firebolt-cli-coverage.json)
 
 Firebolt cli is a tool for connecting to firebolt, managing firebolt resources, and executing queries from the command line.
 
