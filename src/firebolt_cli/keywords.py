@@ -252,3 +252,26 @@ FUNCTIONS = [
     "UPPER(<string>)",
     "ZEROIFNULL(<expr>)",
 ]
+
+SET_PARAMETERS = [
+    "format_csv_allow_single_quotes",
+    "format_csv_allow_single_quotes",
+    "format_csv_allow_double_quotes",
+    "input_format_skip_missing_fields",
+    "input_format_csv_escape_character",
+    "skip_invalid_orc_files",
+    "skip_invalid_parquet_files",
+    "format_csv_delimiter",
+    "max_partitions_per_insert_block",
+    "input_format_skip_unknown_fields",
+    "firebolt_dont_wait_for_upload_to_s3",
+    "firebolt_optimization_enable_exact_count_distinct",
+    "firebolt_optimization_deep_filter_depth",
+    "firebolt_optimization_deep_filter_dimension_via_dimension_allow",
+    "firebolt_optimization_deep_filter_use_primary_index",
+    "firebolt_optimization_deep_filter_use_unique_key",
+    "firebolt_case_insensitive_identifiers",
+    "max_execution_time",
+    "firebolt_beta_window_functions",
+    "max_parser_depth",
+]

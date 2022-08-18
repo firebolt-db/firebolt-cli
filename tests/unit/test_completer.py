@@ -55,18 +55,14 @@ def test_complete_set_statements():
     test completer with table and column names
     """
     cursor = MagicMock()
-    cursor.fetchall.side_effect = [
-        [["table_name", "column_name", "INT"]],
-        [["use_standard_sql"]],
-    ]
     completer = FireboltAutoCompleter(cursor)
 
     document = MagicMock()
 
     document.text_before_cursor = "set "
     suggestions = {i.text for i in completer.get_completions(document, None)}
-    assert "use_standard_sql" in suggestions
+    assert "firebolt_dont_wait_for_upload_to_s3" in suggestions
 
-    document.text_before_cursor = "set use"
+    document.text_before_cursor = "set max"
     suggestions = {i.text for i in completer.get_completions(document, None)}
-    assert "use_standard_sql" in suggestions
+    assert "max_parser_depth" in suggestions
