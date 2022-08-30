@@ -9,7 +9,7 @@ from prompt_toolkit import HTML
 from prompt_toolkit.completion import CompleteEvent, Completer, Completion
 from prompt_toolkit.document import Document
 
-from firebolt_cli.keywords import FUNCTIONS, KEYWORDS
+from firebolt_cli.keywords import FUNCTIONS, KEYWORDS, SET_PARAMETERS
 
 logger = getLogger(__name__)
 
@@ -55,10 +55,11 @@ class FireboltAutoCompleter(Completer):
         self.suggestions: List = []
         self.suggestions.extend((keyword, "KEYWORD") for keyword in KEYWORDS)
         self.suggestions.extend((function, "FUNCTION") for function in FUNCTIONS)
-        self.set_statements: List = []
+        self.set_statements: List = [
+            (function, "SET PARAMETER") for function in SET_PARAMETERS
+        ]
 
         self.populate_table_and_column_names(cursor)
-        self.populate_set_statemets(cursor)
 
     def populate_table_and_column_names(self, cursor: Cursor) -> None:
         """
@@ -87,25 +88,6 @@ class FireboltAutoCompleter(Completer):
             logger.info(
                 f"Extraction of the list of table "
                 f"and columns names failed with: {str(e)}"
-            )
-
-    def populate_set_statemets(self, cursor: Cursor) -> None:
-        """
-        fetch all available set statements parameters
-        """
-        try:
-            cursor.execute("set use_standard_sql = 0")
-            cursor.execute("SELECT name FROM system.settings")
-            data = cursor.fetchall()
-
-            self.set_statements.extend(
-                (set_statement[0], "SET KEYWORD") for set_statement in data
-            )
-
-        except (FireboltError, HTTPStatusError) as e:
-            logger.info(
-                f"Extraction of the list of available "
-                f"set parameters failed with: {str(e)}"
             )
 
     def get_completions(
