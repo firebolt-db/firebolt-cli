@@ -28,7 +28,7 @@ def must_env(var_name: str) -> str:
 
 @fixture(scope="session")
 def default_region() -> str:
-    return "eu-west-1"
+    return "us-east-1"
 
 
 @fixture(scope="session")
