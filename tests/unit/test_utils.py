@@ -193,14 +193,14 @@ def test_construct_resource_manager_password(mocker: MockerFixture):
     settings_mock = mocker.patch.object(Settings, "__init__", return_value=None)
 
     construct_resource_manager(
-        username="username",
+        username="usern@me",
         password="password",
         api_endpoint="endpoint.firebolt.io",
         account_name="firebolt",
         access_token=None,
     )
     rm.assert_called_once()
-    userpass_mock.assert_called_once_with("username", "password")
+    userpass_mock.assert_called_once_with("usern@me", "password")
     settings_mock.assert_called_once_with(
         auth=ANY,
         account_name="firebolt",
@@ -246,7 +246,7 @@ def test_construct_resource_manager_invalid_token(mocker: MockerFixture):
 
     rm.side_effect = [HTTPStatusError(message="", request=None, response=None), None]
     construct_resource_manager(
-        username="username",
+        username="usern@me",
         password="password",
         api_endpoint="endpoint.firebolt.io",
         account_name="firebolt",
@@ -256,7 +256,7 @@ def test_construct_resource_manager_invalid_token(mocker: MockerFixture):
     assert rm.call_count == 2
 
     token_mock.assert_called_once_with("invalid_access_token")
-    userpass_mock.assert_called_once_with("username", "password")
+    userpass_mock.assert_called_once_with("usern@me", "password")
 
     settings_mock.assert_called_with(
         auth=ANY,
