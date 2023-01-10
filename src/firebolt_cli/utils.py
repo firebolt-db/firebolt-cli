@@ -10,7 +10,7 @@ import keyring
 import sqlparse  # type: ignore
 from appdirs import user_config_dir
 from click import Command, Context, Group, echo
-from firebolt.client.auth import Token, UsernamePassword
+from firebolt.client.auth import Auth, ServiceAccount, Token, UsernamePassword
 from firebolt.common import Settings
 from firebolt.common.exception import FireboltError
 from firebolt.db.connection import Connection, connect
@@ -141,12 +141,20 @@ def construct_resource_manager(**raw_config_options: str) -> ResourceManager:
         except HTTPStatusError:
             pass
 
+    username = raw_config_options["username"]
+    password = raw_config_options["password"]
+    auth: Auth
+
+    if "@" in username:
+        auth = UsernamePassword(username, password)
+    else:
+        # Assume programmatic access
+        auth = ServiceAccount(username, password)
+
     return ResourceManager(
         Settings(
             **settings_dict,
-            auth=UsernamePassword(
-                raw_config_options["username"], raw_config_options["password"]
-            ),
+            auth=auth,
         )
     )
 
@@ -370,7 +378,14 @@ def create_connection(
         except FireboltError:
             pass
 
-    return connect(**params, auth=UsernamePassword(username, password))
+    auth: Auth
+    if "@" in username:
+        auth = UsernamePassword(username, password)
+    else:
+        # Assume programmatic access
+        auth = ServiceAccount(username, password)
+
+    return connect(**params, auth=auth)
 
 
 def create_aws_key_secret_creds_from_environ() -> Optional[AWSCredentialsKeySecret]:

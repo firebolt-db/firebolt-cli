@@ -102,7 +102,7 @@ def mock_connection_params() -> dict:
     return {
         "engine_name": "mock_engine_name",
         "database_name": "mock_database_name",
-        "username": "mock_username",
+        "username": "mock@username.io",
         "password": "mock_password",
         "access_token": "mock_access_token",
         "api_endpoint": "mock_api_endpoint",
