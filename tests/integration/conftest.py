@@ -18,6 +18,8 @@ ENGINE_URL_ENV = "ENGINE_URL"
 ENGINE_NAME_ENV = "ENGINE_NAME"
 STOPPED_ENGINE_URL_ENV = "STOPPED_ENGINE_URL"
 STOPPED_ENGINE_NAME_ENV = "STOPPED_ENGINE_NAME"
+SERVICE_ID_ENV = "SERVICE_ID"
+SERVICE_SECRET_ENV = "SERVICE_SECRET"
 
 
 def must_env(var_name: str) -> str:
@@ -64,6 +66,16 @@ def username() -> str:
 @fixture(scope="session")
 def password() -> str:
     return must_env(PASSWORD_ENV)
+
+
+@fixture(scope="session")
+def service_id() -> str:
+    return must_env(SERVICE_ID_ENV)
+
+
+@fixture(scope="session")
+def service_secret() -> str:
+    return must_env(SERVICE_SECRET_ENV)
 
 
 @fixture(scope="session")

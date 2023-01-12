@@ -231,3 +231,34 @@ def test_query_with_access_token(
         query="SELECT 1;",
         check_result=True,
     )
+
+
+def test_query_with_service_account(
+    service_id: str,
+    service_secret: str,
+    account_name: str,
+    api_endpoint: str,
+    engine_name: str,
+):
+    """ """
+    access_token = construct_resource_manager(
+        username=service_id,
+        password=service_secret,
+        account_name=account_name,
+        api_endpoint=api_endpoint,
+        access_token=None,
+    ).client.auth._token
+
+    query_simple_generic(
+        additional_parameters=[
+            "--engine-name",
+            engine_name,
+            "--account-name",
+            account_name,
+            "--access-token",
+            access_token,
+        ],
+        input_type="stdin",
+        query="SELECT 1;",
+        check_result=True,
+    )
