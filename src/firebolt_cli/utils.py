@@ -113,6 +113,16 @@ def prepare_execution_result_table(
         return tabulate(data, headers=header, tablefmt="grid")
 
 
+def get_auth_from_creds(id: str, secret: str) -> Auth:
+    auth: Auth
+    if "@" in id:
+        auth = UsernamePassword(id, secret)
+    else:
+        # Assume programmatic access
+        auth = ServiceAccount(id, secret)
+    return auth
+
+
 def construct_resource_manager(**raw_config_options: str) -> ResourceManager:
     """
     Propagate raw_config_options to the settings and construct a resource manager
@@ -143,18 +153,11 @@ def construct_resource_manager(**raw_config_options: str) -> ResourceManager:
 
     username = raw_config_options["username"]
     password = raw_config_options["password"]
-    auth: Auth
-
-    if "@" in username:
-        auth = UsernamePassword(username, password)
-    else:
-        # Assume programmatic access
-        auth = ServiceAccount(username, password)
 
     return ResourceManager(
         Settings(
             **settings_dict,
-            auth=auth,
+            auth=get_auth_from_creds(username, password),
         )
     )
 
@@ -378,14 +381,7 @@ def create_connection(
         except FireboltError:
             pass
 
-    auth: Auth
-    if "@" in username:
-        auth = UsernamePassword(username, password)
-    else:
-        # Assume programmatic access
-        auth = ServiceAccount(username, password)
-
-    return connect(**params, auth=auth)
+    return connect(**params, auth=get_auth_from_creds(username, password))
 
 
 def create_aws_key_secret_creds_from_environ() -> Optional[AWSCredentialsKeySecret]:
