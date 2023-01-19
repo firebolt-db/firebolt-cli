@@ -34,7 +34,7 @@ jobs:
         run: |
            cd repo_path
            NEW_TAG=$(python -c 'from src.firebolt_cli.__init__ import __version__; print (__version__)')
-           echo "::set-output name=docker_tags::ghcr.io/firebolt-db/firebolt-cli:$NEW_TAG, ghcr.io/firebolt-db/firebolt-cli:latest"
+           echo "docker_tags=ghcr.io/firebolt-db/firebolt-cli:$NEW_TAG, ghcr.io/firebolt-db/firebolt-cli:latest"  >>  $GITHUB_OUTPUT
         shell: bash
 
       - name: Build and push
