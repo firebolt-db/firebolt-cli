@@ -64,4 +64,14 @@ jobs:
           API_ENDPOINT: "api.dev.firebolt.io"
         run: |
           pytest -m "not slow" -o log_cli=false -o log_cli_level=INFO tests/integration
-        
+
+      - name: Slack Notify of failure
+        if: failure()
+        id: slack
+        uses: firebolt-db/action-slack-nightly-notify@v1
+        with:
+          os: ${{ matrix.os }}
+          programming-language: Python
+          language-version: ${{ matrix.python-version }}
+          notifications-channel: 'ecosystem-ci-notifications'
+          slack-api-key: ${{ secrets.SLACK_BOT_TOKEN }}
