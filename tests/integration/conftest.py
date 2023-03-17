@@ -131,7 +131,7 @@ def mock_table_config() -> dict:
             {"name": "l_orderkey", "type": "BIGINT"},
             {"name": "l_partkey", "type": "BIGINT"},
             {"name": "l_suppkey", "type": "BIGINT"},
-            {"name": "l_linenumber", "type": "INT"},
+            {"name": "l_linenumber", "type": "INTEGER"},
             {"name": "l_quantity", "type": "BIGINT"},
             {"name": "l_extendedprice", "type": "BIGINT"},
             {"name": "l_discount", "type": "BIGINT"},
