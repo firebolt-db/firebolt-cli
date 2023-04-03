@@ -54,7 +54,7 @@ def check_tables_equal_row_count(
     result = cli_runner.invoke(main, ["query", "--sql", sql, "--csv"])
 
     assert result.exit_code == 0
-    assert "1" in result.stdout
+    assert "True" in result.stdout
 
 
 @pytest.mark.parametrize("with_metadata", [True, False])
