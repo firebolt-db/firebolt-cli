@@ -44,7 +44,7 @@ _common_options: List[Callable] = [
     option(
         "--account-name",
         envvar="FIREBOLT_ACCOUNT_NAME",
-        callback=default_from_config_file(required=False),
+        callback=default_from_config_file(required=True),
         help="The name of the Firebolt account.",
     ),
     option(
@@ -52,13 +52,6 @@ _common_options: List[Callable] = [
         envvar="FIREBOLT_API_ENDPOINT",
         callback=default_from_config_file(DEFAULT_API_URL, required=False),
         hidden=True,
-    ),
-    option(
-        "--access-token",
-        envvar="FIREBOLT_ACCESS_TOKEN",
-        help="Firebolt token for authentication. "
-        "If the access-token fails, the username/password will be used instead.",
-        required=False,
     ),
 ]
 

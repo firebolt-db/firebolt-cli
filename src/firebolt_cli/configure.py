@@ -61,7 +61,7 @@ def configure(ctx: Context, **raw_config_options: str) -> None:
             for key, key_readable, message in zip(keys, keys_readable, skip_message):
                 value = prompt(
                     f"{key_readable} [{message if message else None}]",
-                    hide_input=key == "client_id",
+                    hide_input=key == "client_secret",
                     default=prev_config.get(key, ""),
                     show_default=False,
                 )
