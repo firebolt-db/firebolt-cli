@@ -81,11 +81,17 @@ def generic_test_parameter_priority(
         )
 
 
-def test_username_priority(fs: FakeFilesystem):
-    """username is processed correctly, in correct proirity from different sources"""
+def test_client_id_priority(fs: FakeFilesystem):
+    """client_id is processed correctly, in correct proirity from different sources"""
     generic_test_parameter_priority(
-        fs, "username", ["-u", "--username"], _common_options[0]
+        fs, "client_id", ["-c", "--client-id"], _common_options[0]
     )
+
+def test_client_secret_priority(fs: FakeFilesystem):
+    """client_secret is processed correctly, in correct proirity from different sources"""
+    generic_test_parameter_priority(
+        fs, "client_secret", ["-s", "--client-secret"], _common_options[1]
+    )    
 
 
 def test_account_name_priority(fs: FakeFilesystem):
@@ -106,60 +112,6 @@ def test_api_endpoint_priority(fs: FakeFilesystem):
     )
 
 
-def test_password_priority(fs: FakeFilesystem):
-    """username is processed correctly, in correct proirity from different sources"""
-    opt = _common_options[1]  # password option
-
-    SPECIAL_CHARACTERS = " !\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~"
-    # helper command, dumps all options it received
-    @command()
-    @opt
-    def test(**kwargs):
-        echo(dumps(kwargs))
-
-    def validate_command(
-        command: Tuple, input: Optional[str], expected_value: str, err_msg: str
-    ):
-        result = CliRunner().invoke(*command, input=input)
-        if result.exit_code != 0:
-            print(result.__dict__)
-        assert result.exit_code == 0, "non-zero exit code for "
-        prompt = "Password: \n"
-        if result.output.startswith(prompt):
-            config = loads(result.output[len(prompt) :])
-        else:
-            config = loads(result.output)
-        assert "password" in config, "missing password command option"
-        assert config["password"] == expected_value, err_msg
-
-    with create_config_file(fs, {}):
-        update_config(password="pw_config" + SPECIAL_CHARACTERS)
-        # password is provided as option and in config file,
-        # option should be chosen
-        validate_command(
-            (test, ["--password"]),
-            "pw_option" + SPECIAL_CHARACTERS,
-            "pw_option" + SPECIAL_CHARACTERS,
-            "invalid password from option",
-        )
-
-        validate_command(
-            (test, ["-p"]),
-            "pw_option" + SPECIAL_CHARACTERS,
-            "pw_option" + SPECIAL_CHARACTERS,
-            "invalid password from option",
-        )
-
-        # password is provided in config file,
-        # config file should be chosen
-        validate_command(
-            (test,),
-            None,
-            "pw_config" + SPECIAL_CHARACTERS,
-            "invalid password from config file",
-        )
-
-
 def test_parameters_missing(fs: FakeFilesystem):
     def check_empty_option(opt: Callable, option_name: str):
         # helper command, dumps all options it received
@@ -176,7 +128,7 @@ def test_parameters_missing(fs: FakeFilesystem):
             f"Missing option --{option_name}" in result.stdout
         ), "invalid missing parameter message"
 
-    for opt, option_name in zip(_common_options[:2], ("username", "password")):
+    for opt, option_name in zip(_common_options[:2], ("client-id", "client-secret")):
         check_empty_option(opt, option_name)
 
         # create config file without current option

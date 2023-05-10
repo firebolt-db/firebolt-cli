@@ -22,15 +22,15 @@ def validate_file_config(config):
 
 def test_configure_happy_path(fs: FakeFilesystem) -> None:
     fs.create_dir(user_config_dir())
-    test_password = "pasword523%@!$$@#%@#!"
-    fs.create_file("pswd", contents=test_password)
 
     runner = CliRunner()
     result = runner.invoke(
         configure,
         [
-            "--username",
-            "username",
+            "--client-id",
+            "client_id",
+            "--client-secret",
+            "client_secret",
             "--account-name",
             "account_name",
             "--database-name",
@@ -39,16 +39,15 @@ def test_configure_happy_path(fs: FakeFilesystem) -> None:
             "engine_name",
             "--api-endpoint",
             "api_endpoint",
-            "--password",
         ],
-        input=test_password,
     )
     assert result.exit_code == 0, "non-zero exit code for configure"
     assert "Successfully" in result.stdout, "Invalid result message"
 
     validate_file_config(
         {
-            "username": "username",
+            "client_id": "client_id",
+            "client_secret": "client_secret",
             "account_name": "account_name",
             "database_name": "database_name",
             "engine_name": "engine_name",
@@ -56,16 +55,14 @@ def test_configure_happy_path(fs: FakeFilesystem) -> None:
         }
     )
 
-    assert read_config().get("password") == test_password
-
     fs.remove(config_file)
 
     # test some parameters missing, only -u and --engine-name
     result = runner.invoke(
         configure,
         [
-            "-u",
-            "username",
+            "-c",
+            "client_id",
             "--engine-name",
             "engine_url.firebolt.io",
         ],
@@ -75,56 +72,31 @@ def test_configure_happy_path(fs: FakeFilesystem) -> None:
 
     validate_file_config(
         {
-            "username": "username",
+            "client_id": "client_id",
             "engine_name": "engine_url",
         }
     )
 
 
 def test_configure_prompt(fs: FakeFilesystem) -> None:
-
     fs.create_dir(user_config_dir())
     runner = CliRunner()
     result = runner.invoke(
         configure,
         [],
         input="\n".join(
-            ["username", "password", "account_name", "database_name", "engine_name"]
+            ["client_id", "client_secret", "account_name", "database_name", "engine_name"]
         ),
     )
     assert result.exit_code == 0, "non-zero exit code for configure"
     assert "Successfully" in result.stdout, "Invalid result message"
 
     assert read_config() == {
-        "username": "username",
+        "client_id": "client_id",
+        "client_secret": "client_secret",
         "account_name": "account_name",
         "database_name": "database_name",
         "engine_name": "engine_name",
-        "password": "password",
-    }
-
-    result = runner.invoke(
-        configure,
-        [],
-        input="\n".join(
-            [
-                "username",
-                "password",
-                "account_name",
-                "database_name",
-                "engine_url.firebolt.io",
-            ]
-        ),
-    )
-    assert result.exit_code == 0, "non-zero exit code for configure"
-    assert "Successfully" in result.stdout, "Invalid result message"
-
-    assert read_config() == {
-        "username": "username",
-        "account_name": "account_name",
-        "database_name": "database_name",
-        "engine_name": "engine_url.firebolt.io",
-        "password": "password",
     }
 
 
@@ -134,8 +106,8 @@ def test_configure_overrides(fs: FakeFilesystem) -> None:
     result = runner.invoke(
         configure,
         [
-            "--username",
-            "username",
+            "--client-id",
+            "client_id",
             "--database-name",
             "database_name",
         ],
@@ -144,15 +116,15 @@ def test_configure_overrides(fs: FakeFilesystem) -> None:
     assert "Successfully" in result.stdout, "Invalid result message"
 
     assert read_config() == {
-        "username": "username",
+        "client_id": "client_id",
         "database_name": "database_name",
     }
 
     result = runner.invoke(
         configure,
         [
-            "--username",
-            "username2",
+            "--client-id",
+            "client_id2",
             "--account-name",
             "account_name",
         ],
@@ -161,7 +133,7 @@ def test_configure_overrides(fs: FakeFilesystem) -> None:
     assert "Successfully" in result.stdout, "Invalid result message"
 
     assert read_config() == {
-        "username": "username2",
+        "client_id": "client_id2",
         "database_name": "database_name",
         "account_name": "account_name",
     }
@@ -172,14 +144,14 @@ def test_configure_short_version(fs: FakeFilesystem) -> None:
     runner = CliRunner()
     result = runner.invoke(
         main,
-        "config --username username".split(),
+        "config --client-id client_id".split(),
     )
 
     assert result.exit_code == 0, "non-zero exit code for configure"
     assert "Successfully" in result.stdout, "Invalid result message"
 
     assert read_config() == {
-        "username": "username",
+        "client_id": "client_id",
     }
 
 
@@ -191,8 +163,8 @@ def test_configure_reset(fs: FakeFilesystem) -> None:
     result = runner.invoke(
         configure,
         [
-            "--username",
-            "username",
+            "--client-id",
+            "client_id",
             "--database-name",
             "database_name",
         ],
@@ -201,7 +173,7 @@ def test_configure_reset(fs: FakeFilesystem) -> None:
     assert "Successfully" in result.stdout, "Invalid result message"
 
     assert read_config() == {
-        "username": "username",
+        "client_id": "client_id",
         "database_name": "database_name",
     }
 

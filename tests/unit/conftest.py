@@ -20,7 +20,7 @@ def configure_cli(fs: FakeFilesystem) -> None:
         result = runner.invoke(
             configure,
             [],
-            input="username\npassword\naccount_name\ndatabase_name\n\n\n",
+            input="client_id\nclient_secret\naccount_name\ndatabase_name\n\n\n",
         )
 
         assert result.exit_code == 0, "configuration of cli failed"
@@ -102,9 +102,8 @@ def mock_connection_params() -> dict:
     return {
         "engine_name": "mock_engine_name",
         "database_name": "mock_database_name",
-        "username": "mock@username.io",
-        "password": "mock_password",
-        "access_token": "mock_access_token",
+        "client_id": "mock_client_id",
+        "client_secret": "mock_client_secret",
         "api_endpoint": "mock_api_endpoint",
         "account_name": "mock_account_name",
     }

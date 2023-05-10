@@ -301,7 +301,6 @@ def create_connection(
     database_name: str,
     client_id: str,
     client_secret: str,
-    access_token: Optional[str],
     api_endpoint: str,
     account_name: Optional[str],
     **kwargs: str,
