@@ -8,7 +8,7 @@ from unittest.mock import ANY
 import pytest
 from appdirs import user_config_dir
 from click.testing import CliRunner
-from firebolt.client.auth import ServiceAccount, Token, UsernamePassword
+from firebolt.client.auth import ClientCredentials
 from firebolt.common import Settings
 from firebolt.common.exception import FireboltError
 from firebolt.service.manager import ResourceManager
@@ -189,7 +189,7 @@ def test_config_caching(fs: FakeFilesystem) -> None:
 
 def test_construct_resource_manager(mocker: MockerFixture):
     rm = mocker.patch.object(ResourceManager, "__init__", return_value=None)
-    sa_mock = mocker.patch.object(ServiceAccount, "__init__", return_value=None)
+    sa_mock = mocker.patch.object(ClientCredentials, "__init__", return_value=None)
     settings_mock = mocker.patch.object(Settings, "__init__", return_value=None)
 
     construct_resource_manager(
@@ -266,7 +266,7 @@ def test_create_connection(
     Check create_connection with engine name and access_token
     """
     connect_function_mock = mocker.patch("firebolt_cli.utils.connect")
-    sa_mock = mocker.patch.object(ServiceAccount, "__init__", return_value=None)
+    sa_mock = mocker.patch.object(ClientCredentials, "__init__", return_value=None)
 
     create_connection(**mock_connection_params)
 

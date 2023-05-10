@@ -10,7 +10,7 @@ import keyring
 import sqlparse  # type: ignore
 from appdirs import user_config_dir
 from click import Command, Context, Group, echo
-from firebolt.client.auth import Auth, ServiceAccount
+from firebolt.client.auth import Auth, ClientCredentials
 from firebolt.common import Settings
 from firebolt.common.exception import FireboltError
 from firebolt.db.connection import Connection, connect
@@ -122,7 +122,7 @@ def construct_resource_manager(**raw_config_options: str) -> ResourceManager:
     account_name = account_name.lower() if account_name is not None else None
     return ResourceManager(
         Settings(
-            auth=ServiceAccount(raw_config_options["client_id"], raw_config_options["client_secret"]),
+            auth=ClientCredentials(raw_config_options["client_id"], raw_config_options["client_secret"]),
             server=raw_config_options["api_endpoint"],
             default_region=raw_config_options.get("region", ""),
             account_name=account_name,            
@@ -311,7 +311,7 @@ def create_connection(
 
     account_name = account_name.lower() if account_name is not None else None
     return connect(
-        auth=ServiceAccount(client_id, client_secret),
+        auth=ClientCredentials(client_id, client_secret),
         database=database_name,
         account_name=account_name,
         engine_name=engine_name,

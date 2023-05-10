@@ -292,7 +292,7 @@ def enter_interactive_session(connection: Connection, use_csv: bool) -> None:
     "--database-name",
     envvar="FIREBOLT_DATABASE_NAME",
     help="Database name to use for SQL queries.",
-    callback=default_from_config_file(),
+    callback=default_from_config_file(required=False),
 )
 @option(
     "--file",
@@ -319,13 +319,6 @@ def query(**raw_config_options: str) -> None:
         sys.exit(os.EX_USAGE)
 
     sql_query = stdin_query or file_query or args_query
-
-    # if engine_name is not set, use default engine
-    if raw_config_options["engine_name"] is None:
-        rm = construct_resource_manager(**raw_config_options)
-        raw_config_options["engine_name"] = get_default_database_engine(
-            rm, raw_config_options["database_name"]
-        ).endpoint
 
     with create_connection(**raw_config_options) as connection:
 
