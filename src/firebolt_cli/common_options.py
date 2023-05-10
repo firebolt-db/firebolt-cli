@@ -26,39 +26,20 @@ def default_from_config_file(
     return inner
 
 
-def password_from_config_file(
-    ctx: Context, param: Parameter, value: bool
-) -> Optional[str]:
-    # type check
-    assert param.name
-
-    # user asked to prompt for password
-    if value:
-        return prompt("Password", type=str, hide_input=True)
-
-    pw_value = environ.get("FIREBOLT_PASSWORD") or read_config().get("password", None)
-    if not pw_value:
-        raise MissingParameter(
-            ctx=ctx, param=param, param_hint="--{}".format(param.name.replace("_", "-"))
-        )
-
-    return pw_value
-
-
 _common_options: List[Callable] = [
     option(
-        "-u",
-        "--username",
-        envvar="FIREBOLT_USERNAME",
+        "-c",
+        "--client-id",
+        envvar="FIREBOLT_CLIENT_ID",
         callback=default_from_config_file(required=True),
-        help="The username used for connecting to Firebolt.",
+        help="The client id used for connecting to Firebolt.",
     ),
     option(
-        "-p",
-        "--password",
-        is_flag=True,
-        callback=password_from_config_file,
-        help=" The password used for connecting to Firebolt.",
+        "-s",
+        "--client-secret",
+        envvar="FIREBOLT_CLIENT_SECRET",        
+        callback=default_from_config_file(required=True),
+        help=" The client secret used for connecting to Firebolt.",
     ),
     option(
         "--account-name",

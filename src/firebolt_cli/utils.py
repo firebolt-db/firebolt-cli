@@ -10,7 +10,7 @@ import keyring
 import sqlparse  # type: ignore
 from appdirs import user_config_dir
 from click import Command, Context, Group, echo
-from firebolt.client.auth import Auth, ServiceAccount, Token, UsernamePassword
+from firebolt.client.auth import Auth, ServiceAccount
 from firebolt.common import Settings
 from firebolt.common.exception import FireboltError
 from firebolt.db.connection import Connection, connect
@@ -113,51 +113,19 @@ def prepare_execution_result_table(
         return tabulate(data, headers=header, tablefmt="grid")
 
 
-def get_auth_from_creds(id: str, secret: str) -> Auth:
-    auth: Auth
-    if "@" in id:
-        auth = UsernamePassword(id, secret)
-    else:
-        # Assume programmatic access
-        auth = ServiceAccount(id, secret)
-    return auth
-
-
 def construct_resource_manager(**raw_config_options: str) -> ResourceManager:
     """
     Propagate raw_config_options to the settings and construct a resource manager
     :rtype: object
     """
     account_name = raw_config_options.get("account_name", None)
-    if account_name is not None:
-        account_name = account_name.lower()
-
-    settings_dict = {
-        "server": raw_config_options["api_endpoint"],
-        "default_region": raw_config_options.get("region", ""),
-        "account_name": account_name,
-        "user": None,
-        "password": None,
-    }
-
-    if raw_config_options["access_token"] is not None:
-        try:
-            return ResourceManager(
-                Settings(
-                    **settings_dict,
-                    auth=Token(raw_config_options["access_token"]),
-                )
-            )
-        except HTTPStatusError:
-            pass
-
-    username = raw_config_options["username"]
-    password = raw_config_options["password"]
-
+    account_name = account_name.lower() if account_name is not None else None
     return ResourceManager(
         Settings(
-            **settings_dict,
-            auth=get_auth_from_creds(username, password),
+            auth=ServiceAccount(raw_config_options["client_id"], raw_config_options["client_secret"]),
+            server=raw_config_options["api_endpoint"],
+            default_region=raw_config_options.get("region", ""),
+            account_name=account_name,            
         )
     )
 
@@ -278,14 +246,6 @@ def update_config(**kwargs: str) -> None:
     :return:
     """
 
-    # Try to update password in keyring first, and only if failed in config
-    if (
-        "password" in kwargs
-        and kwargs["password"] is not None
-        and set_keyring_param("password", kwargs["password"])
-    ):
-        del kwargs["password"]
-
     if len(kwargs):
         config = ConfigParser(interpolation=None)
         if os.path.exists(config_file):
@@ -336,52 +296,28 @@ def get_default_database_engine(rm: ResourceManager, database_name: str) -> Engi
 
     raise FireboltError("No default engine is found.")
 
-
-def extract_engine_name_url(
-    engine_name_url: str,
-) -> Tuple[Optional[str], Optional[str]]:
-    """
-    Returns a tuple engine_name, engine_url
-    """
-    if "." in engine_name_url:
-        return None, engine_name_url
-    else:
-        return engine_name_url, None
-
-
 def create_connection(
     engine_name: str,
     database_name: str,
-    username: str,
-    password: str,
+    client_id: str,
+    client_secret: str,
     access_token: Optional[str],
     api_endpoint: str,
     account_name: Optional[str],
     **kwargs: str,
 ) -> Connection:
     """
-    Create connection based on access_token if provided,
-    in case of failure use username/password
+    Create connection based on client id and secret provided
     """
-    if account_name is not None:
-        account_name = account_name.lower()
 
-    params = {
-        "database": database_name,
-        "api_endpoint": api_endpoint,
-        "account_name": account_name,
-    }
-
-    # decide what to propagate engine_name or url
-    params["engine_name"], params["engine_url"] = extract_engine_name_url(engine_name)
-
-    if access_token:
-        try:
-            return connect(**params, auth=Token(access_token))
-        except FireboltError:
-            pass
-
-    return connect(**params, auth=get_auth_from_creds(username, password))
+    account_name = account_name.lower() if account_name is not None else None
+    return connect(
+        auth=ServiceAccount(client_id, client_secret),
+        database=database_name,
+        account_name=account_name,
+        engine_name=engine_name,
+        api_endpoint=api_endpoint
+    )
 
 
 def create_aws_key_secret_creds_from_environ() -> Optional[AWSCredentialsKeySecret]:
