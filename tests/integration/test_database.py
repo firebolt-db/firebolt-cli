@@ -85,7 +85,7 @@ def test_database_drop_non_existing(configure_cli: None):
     Trying to drop non-existing database
     """
     result = CliRunner(mix_stderr=False).invoke(
-        main, f"database drop non_existing_test_database --yes".split()
+        main, "database drop non_existing_test_database --yes".split()
     )
 
     assert result.exit_code != 0, ""

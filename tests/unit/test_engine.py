@@ -557,7 +557,7 @@ def test_engine_list_filter(configure_resource_manager: Sequence) -> None:
     ]
 
     result = CliRunner(mix_stderr=False).invoke(
-        main, f"engine list --database db_name --name-contains mock1 --json".split()
+        main, "engine list --database db_name --name-contains mock1 --json".split()
     )
     assert result.exit_code == 0
     rm.bindings.get_engines_bound_to_database.assert_called_once()

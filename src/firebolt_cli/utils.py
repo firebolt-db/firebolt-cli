@@ -4,7 +4,16 @@ import re
 import sys
 from configparser import ConfigParser
 from functools import lru_cache, wraps
-from typing import Callable, Dict, List, Optional, Sequence, Tuple, Type
+from typing import (
+    Callable,
+    Dict,
+    List,
+    Mapping,
+    Optional,
+    Sequence,
+    Tuple,
+    Type,
+)
 
 import keyring
 import sqlparse  # type: ignore
@@ -132,7 +141,7 @@ def construct_resource_manager(**raw_config_options: str) -> ResourceManager:
     if account_name is not None:
         account_name = account_name.lower()
 
-    settings_dict = {
+    settings_dict: Mapping[str, Optional[str]] = {
         "server": raw_config_options["api_endpoint"],
         "default_region": raw_config_options.get("region", ""),
         "account_name": account_name,
@@ -366,7 +375,7 @@ def create_connection(
     if account_name is not None:
         account_name = account_name.lower()
 
-    params = {
+    params: Dict[str, Optional[str]] = {
         "database": database_name,
         "api_endpoint": api_endpoint,
         "account_name": account_name,
@@ -377,11 +386,11 @@ def create_connection(
 
     if access_token:
         try:
-            return connect(**params, auth=Token(access_token))
+            return connect(**params, auth=Token(access_token))  # type: ignore [arg-type] # noqa: E501
         except FireboltError:
             pass
 
-    return connect(**params, auth=get_auth_from_creds(username, password))
+    return connect(**params, auth=get_auth_from_creds(username, password))  # type: ignore [arg-type] # noqa: E501
 
 
 def create_aws_key_secret_creds_from_environ() -> Optional[AWSCredentialsKeySecret]:
