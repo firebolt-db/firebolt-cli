@@ -111,6 +111,7 @@ def test_password_priority(fs: FakeFilesystem):
     opt = _common_options[1]  # password option
 
     SPECIAL_CHARACTERS = " !\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~"
+
     # helper command, dumps all options it received
     @command()
     @opt

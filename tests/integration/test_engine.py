@@ -14,7 +14,7 @@ def test_engine_list(engine_name: str, stopped_engine_name: str) -> None:
     """
 
     # Test without filter
-    result = CliRunner(mix_stderr=False).invoke(main, f"engine list --json".split())
+    result = CliRunner(mix_stderr=False).invoke(main, "engine list --json".split())
     assert result.exit_code == 0
     assert result.stderr == ""
 

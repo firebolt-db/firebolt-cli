@@ -151,7 +151,7 @@ def test_ingest_mode(
 
     result = cli_runner.invoke(
         main,
-        f"table create-fact " f"--file table_config.yaml --add-file-metadata".split(),
+        "table create-fact " "--file table_config.yaml --add-file-metadata".split(),
     )
     assert result.exit_code == 0
 

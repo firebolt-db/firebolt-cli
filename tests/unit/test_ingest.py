@@ -90,7 +90,7 @@ def test_ingest_verify_failed(
     fs.create_file("table_config.yaml", contents=yaml.dump(mock_table_config))
 
     result = CliRunner(mix_stderr=False).invoke(
-        ingest, f"--file table_config.yaml --engine-name engine_name".split()
+        ingest, "--file table_config.yaml --engine-name engine_name".split()
     )
     connect_function_mock.assert_called_once()
     ts.assert_called_once()
