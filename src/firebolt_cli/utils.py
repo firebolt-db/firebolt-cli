@@ -297,7 +297,7 @@ def get_default_database_engine(rm: ResourceManager, database_name: str) -> Engi
     raise FireboltError("No default engine is found.")
 
 def create_connection(
-    engine_name: str,
+    engine_name: Optional[str],
     database_name: str,
     client_id: str,
     client_secret: str,

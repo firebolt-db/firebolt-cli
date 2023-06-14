@@ -281,9 +281,15 @@ def enter_interactive_session(connection: Connection, use_csv: bool) -> None:
 @common_options
 @option(
     "--engine-name",
-    help="Name or url of the engine to use for SQL queries",
+    help="Name of the engine to use for SQL queries",
     envvar="FIREBOLT_ENGINE_NAME",
     callback=default_from_config_file(required=False),
+)
+@option(
+    "--no-engine",
+    help="Don't connect to a specific engine",
+    is_flag=True,
+    default=False,
 )
 @option(
     "--csv", help="Provide query output in CSV format.", is_flag=True, default=False
@@ -319,6 +325,9 @@ def query(**raw_config_options: str) -> None:
         sys.exit(os.EX_USAGE)
 
     sql_query = stdin_query or file_query or args_query
+
+    if raw_config_options.pop("no_engine"):
+        raw_config_options["engine_name"] = None
 
     with create_connection(**raw_config_options) as connection:
 
