@@ -118,15 +118,10 @@ def construct_resource_manager(**raw_config_options: str) -> ResourceManager:
     Propagate raw_config_options to the settings and construct a resource manager
     :rtype: object
     """
-    account_name = raw_config_options.get("account_name", None)
-    account_name = account_name.lower() if account_name is not None else None
     return ResourceManager(
-        Settings(
-            auth=ClientCredentials(raw_config_options["client_id"], raw_config_options["client_secret"]),
-            server=raw_config_options["api_endpoint"],
-            default_region=raw_config_options.get("region", ""),
-            account_name=account_name,            
-        )
+        auth=ClientCredentials(raw_config_options["client_id"], raw_config_options["client_secret"]),
+        account_name=raw_config_options["account_name"].lower(),
+        api_endpoint=raw_config_options["api_endpoint"],
     )
 
 

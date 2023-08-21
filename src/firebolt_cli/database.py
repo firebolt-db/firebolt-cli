@@ -14,9 +14,9 @@ from firebolt_cli.utils import (
 
 
 def print_db_full_information(
-    rm: ResourceManager, database: Database, use_json: bool
+    database: Database, use_json: bool
 ) -> None:
-    attached_engines = rm.bindings.get_engines_bound_to_database(database)
+    attached_engines = database.get_attached_engines()
     attached_engine_names = [str(engine.name) for engine in attached_engines]
 
     echo(
@@ -24,7 +24,7 @@ def print_db_full_information(
             data=[
                 database.name,
                 database.description,
-                str(rm.regions.get_by_key(database.compute_region_key).name),
+                database.region,
                 convert_bytes(database.data_size_full),
                 str(database.create_time),
                 attached_engine_names,
@@ -86,7 +86,7 @@ def create(**raw_config_options: str) -> None:
     if not raw_config_options["json"]:
         echo(f"Database {database.name} is successfully created")
 
-    print_db_full_information(rm, database, bool(raw_config_options["json"]))
+    print_db_full_information(database, bool(raw_config_options["json"]))
 
 
 @command(name="list", short_help="List existing databases (alias: ls)")
@@ -108,7 +108,6 @@ def list(**raw_config_options: str) -> None:
 
     databases = rm.databases.get_many(
         name_contains=raw_config_options["name_contains"],
-        order_by="DATABASE_ORDER_NAME_ASC",
     )
 
     if not raw_config_options["json"]:
@@ -120,7 +119,7 @@ def list(**raw_config_options: str) -> None:
                 data=[
                     [
                         db.name,
-                        str(rm.regions.get_by_key(db.compute_region_key).name),
+                        db.region,
                         db.description,
                     ]
                     for db in databases
@@ -148,13 +147,13 @@ def drop(**raw_config_options: str) -> None:
     Drop specified database. By default, this requires confirmation to execute.
     """
     rm = construct_resource_manager(**raw_config_options)
-    database = rm.databases.get_by_name(name=raw_config_options["database_name"])
+    database = rm.databases.get(raw_config_options["database_name"])
 
     if raw_config_options["yes"] or confirm(
         f"Do you really want to drop the database {database.name}?"
     ):
         database.delete()
-        echo(f"Drop request for database {database.name} is successfully sent")
+        echo(f"Database {database.name} is successfully dropped")
     else:
         echo("Drop request is aborted")
 
@@ -172,8 +171,8 @@ def describe(**raw_config_options: str) -> None:
     Describe specified database.
     """
     rm = construct_resource_manager(**raw_config_options)
-    database = rm.databases.get_by_name(name=raw_config_options["database_name"])
-    print_db_full_information(rm, database, bool(raw_config_options["json"]))
+    database = rm.databases.get(raw_config_options["database_name"])
+    print_db_full_information(database, bool(raw_config_options["json"]))
 
 
 @command()
@@ -197,14 +196,14 @@ def update(**raw_config_options: str) -> None:
     Update specified database description
     """
     rm = construct_resource_manager(**raw_config_options)
-    database = rm.databases.get_by_name(name=raw_config_options["name"])
+    database = rm.databases.get(raw_config_options["name"])
 
     database = database.update(description=raw_config_options["description"])
 
     if not raw_config_options["json"]:
         echo(f"The database {database.name} was successfully updated")
 
-    print_db_full_information(rm, database, bool(raw_config_options["json"]))
+    print_db_full_information(database, bool(raw_config_options["json"]))
 
 
 database.add_command(create)
