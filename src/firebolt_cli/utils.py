@@ -270,7 +270,6 @@ def exit_on_firebolt_exception(func: Callable) -> Callable:
         try:
             func(*args, **kwargs)
         except Exception as err:
-            raise err
             echo(err, err=True)
             sys.exit(1)
 

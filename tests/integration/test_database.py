@@ -7,7 +7,7 @@ from firebolt_cli.main import main
 
 
 def test_database_create_drop(
-    configure_cli: None, database_name: str, default_region: str
+    configure_cli: None, database_name: str, default_region: str, cli_runner: CliRunner
 ):
     """
     1. Create the database with json output
@@ -19,7 +19,7 @@ def test_database_create_drop(
 
     database_name = f"{database_name}_create_test3"
     # Creating a test database
-    result = CliRunner(mix_stderr=False).invoke(
+    result = cli_runner.invoke(
         main,
         f"database create --name {database_name} "
         f"--description database_description --region {default_region} --json".split(),
@@ -34,7 +34,7 @@ def test_database_create_drop(
     assert output["description"] == "database_description"
 
     # Getting the description of the database
-    result = CliRunner(mix_stderr=False).invoke(
+    result = cli_runner.invoke(
         main,
         f"database describe {database_name} --json".split(),
     )

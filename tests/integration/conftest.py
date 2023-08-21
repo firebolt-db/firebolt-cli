@@ -10,37 +10,18 @@ from firebolt_cli.configure import configure
 LOGGER = getLogger(__name__)
 
 DATABASE_NAME_ENV = "DATABASE_NAME"
-USER_NAME_ENV = "USER_NAME"
-PASSWORD_ENV = "PASSWORD"
-ACCOUNT_NAME_ENV = "ACCOUNT_NAME"
-API_ENDPOINT_ENV = "API_ENDPOINT"
-ENGINE_URL_ENV = "ENGINE_URL"
-ENGINE_NAME_ENV = "ENGINE_NAME"
-STOPPED_ENGINE_URL_ENV = "STOPPED_ENGINE_URL"
-STOPPED_ENGINE_NAME_ENV = "STOPPED_ENGINE_NAME"
 SERVICE_ID_ENV = "SERVICE_ID"
 SERVICE_SECRET_ENV = "SERVICE_SECRET"
+ACCOUNT_NAME_ENV = "ACCOUNT_NAME"
+API_ENDPOINT_ENV = "API_ENDPOINT"
+ENGINE_NAME_ENV = "ENGINE_NAME"
+STOPPED_ENGINE_NAME_ENV = "STOPPED_ENGINE_NAME"
 
 
 def must_env(var_name: str) -> str:
     assert var_name in environ, f"Expected {var_name} to be provided in environment"
     LOGGER.info(f"{var_name}: {environ[var_name]}")
     return environ[var_name]
-
-
-@fixture(scope="session")
-def default_region() -> str:
-    return "us-east-1"
-
-
-@fixture(scope="session")
-def engine_url() -> str:
-    return must_env(ENGINE_URL_ENV)
-
-
-@fixture(scope="session")
-def stopped_engine_url() -> str:
-    return must_env(STOPPED_ENGINE_URL_ENV)
 
 
 @fixture(scope="session")
@@ -56,16 +37,6 @@ def stopped_engine_name() -> str:
 @fixture(scope="session")
 def database_name() -> str:
     return must_env(DATABASE_NAME_ENV)
-
-
-@fixture(scope="session")
-def username() -> str:
-    return must_env(USER_NAME_ENV)
-
-
-@fixture(scope="session")
-def password() -> str:
-    return must_env(PASSWORD_ENV)
 
 
 @fixture(scope="session")
@@ -89,6 +60,11 @@ def api_endpoint() -> str:
 
 
 @fixture(scope="session")
+def default_region() -> str:
+    return "us-east-1"
+
+
+@fixture(scope="session")
 def s3_url() -> str:
     return "s3://firebolt-publishing-public/samples/tpc-h/parquet/lineitem/"
 
@@ -96,15 +72,16 @@ def s3_url() -> str:
 @fixture(scope="session")
 def configure_cli(
     api_endpoint: str,
-    password: str,
-    username: str,
+    service_id: str,
+    service_secret: str,
     database_name: str,
     engine_name: str,
+    account_name: str,
 ) -> None:
     result = CliRunner().invoke(
         configure,
         [],
-        input=f"{username}\n{password}\n\n{database_name}\n{engine_name}\n",
+        input=f"{service_id}\n{service_secret}\n{account_name}\n{database_name}\n{engine_name}\n",
     )
     assert result.exit_code == 0
 
