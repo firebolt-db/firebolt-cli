@@ -31,7 +31,6 @@ from firebolt_cli.utils import (
     create_connection,
     exit_on_firebolt_exception,
     format_short_statement,
-    get_default_database_engine,
     read_from_file,
     read_from_stdin_buffer,
 )

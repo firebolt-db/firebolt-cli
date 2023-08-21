@@ -161,6 +161,9 @@ def convert_bytes(num: Optional[float]) -> str:
         num, step_unit=1024, labels=["KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"]
     )
 
+def convert_price_per_hour(cents: Optional[float]) -> str:
+    return f"{cents:.2f}$/hour" if cents else "-"
+
 
 def convert_num_human_readable(num: Optional[float]) -> str:
     """
@@ -267,29 +270,12 @@ def exit_on_firebolt_exception(func: Callable) -> Callable:
         try:
             func(*args, **kwargs)
         except Exception as err:
+            raise err
             echo(err, err=True)
             sys.exit(1)
 
     return decorator
 
-
-def get_default_database_engine(rm: ResourceManager, database_name: str) -> Engine:
-    """
-    Get the default engine of the database. If the default engine doesn't exists
-    raise FireboltError
-    """
-
-    database = rm.databases.get_by_name(name=database_name)
-    bindings = rm.bindings.get_many(database_id=database.database_id)
-
-    if len(bindings) == 0:
-        raise FireboltError("No engines attached to the database")
-
-    for binding in bindings:
-        if binding.is_default_engine:
-            return rm.engines.get(binding.engine_id)
-
-    raise FireboltError("No default engine is found.")
 
 def create_connection(
     engine_name: Optional[str],
