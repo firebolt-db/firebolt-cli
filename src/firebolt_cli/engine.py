@@ -17,7 +17,7 @@ from firebolt.common.exception import FireboltError
 from firebolt.model.engine import Engine
 from firebolt.service.manager import ResourceManager
 from firebolt.service.types import (
-    EngineStatusSummary,
+    EngineStatus,
     EngineType,
     WarmupMethod,
 )
