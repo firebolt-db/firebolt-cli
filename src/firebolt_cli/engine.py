@@ -106,17 +106,22 @@ def start(**raw_config_options: str) -> None:
     rm = construct_resource_manager(**raw_config_options)
     engine = rm.engines.get(raw_config_options["engine_name"])
 
+    if engine.current_status in (EngineStatus.STARTED, EngineStatus.RUNNING):
+        echo(f"Engine {engine.name} is already running")
+        return
+
     start_stop_generic(
         engine=engine,
         action="start",
         accepted_initial_states={
             EngineStatus.STOPPED,
             EngineStatus.STOPPING,
+            EngineStatus.STARTING,
         },
         accepted_final_states={EngineStatus.RUNNING},
         wrong_initial_state_error="Engine {name} is not in a stopped state."
         "The current engine state is {state}.",
-        success_message="Engine {name} is successfully started.",
+        success_message="Engine {name} was successfully started.",
         failure_message="Engine {name} failed to start. Engine status: {status}."
     )
 
@@ -139,6 +144,10 @@ def stop(**raw_config_options: str) -> None:
     rm = construct_resource_manager(**raw_config_options)
     engine = rm.engines.get(raw_config_options["engine_name"])
 
+    if engine.current_status == EngineStatus.STOPPED:
+        echo(f"Engine {engine.name} is already stopped")
+        return
+
     start_stop_generic(
         engine=engine,
         action="stop",
@@ -146,17 +155,13 @@ def stop(**raw_config_options: str) -> None:
             EngineStatus.RUNNING,
             EngineStatus.STARTED,
             EngineStatus.STARTING,
-        },
-        accepted_final_states={EngineStatus.STOPPED},
-        accepted_final_nowait_states={
             EngineStatus.STOPPING,
-            EngineStatus.STOPPED,
         },
+        accepted_final_states={EngineStatus.STOPPED, EngineStatus.STOPPING},
         wrong_initial_state_error="Engine {name} is not in a "
         "running or initializing state. The current engine state is {state}.",
-        success_message="Engine {name} is successfully stopped.",
+        success_message="Engine {name} was successfully stopped.",
         failure_message="Engine {name} failed to stop. Engine status: {status}.",
-        **raw_config_options,
     )
 
 
@@ -253,7 +258,7 @@ def echo_engine_information(
                 engine.name,
                 engine.current_status.name if engine.current_status else "-",
                 _format_auto_stop(engine.auto_stop),
-                engine.warmup,
+                engine.warmup.name,
                 engine._database_name,
                 engine.spec.name if engine.spec else "",
                 engine.scale,
@@ -311,7 +316,7 @@ def restart(**raw_config_options: str) -> None:
         accepted_final_states={EngineStatus.RUNNING},
         wrong_initial_state_error="Engine {name} is not in a running or failed state."
         " The current engine state is {state}.",
-        success_message="Engine {name} is successfully restarted.",
+        success_message="Engine {name} was successfully restarted.",
         failure_message="Engine {name} failed to restart. Engine status: {status}.",
     )
 
@@ -342,7 +347,6 @@ def create(**raw_config_options: str) -> None:
         scale=int(raw_config_options["scale"]),
         auto_stop=int(raw_config_options["auto_stop"]),
         warmup=WARMUP_METHODS[raw_config_options["warmup"]],
-        description=raw_config_options["description"],
     )
 
     try:
@@ -353,7 +357,7 @@ def create(**raw_config_options: str) -> None:
 
     if not raw_config_options["json"]:
         echo(
-            f"Engine {engine.name} is successfully created "
+            f"Engine {engine.name} was successfully created "
             f"and attached to the {database.name}."
         )
 
@@ -382,9 +386,7 @@ def update(
             raw_config_options[param] is not None
             for param in [
                 "spec",
-                "type",
                 "warmup",
-                "description",
             ]
         )
         or scale is not None
@@ -408,7 +410,7 @@ def update(
     )
 
     if not raw_config_options["json"]:
-        echo(f"Engine {engine.name} is successfully updated.")
+        echo(f"Engine {engine.name} was successfully updated.")
 
     echo_engine_information(rm, engine, bool(raw_config_options["json"]))
 
@@ -539,7 +541,7 @@ def drop(**raw_config_options: str) -> None:
         f"Do you really want to drop the engine {engine.name}?"
     ):
         engine.delete()
-        echo(f"Drop request for engine {engine.name} is successfully sent")
+        echo(f"Engine {engine.name} was successfully dropped")
     else:
         echo("Drop request is aborted")
 
