@@ -1,7 +1,9 @@
 from logging import getLogger
-from os import environ
+from os import environ, makedirs
+from appdirs import user_config_dir
 
 import pytest
+from pyfakefs.fake_filesystem_unittest import Patcher
 from click.testing import CliRunner
 from pytest import fixture
 
@@ -69,8 +71,9 @@ def s3_url() -> str:
     return "s3://firebolt-publishing-public/samples/tpc-h/parquet/lineitem/"
 
 
-@fixture(scope="session")
+@fixture(autouse=True)
 def configure_cli(
+    cli_runner: CliRunner,
     api_endpoint: str,
     service_id: str,
     service_secret: str,
@@ -78,26 +81,31 @@ def configure_cli(
     engine_name: str,
     account_name: str,
 ) -> None:
-    result = CliRunner().invoke(
+    result = cli_runner.invoke(
         configure,
         [],
-        input=f"{service_id}\n{service_secret}\n{account_name}\n{database_name}\n{engine_name}\n",
+        input=f"{service_id}\n{service_secret}\n{account_name}\n{database_name}\n{engine_name}\n"
     )
-    assert result.exit_code == 0
+    assert result.exit_code == 0, result.stderr
 
-    CliRunner().invoke(
+    cli_runner.invoke(
         configure,
         [
             "--api-endpoint",
             api_endpoint,
         ],
     )
-    assert result.exit_code == 0
+    assert result.exit_code == 0, result.stderr
 
 
 @pytest.fixture
 def cli_runner() -> CliRunner:
-    return CliRunner(mix_stderr=False)
+    runner = CliRunner(mix_stderr=False)
+    # Use fake fs not to interfere with existing config
+    with Patcher():
+        # Intialize config dir
+        makedirs(user_config_dir(), exist_ok=True)
+        yield runner
 
 
 @pytest.fixture
