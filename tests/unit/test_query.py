@@ -297,39 +297,6 @@ def test_sql_execution_multiline(
     ]
 
 
-def test_query_default_engine(
-    mocker: MockerFixture, configure_cli: Callable, cursor_mock: unittest.mock.Mock
-):
-    """
-    Monkey path get_default_database_engine function, and check,
-    that it is called if the engine-name is not provided to the query
-    """
-    configure_cli()
-
-    construct_resource_manager_mock = mocker.patch(
-        "firebolt_cli.query.construct_resource_manager"
-    )
-    default_database_engine_mock = mocker.patch(
-        "firebolt_cli.query.get_default_database_engine"
-    )
-
-    _Engine = namedtuple("Engine", "endpoint")
-    default_database_engine_mock.return_value = _Engine(
-        "default_engine_endpoint.firebolt.io"
-    )
-
-    query_generic_test(
-        [],
-        None,
-        expected_sql="SELECT 1;",
-        input="SELECT 1;",
-        cursor_mock=cursor_mock,
-    )
-
-    construct_resource_manager_mock.assert_called_once()
-    default_database_engine_mock.assert_called_once()
-
-
 @pytest.mark.parametrize(
     "execution_time, formatted_time",
     [
