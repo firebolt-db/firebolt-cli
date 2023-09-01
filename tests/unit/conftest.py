@@ -63,6 +63,7 @@ def configure_resource_manager(mocker: MockerFixture) -> ResourceManager:
     database_mock = unittest.mock.MagicMock()
     database_mock.name = "mock_db_name"
     database_mock.data_size_full = 2048
+    database_mock.region = "mock_region"
 
     rm.databases.create.return_value = database_mock
     rm.databases.get.return_value = database_mock
