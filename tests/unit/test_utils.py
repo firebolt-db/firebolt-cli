@@ -24,7 +24,6 @@ from firebolt_cli.utils import (
     create_aws_creds_from_environ,
     create_connection,
     format_short_statement,
-    get_default_database_engine,
     prepare_execution_result_line,
     prepare_execution_result_table,
     read_config,
@@ -190,7 +189,6 @@ def test_config_caching(fs: FakeFilesystem) -> None:
 def test_construct_resource_manager(mocker: MockerFixture):
     rm = mocker.patch.object(ResourceManager, "__init__", return_value=None)
     sa_mock = mocker.patch.object(ClientCredentials, "__init__", return_value=None)
-    settings_mock = mocker.patch.object(Settings, "__init__", return_value=None)
 
     construct_resource_manager(
         client_id="client_id",
@@ -199,64 +197,12 @@ def test_construct_resource_manager(mocker: MockerFixture):
         account_name="firebolt",
         access_token=None,
     )
-    rm.assert_called_once()
-    sa_mock.assert_called_once_with("client_id", "client_secret")
-    settings_mock.assert_called_once_with(
+    rm.assert_called_once_with(
         auth=ANY,
         account_name="firebolt",
-        server="endpoint.firebolt.io",
-        default_region="",
+        api_endpoint="endpoint.firebolt.io",
     )
-
-
-def test_database_get_default_engine_happy_path(
-    configure_resource_manager: Sequence, mocker: MockerFixture
-):
-    rm, database, engine = configure_resource_manager
-
-    _Engine = namedtuple("Engine", "engine_id is_default_engine")
-    rm.bindings.get_many.return_value = [
-        _Engine(11, False),
-        _Engine(12, True),
-        _Engine(13, False),
-    ]
-
-    get_default_database_engine(ResourceManager(), "database_name")
-
-    rm.engines.get.assert_called_once_with(12)
-    rm.databases.get_by_name.assert_called_once_with(name="database_name")
-
-
-def test_database_get_default_engine_empty(
-    configure_resource_manager: Sequence, mocker: MockerFixture
-):
-    rm, database, engine = configure_resource_manager
-
-    namedtuple("Engine", "engine_id is_default_engine")
-    rm.bindings.get_many.return_value = []
-
-    with pytest.raises(FireboltError):
-        get_default_database_engine(ResourceManager(), "database_name")
-
-    rm.databases.get_by_name.assert_called_once_with(name="database_name")
-
-
-def test_database_get_default_engine_none(
-    configure_resource_manager: Sequence, mocker: MockerFixture
-):
-    rm, database, engine = configure_resource_manager
-
-    _Engine = namedtuple("Engine", "engine_id is_default_engine")
-    rm.bindings.get_many.return_value = [
-        _Engine(11, False),
-        _Engine(12, False),
-        _Engine(13, False),
-    ]
-
-    with pytest.raises(FireboltError):
-        get_default_database_engine(ResourceManager(), "database_name")
-
-    rm.databases.get_by_name.assert_called_once_with(name="database_name")
+    sa_mock.assert_called_once_with("client_id", "client_secret")
 
 
 def test_create_connection(

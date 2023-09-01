@@ -8,7 +8,7 @@ import pytest
 from click.testing import CliRunner, Result
 from firebolt.common.exception import FireboltError
 from firebolt.service.types import (
-    EngineStatusSummary,
+    EngineStatus,
     EngineType,
     WarmupMethod,
 )
@@ -65,8 +65,8 @@ def test_engine_start_not_found(configure_resource_manager: Sequence) -> None:
 def engine_start_stop_generic(
     command: Callable,
     configure_resource_manager: Sequence,
-    state_before_call: EngineStatusSummary,
-    state_after_call: EngineStatusSummary,
+    state_before_call: EngineStatus,
+    state_after_call: EngineStatus,
     wait: bool,
     check_engine_start_call: bool = False,
     check_engine_restart_call: bool = False,
@@ -119,8 +119,8 @@ def test_engine_start_failed(configure_resource_manager: Sequence) -> None:
     result = engine_start_stop_generic(
         start,
         configure_resource_manager,
-        state_before_call=EngineStatusSummary.ENGINE_STATUS_SUMMARY_STOPPED,
-        state_after_call=EngineStatusSummary.ENGINE_STATUS_SUMMARY_FAILED,
+        state_before_call=EngineStatus.ENGINE_STATUS_SUMMARY_STOPPED,
+        state_after_call=EngineStatus.ENGINE_STATUS_SUMMARY_FAILED,
         wait=True,
         check_engine_start_call=True,
     )
@@ -137,8 +137,8 @@ def test_engine_start_happy_path(configure_resource_manager: Sequence) -> None:
     result = engine_start_stop_generic(
         start,
         configure_resource_manager,
-        state_before_call=EngineStatusSummary.ENGINE_STATUS_SUMMARY_STOPPED,
-        state_after_call=EngineStatusSummary.ENGINE_STATUS_SUMMARY_RUNNING,
+        state_before_call=EngineStatus.ENGINE_STATUS_SUMMARY_STOPPED,
+        state_after_call=EngineStatus.ENGINE_STATUS_SUMMARY_RUNNING,
         wait=True,
         check_engine_start_call=True,
     )
@@ -153,8 +153,8 @@ def test_engine_start_happy_path_nowait(configure_resource_manager: Sequence) ->
     result = engine_start_stop_generic(
         start,
         configure_resource_manager,
-        state_before_call=EngineStatusSummary.ENGINE_STATUS_SUMMARY_STOPPED,
-        state_after_call=EngineStatusSummary.ENGINE_STATUS_SUMMARY_STARTING,
+        state_before_call=EngineStatus.ENGINE_STATUS_SUMMARY_STOPPED,
+        state_after_call=EngineStatus.ENGINE_STATUS_SUMMARY_STARTING,
         wait=False,
         check_engine_start_call=True,
     )
@@ -172,8 +172,8 @@ def test_engine_start_from_failed(configure_resource_manager: Sequence) -> None:
     result = engine_start_stop_generic(
         start,
         configure_resource_manager,
-        state_before_call=EngineStatusSummary.ENGINE_STATUS_SUMMARY_FAILED,
-        state_after_call=EngineStatusSummary.ENGINE_STATUS_SUMMARY_FAILED,
+        state_before_call=EngineStatus.ENGINE_STATUS_SUMMARY_FAILED,
+        state_after_call=EngineStatus.ENGINE_STATUS_SUMMARY_FAILED,
         wait=True,
         check_engine_stop_call=False,
     )
@@ -191,8 +191,8 @@ def test_engine_start_wrong_state(configure_resource_manager: Sequence) -> None:
     result = engine_start_stop_generic(
         start,
         configure_resource_manager,
-        state_before_call=EngineStatusSummary.ENGINE_STATUS_SUMMARY_STARTING,
-        state_after_call=EngineStatusSummary.ENGINE_STATUS_SUMMARY_STARTING,
+        state_before_call=EngineStatus.ENGINE_STATUS_SUMMARY_STARTING,
+        state_after_call=EngineStatus.ENGINE_STATUS_SUMMARY_STARTING,
         wait=False,
         check_engine_start_call=False,
     )
@@ -210,8 +210,8 @@ def test_engine_stop_failed(configure_resource_manager: Sequence) -> None:
     result = engine_start_stop_generic(
         stop,
         configure_resource_manager,
-        state_before_call=EngineStatusSummary.ENGINE_STATUS_SUMMARY_RUNNING,
-        state_after_call=EngineStatusSummary.ENGINE_STATUS_SUMMARY_FAILED,
+        state_before_call=EngineStatus.ENGINE_STATUS_SUMMARY_RUNNING,
+        state_after_call=EngineStatus.ENGINE_STATUS_SUMMARY_FAILED,
         wait=True,
         check_engine_stop_call=True,
     )
@@ -228,8 +228,8 @@ def test_engine_stop_happy_path(configure_resource_manager: Sequence) -> None:
     result = engine_start_stop_generic(
         stop,
         configure_resource_manager,
-        state_before_call=EngineStatusSummary.ENGINE_STATUS_SUMMARY_RUNNING,
-        state_after_call=EngineStatusSummary.ENGINE_STATUS_SUMMARY_STOPPED,
+        state_before_call=EngineStatus.ENGINE_STATUS_SUMMARY_RUNNING,
+        state_after_call=EngineStatus.ENGINE_STATUS_SUMMARY_STOPPED,
         wait=True,
         check_engine_stop_call=True,
     )
@@ -454,8 +454,8 @@ def test_engine_restart(configure_resource_manager: Sequence) -> None:
     result = engine_start_stop_generic(
         restart,
         configure_resource_manager,
-        state_before_call=EngineStatusSummary.ENGINE_STATUS_SUMMARY_FAILED,
-        state_after_call=EngineStatusSummary.ENGINE_STATUS_SUMMARY_RUNNING,
+        state_before_call=EngineStatus.ENGINE_STATUS_SUMMARY_FAILED,
+        state_after_call=EngineStatus.ENGINE_STATUS_SUMMARY_RUNNING,
         wait=True,
         check_engine_restart_call=True,
     )
@@ -470,8 +470,8 @@ def test_engine_restart_failed(configure_resource_manager: Sequence) -> None:
     result = engine_start_stop_generic(
         restart,
         configure_resource_manager,
-        state_before_call=EngineStatusSummary.ENGINE_STATUS_SUMMARY_FAILED,
-        state_after_call=EngineStatusSummary.ENGINE_STATUS_SUMMARY_FAILED,
+        state_before_call=EngineStatus.ENGINE_STATUS_SUMMARY_FAILED,
+        state_after_call=EngineStatus.ENGINE_STATUS_SUMMARY_FAILED,
         wait=True,
         check_engine_restart_call=True,
     )
@@ -504,13 +504,13 @@ def test_engine_list(configure_resource_manager: Sequence, list_command: str) ->
     engine_mock1 = mock.MagicMock()
     engine_mock1.name = "engine_mock1"
     engine_mock1.current_status_summary = (
-        EngineStatusSummary.ENGINE_STATUS_SUMMARY_RUNNING
+        EngineStatus.ENGINE_STATUS_SUMMARY_RUNNING
     )
 
     engine_mock2 = mock.MagicMock()
     engine_mock2.name = "engine_mock2"
     engine_mock2.current_status_summary = (
-        EngineStatusSummary.ENGINE_STATUS_SUMMARY_STOPPED
+        EngineStatus.ENGINE_STATUS_SUMMARY_STOPPED
     )
 
     rm.engines.get_many.return_value = [engine_mock1, engine_mock2]
@@ -542,13 +542,13 @@ def test_engine_list_filter(configure_resource_manager: Sequence) -> None:
     engine_mock1 = mock.MagicMock()
     engine_mock1.name = "engine_mock1"
     engine_mock1.current_status_summary = (
-        EngineStatusSummary.ENGINE_STATUS_SUMMARY_RUNNING
+        EngineStatus.ENGINE_STATUS_SUMMARY_RUNNING
     )
 
     engine_mock2 = mock.MagicMock()
     engine_mock2.name = "engine_mock2"
     engine_mock2.current_status_summary = (
-        EngineStatusSummary.ENGINE_STATUS_SUMMARY_STOPPED
+        EngineStatus.ENGINE_STATUS_SUMMARY_STOPPED
     )
 
     rm.bindings.get_engines_bound_to_database.return_value = [
@@ -789,7 +789,7 @@ def test_engine_describe_json(configure_resource_manager: Sequence) -> None:
     engine_mock.name = "to_describe_engine"
     engine_mock.description = "engine description"
     engine_mock.current_status_summary = (
-        EngineStatusSummary.ENGINE_STATUS_SUMMARY_RUNNING
+        EngineStatus.ENGINE_STATUS_SUMMARY_RUNNING
     )
     engine_mock.latest_revision_key = None
     engine_mock.settings.preset = "ENGINE_SETTINGS_PRESET_GENERAL_PURPOSE"

@@ -69,6 +69,7 @@ def test_database_create_json_output(configure_resource_manager: Sequence) -> No
             "--region",
             "us-west-1",
         ],
+        catch_exceptions=False
     )
 
     rm.databases.create.assert_called_once_with(
