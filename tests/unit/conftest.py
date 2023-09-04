@@ -69,6 +69,8 @@ def configure_resource_manager(mocker: MockerFixture) -> ResourceManager:
     rm.databases.get.return_value = database_mock
 
     engine_mock = unittest.mock.MagicMock()
+    engine_mock.auto_stop = 100
+    engine_mock.region="mock_region"
     rm.engines.create.return_value = engine_mock
     rm.engines.get.return_value = engine_mock
 

@@ -52,11 +52,11 @@ def test_engine_start_not_found(configure_resource_manager: Sequence) -> None:
     """
     rm, _, _ = configure_resource_manager
 
-    rm.engines.get_by_name.side_effect = FireboltError("engine not found")
+    rm.engines.get.side_effect = FireboltError("engine not found")
 
     result = CliRunner(mix_stderr=False).invoke(start, ["not_existing_engine"])
 
-    rm.engines.get_by_name.assert_called_once_with(name="not_existing_engine")
+    rm.engines.get.assert_called_once_with("not_existing_engine")
 
     assert result.stderr != "", "cli should fail, but stderr is empty"
     assert result.exit_code != 0, "cli was expected to fail, but it didn't"
@@ -67,7 +67,6 @@ def engine_start_stop_generic(
     configure_resource_manager: Sequence,
     state_before_call: EngineStatus,
     state_after_call: EngineStatus,
-    wait: bool,
     check_engine_start_call: bool = False,
     check_engine_restart_call: bool = False,
     check_engine_stop_call: bool = False,
@@ -77,35 +76,33 @@ def engine_start_stop_generic(
     """
     rm, _, engine_mock = configure_resource_manager
 
-    rm.engines.get_by_name.return_value = engine_mock
-    engine_mock.current_status_summary = state_before_call
+    rm.engines.get.return_value = engine_mock
+    engine_mock.current_status = state_before_call
 
     engine_mock_after_call = mock.MagicMock()
 
-    engine_mock_after_call.current_status_summary = state_after_call
+    engine_mock_after_call.current_status = state_after_call
 
-    engine_mock.restart.return_value = engine_mock_after_call
     engine_mock.start.return_value = engine_mock_after_call
     engine_mock.stop.return_value = engine_mock_after_call
+    engine_mock_after_call.start.return_value = engine_mock_after_call
+    engine_mock_after_call.stop.return_value = engine_mock_after_call    
 
-    additional_parameters = ["--wait"] if wait else ["--no-wait"]
 
     result = CliRunner(mix_stderr=False).invoke(
         command,
-        additional_parameters + ["engine_name"],
+        ["engine_name"]
     )
 
-    rm.engines.get_by_name.assert_called_once_with(name="engine_name")
+    rm.engines.get.assert_called_once_with("engine_name")
 
     if check_engine_start_call:
-        engine_mock.start.assert_called_once_with(wait_for_startup=wait)
+        engine_mock.start.assert_called_once()
     if check_engine_stop_call:
-        engine_mock.stop.assert_called_once_with(wait_for_stop=wait)
+        engine_mock.stop.assert_called_once()
     if check_engine_restart_call:
-        engine_mock.restart.assert_called_once_with(wait_for_startup=wait)
-
-    if check_engine_restart_call:
-        engine_mock.restart.assert_called_once_with(wait_for_startup=wait)
+        engine_mock.stop.assert_called_once()
+        engine_mock_after_call.start.assert_called_once()
 
     return result
 
@@ -119,9 +116,8 @@ def test_engine_start_failed(configure_resource_manager: Sequence) -> None:
     result = engine_start_stop_generic(
         start,
         configure_resource_manager,
-        state_before_call=EngineStatus.ENGINE_STATUS_SUMMARY_STOPPED,
-        state_after_call=EngineStatus.ENGINE_STATUS_SUMMARY_FAILED,
-        wait=True,
+        state_before_call=EngineStatus.STOPPED,
+        state_after_call=EngineStatus.FAILED,
         check_engine_start_call=True,
     )
 
@@ -137,25 +133,8 @@ def test_engine_start_happy_path(configure_resource_manager: Sequence) -> None:
     result = engine_start_stop_generic(
         start,
         configure_resource_manager,
-        state_before_call=EngineStatus.ENGINE_STATUS_SUMMARY_STOPPED,
-        state_after_call=EngineStatus.ENGINE_STATUS_SUMMARY_RUNNING,
-        wait=True,
-        check_engine_start_call=True,
-    )
-
-    assert result.exit_code == 0, "cli was expected to execute correctly, but it failed"
-
-
-def test_engine_start_happy_path_nowait(configure_resource_manager: Sequence) -> None:
-    """
-    Test normal behavior with nowait parameter
-    """
-    result = engine_start_stop_generic(
-        start,
-        configure_resource_manager,
-        state_before_call=EngineStatus.ENGINE_STATUS_SUMMARY_STOPPED,
-        state_after_call=EngineStatus.ENGINE_STATUS_SUMMARY_STARTING,
-        wait=False,
+        state_before_call=EngineStatus.STOPPED,
+        state_after_call=EngineStatus.RUNNING,
         check_engine_start_call=True,
     )
 
@@ -172,15 +151,13 @@ def test_engine_start_from_failed(configure_resource_manager: Sequence) -> None:
     result = engine_start_stop_generic(
         start,
         configure_resource_manager,
-        state_before_call=EngineStatus.ENGINE_STATUS_SUMMARY_FAILED,
-        state_after_call=EngineStatus.ENGINE_STATUS_SUMMARY_FAILED,
-        wait=True,
+        state_before_call=EngineStatus.FAILED,
+        state_after_call=EngineStatus.FAILED,
         check_engine_stop_call=False,
     )
 
     engine_mock.start.assert_not_called()
 
-    assert "restart an engine first" in result.stderr != ""
     assert result.exit_code != 0, "cli was expected to fail, but it didn't"
 
 
@@ -191,9 +168,8 @@ def test_engine_start_wrong_state(configure_resource_manager: Sequence) -> None:
     result = engine_start_stop_generic(
         start,
         configure_resource_manager,
-        state_before_call=EngineStatus.ENGINE_STATUS_SUMMARY_STARTING,
-        state_after_call=EngineStatus.ENGINE_STATUS_SUMMARY_STARTING,
-        wait=False,
+        state_before_call=EngineStatus.STARTING,
+        state_after_call=EngineStatus.STARTING,
         check_engine_start_call=False,
     )
 
@@ -210,9 +186,8 @@ def test_engine_stop_failed(configure_resource_manager: Sequence) -> None:
     result = engine_start_stop_generic(
         stop,
         configure_resource_manager,
-        state_before_call=EngineStatus.ENGINE_STATUS_SUMMARY_RUNNING,
-        state_after_call=EngineStatus.ENGINE_STATUS_SUMMARY_FAILED,
-        wait=True,
+        state_before_call=EngineStatus.RUNNING,
+        state_after_call=EngineStatus.FAILED,
         check_engine_stop_call=True,
     )
 
@@ -228,9 +203,8 @@ def test_engine_stop_happy_path(configure_resource_manager: Sequence) -> None:
     result = engine_start_stop_generic(
         stop,
         configure_resource_manager,
-        state_before_call=EngineStatus.ENGINE_STATUS_SUMMARY_RUNNING,
-        state_after_call=EngineStatus.ENGINE_STATUS_SUMMARY_STOPPED,
-        wait=True,
+        state_before_call=EngineStatus.RUNNING,
+        state_after_call=EngineStatus.STOPPED,
         check_engine_stop_call=True,
     )
 
@@ -244,35 +218,11 @@ def test_engine_status(configure_resource_manager: Sequence) -> None:
         engine_mock,
     ) = configure_resource_manager
 
-    engine_mock.current_status_summary.name = "engine running"
+    engine_mock.current_status.name = "engine running"
 
     result = CliRunner(mix_stderr=False).invoke(status, ["engine_name"])
 
-    rm.engines.get_by_name.assert_called_once_with(name="engine_name")
-
-    assert "engine running" in result.stdout
-    assert result.stderr == ""
-    assert result.exit_code == 0
-
-
-def test_engine_status_default(
-    mocker: MockerFixture, configure_resource_manager: Sequence
-) -> None:
-    (
-        rm,
-        database_mock,
-        engine_mock,
-    ) = configure_resource_manager
-
-    engine_mock.current_status_summary.name = "engine running"
-
-    get_default_database_engine_mock = mocker.patch(
-        "firebolt_cli.engine.get_default_database_engine", return_value=engine_mock
-    )
-
-    result = CliRunner(mix_stderr=False).invoke(status, [])
-
-    get_default_database_engine_mock.assert_called_once_with(ANY, "database_name")
+    rm.engines.get.assert_called_once_with("engine_name")
 
     assert "engine running" in result.stdout
     assert result.stderr == ""
@@ -283,17 +233,17 @@ def test_engine_create_happy_path(configure_resource_manager: Sequence) -> None:
     """
     Test engine create standard workflow
     """
-    rm, database_mock, _ = configure_resource_manager
+    rm, _, engine_mock = configure_resource_manager
 
     result = CliRunner(mix_stderr=False).invoke(
         create,
         ["--name", "engine_name", "--database-name", "database_name", "--spec", "C1"],
     )
 
-    rm.databases.get_by_name.assert_called_once()
+    rm.databases.get.assert_called_once()
     rm.engines.create.assert_called_once()
 
-    database_mock.attach_to_engine.assert_called_once()
+    engine_mock.attach_to_database.assert_called_once()
 
     assert result.stdout != "", ""
     assert result.stderr == "", ""
@@ -306,7 +256,7 @@ def test_engine_create_database_not_found(configure_resource_manager: Sequence) 
     """
     rm, _, rm.engines = configure_resource_manager
 
-    rm.databases.get_by_name.side_effect = FireboltError("database not found")
+    rm.databases.get.side_effect = FireboltError("database not found")
 
     result = CliRunner(mix_stderr=False).invoke(
         create,
@@ -320,7 +270,7 @@ def test_engine_create_database_not_found(configure_resource_manager: Sequence) 
         ],
     )
 
-    rm.databases.get_by_name.assert_called_once()
+    rm.databases.get.assert_called_once()
     rm.engines.create.assert_not_called()
 
     rm.databases.attach_to_engine.assert_not_called()
@@ -341,7 +291,7 @@ def test_engine_create_name_taken(configure_resource_manager: Sequence) -> None:
         ["--name", "engine_name", "--database-name", "database_name", "--spec", "C1"],
     )
 
-    rm.databases.get_by_name.assert_called_once()
+    rm.databases.get.assert_called_once()
     rm.engines.create.assert_called_once()
 
     rm.databases.attach_to_engine.assert_not_called()
@@ -361,14 +311,14 @@ def test_engine_create_binding_failed(configure_resource_manager: Sequence) -> N
         engine_mock,
     ) = configure_resource_manager
 
-    database_mock.attach_to_engine.side_effect = FireboltError("binding failed")
+    engine_mock.attach_to_database.side_effect = FireboltError("binding failed")
 
     result = CliRunner(mix_stderr=False).invoke(
         create,
         ["--name", "engine_name", "--database-name", "database_name", "--spec", "C1"],
     )
 
-    rm.databases.get_by_name.assert_called_once()
+    rm.databases.get.assert_called_once()
     rm.engines.create.assert_called_once()
 
     engine_mock.delete.assert_called_once()
@@ -399,8 +349,6 @@ def test_engine_create_happy_path_optional_parameters(
             "database_name",
             "--spec",
             "C1",
-            "--description",
-            "test_description",
             "--type",
             "rw",
             "--scale",
@@ -412,22 +360,20 @@ def test_engine_create_happy_path_optional_parameters(
         ],
     )
 
-    rm.databases.get_by_name.assert_called_once_with(name="database_name")
+    assert result.exit_code == 0, result.stderr
+
+    rm.databases.get.assert_called_once_with("database_name")
     rm.engines.create.assert_called_once_with(
         name="engine_name",
         spec="C1",
-        region="us-east-1",
+        region="mock_region",
         engine_type=EngineType.GENERAL_PURPOSE,
         scale=23,
         auto_stop=893,
         warmup=WarmupMethod.PRELOAD_ALL_DATA,
-        description="test_description",
-        revision_spec_kwargs={"db_compute_instances_use_spot": False},
     )
 
-    database_mock.attach_to_engine.assert_called_once_with(
-        engine=engine_mock, is_default_engine=True
-    )
+    engine_mock.attach_to_database.assert_called_once_with(database_mock)
 
     assert result.stdout != "", ""
     assert result.stderr == "", ""
@@ -437,11 +383,11 @@ def test_engine_create_happy_path_optional_parameters(
 def test_engine_status_not_found(configure_resource_manager: Sequence) -> None:
     rm, _, _ = configure_resource_manager
 
-    rm.engines.get_by_name.side_effect = FireboltError("engine not found")
+    rm.engines.get.side_effect = FireboltError("engine not found")
 
     result = CliRunner(mix_stderr=False).invoke(status, ["non_existing_engine"])
 
-    rm.engines.get_by_name.assert_called_once_with(name="non_existing_engine")
+    rm.engines.get.assert_called_once_with("non_existing_engine")
 
     assert result.stderr != ""
     assert result.exit_code != 0
@@ -454,13 +400,12 @@ def test_engine_restart(configure_resource_manager: Sequence) -> None:
     result = engine_start_stop_generic(
         restart,
         configure_resource_manager,
-        state_before_call=EngineStatus.ENGINE_STATUS_SUMMARY_FAILED,
-        state_after_call=EngineStatus.ENGINE_STATUS_SUMMARY_RUNNING,
-        wait=True,
-        check_engine_restart_call=True,
+        state_before_call=EngineStatus.FAILED,
+        state_after_call=EngineStatus.RUNNING,
+        check_engine_restart_call=False,
     )
 
-    assert result.exit_code == 0, "cli was expected to execute correctly, but it failed"
+    assert result.exit_code == 0, result.stderr
 
 
 def test_engine_restart_failed(configure_resource_manager: Sequence) -> None:
@@ -470,9 +415,8 @@ def test_engine_restart_failed(configure_resource_manager: Sequence) -> None:
     result = engine_start_stop_generic(
         restart,
         configure_resource_manager,
-        state_before_call=EngineStatus.ENGINE_STATUS_SUMMARY_FAILED,
-        state_after_call=EngineStatus.ENGINE_STATUS_SUMMARY_FAILED,
-        wait=True,
+        state_before_call=EngineStatus.FAILED,
+        state_after_call=EngineStatus.FAILED,
         check_engine_restart_call=True,
     )
 
@@ -488,7 +432,7 @@ def test_engine_restart_not_exist(configure_resource_manager: Sequence) -> None:
 
     result = CliRunner(mix_stderr=False).invoke(restart, ["non_existing_engine"])
 
-    rm.engines.get_by_name.assert_called_once_with(name="non_existing_engine")
+    rm.engines.get.assert_called_once_with("non_existing_engine")
 
     assert result.stderr != ""
     assert result.exit_code != 0
@@ -503,21 +447,26 @@ def test_engine_list(configure_resource_manager: Sequence, list_command: str) ->
 
     engine_mock1 = mock.MagicMock()
     engine_mock1.name = "engine_mock1"
-    engine_mock1.current_status_summary = (
-        EngineStatus.ENGINE_STATUS_SUMMARY_RUNNING
+    engine_mock1.current_status = (
+        EngineStatus.RUNNING
     )
+    engine_mock1.region = "mock_region"
 
     engine_mock2 = mock.MagicMock()
     engine_mock2.name = "engine_mock2"
-    engine_mock2.current_status_summary = (
-        EngineStatus.ENGINE_STATUS_SUMMARY_STOPPED
+    engine_mock2.current_status = (
+        EngineStatus.STOPPED
     )
+    engine_mock2.region = "mock_region"
 
     rm.engines.get_many.return_value = [engine_mock1, engine_mock2]
 
     result = CliRunner(mix_stderr=False).invoke(
         main, f"engine {list_command} --name-contains engine_name --json".split()
     )
+
+    assert result.stderr == ""
+    assert result.exit_code == 0
 
     output = json.loads(result.stdout)
 
@@ -526,11 +475,12 @@ def test_engine_list(configure_resource_manager: Sequence, list_command: str) ->
     assert output[1]["name"] == "engine_mock2"
 
     rm.engines.get_many.assert_called_once_with(
-        name_contains="engine_name", order_by="ENGINE_ORDER_NAME_ASC"
+        current_status_eq=None,
+        current_status_not_eq=None,
+        database_name=None,
+        name_contains="engine_name",
+        region_eq=None
     )
-
-    assert result.stderr == ""
-    assert result.exit_code == 0
 
 
 def test_engine_list_filter(configure_resource_manager: Sequence) -> None:
@@ -541,34 +491,42 @@ def test_engine_list_filter(configure_resource_manager: Sequence) -> None:
 
     engine_mock1 = mock.MagicMock()
     engine_mock1.name = "engine_mock1"
-    engine_mock1.current_status_summary = (
-        EngineStatus.ENGINE_STATUS_SUMMARY_RUNNING
+    engine_mock1.current_status = (
+        EngineStatus.RUNNING
     )
+    engine_mock1.region = "mock_region"
 
     engine_mock2 = mock.MagicMock()
     engine_mock2.name = "engine_mock2"
-    engine_mock2.current_status_summary = (
-        EngineStatus.ENGINE_STATUS_SUMMARY_STOPPED
+    engine_mock2.current_status = (
+        EngineStatus.STOPPED
     )
+    engine_mock2.region = "mock_region"
 
-    rm.bindings.get_engines_bound_to_database.return_value = [
+    rm.engines.get_many.return_value = [
         engine_mock1,
         engine_mock2,
     ]
 
     result = CliRunner(mix_stderr=False).invoke(
-        main, f"engine list --database db_name --name-contains mock1 --json".split()
+        main, f"engine list --database db_name --name-contains mock1 --current-status running --current-status-not stopped --region us-east-1 --json".split()
     )
+    assert result.stderr == ""
     assert result.exit_code == 0
-    rm.bindings.get_engines_bound_to_database.assert_called_once()
 
     output = json.loads(result.stdout)
 
-    assert len(output) == 1
+    assert len(output) == 2
     assert output[0]["name"] == "engine_mock1"
+    assert output[1]["name"] == "engine_mock2"
 
-    assert result.stderr == ""
-    assert result.exit_code == 0
+    rm.engines.get_many.assert_called_once_with(
+        current_status_eq="Running",
+        current_status_not_eq="Stopped",
+        database_name="db_name",
+        name_contains="mock1",
+        region_eq="us-east-1"
+    )
 
 
 def generic_engine_update(configure_resource_manager: Sequence, parameters: str):
@@ -584,11 +542,11 @@ def generic_engine_update(configure_resource_manager: Sequence, parameters: str)
 
     result = CliRunner(mix_stderr=False).invoke(update, parameters.split())
 
-    rm.engines.get_by_name.assert_called_once_with(name="engine_name")
-
-    assert result.stdout != "", ""
     assert result.stderr == "", ""
     assert result.exit_code == 0, ""
+    assert result.stdout != "", ""
+
+    rm.engines.get.assert_called_once_with("engine_name")
 
     return engine_mock
 
@@ -603,8 +561,7 @@ def test_engine_update_all_parameters(
     engine_mock = generic_engine_update(
         configure_resource_manager,
         "--name engine_name --new-engine-name name_of_the_new_engine "
-        "--spec C1 --description test_description "
-        "--type rw --scale 23 --auto-stop 893 --warmup all --use-spot",
+        "--spec C1 --type rw --scale 23 --auto-stop 893 --warmup all",
     )
 
     engine_mock.update.assert_called_once_with(
@@ -614,8 +571,6 @@ def test_engine_update_all_parameters(
         scale=23,
         auto_stop=893,
         warmup=WarmupMethod.PRELOAD_ALL_DATA,
-        description="test_description",
-        use_spot=True,
     )
 
 
@@ -624,23 +579,21 @@ def test_engine_update_subset_parameters1(
 ) -> None:
     """
     Test engine create standard workflow with a subset of parameters:
-     (new_engine_name, description, scale, warmup)
+     (new_engine_name, scale, warmup)
     """
 
     engine_mock = generic_engine_update(
         configure_resource_manager,
         "--name engine_name --new-engine-name name_of_the_new_engine "
-        "--description test_description --scale 42 --warmup ind",
+        "--scale 42 --warmup ind",
     )
 
     engine_mock.update.assert_called_once_with(
         name="name_of_the_new_engine",
         spec=None,
-        description="test_description",
         engine_type=None,
         scale=42,
         auto_stop=None,
-        use_spot=None,
         warmup=WarmupMethod.PRELOAD_INDEXES,
     )
 
@@ -655,18 +608,16 @@ def test_engine_update_subset_parameters2(
 
     engine_mock = generic_engine_update(
         configure_resource_manager,
-        "--name engine_name --spec i3.xlarge --type ro --auto-stop 8393 --no-use-spot",
+        "--name engine_name --spec i3.xlarge --type ro --auto-stop 8393",
     )
 
     engine_mock.update.assert_called_once_with(
         name=None,
         spec="i3.xlarge",
-        description=None,
         engine_type=EngineType.DATA_ANALYTICS,
         scale=None,
         auto_stop=8393,
         warmup=None,
-        use_spot=False,
     )
 
 
@@ -679,14 +630,14 @@ def test_engine_update_not_exists(configure_resource_manager: Sequence) -> None:
         database_mock,
         engine_mock,
     ) = configure_resource_manager
-    rm.engines.get_by_name.side_effect = FireboltError("engine doesn't exist")
+    rm.engines.get.side_effect = FireboltError("engine doesn't exist")
 
     result = CliRunner(mix_stderr=False).invoke(
         update,
         "--name engine_name --warmup all".split(),
     )
 
-    rm.engines.get_by_name.assert_called_once_with(name="engine_name")
+    rm.engines.get.assert_called_once_with("engine_name")
 
     assert result.stdout == "", ""
     assert "engine doesn't exist" in result.stderr, ""
@@ -723,7 +674,7 @@ def engine_drop_generic_workflow(
         input=input,
     )
 
-    rm.engines.get_by_name.assert_called_once_with(name="to_drop_engine_name")
+    rm.engines.get.assert_called_once_with("to_drop_engine_name")
     if delete_should_be_called:
         engine_mock.delete.assert_called_once_with()
 
@@ -772,11 +723,11 @@ def test_engine_drop_not_found(configure_resource_manager: Sequence) -> None:
     """
     rm, _, _ = configure_resource_manager
 
-    rm.engines.get_by_name.side_effect = RuntimeError("engine not found")
+    rm.engines.get.side_effect = RuntimeError("engine not found")
 
     result = CliRunner(mix_stderr=False).invoke(drop, "to_drop_engine_name".split())
 
-    rm.engines.get_by_name.assert_called_once_with(name="to_drop_engine_name")
+    rm.engines.get.assert_called_once_with("to_drop_engine_name")
 
     assert result.stderr != "", "cli should fail with an error message in stderr"
     assert result.exit_code != 0, "non-zero exit code"
@@ -787,52 +738,52 @@ def test_engine_describe_json(configure_resource_manager: Sequence) -> None:
     rm, database_mock, engine_mock = configure_resource_manager
 
     engine_mock.name = "to_describe_engine"
-    engine_mock.description = "engine description"
-    engine_mock.current_status_summary = (
-        EngineStatus.ENGINE_STATUS_SUMMARY_RUNNING
+    engine_mock.current_status = (
+        EngineStatus.RUNNING
     )
-    engine_mock.latest_revision_key = None
-    engine_mock.settings.preset = "ENGINE_SETTINGS_PRESET_GENERAL_PURPOSE"
-    engine_mock.settings.auto_stop_delay_duration = "4800s"
-    engine_mock.settings.warm_up = "index"
-    engine_mock.create_time = ""
-    engine_mock.database = database_mock
+    engine_mock.auto_stop = 4800
+    engine_mock.type = EngineType.DATA_ANALYTICS
+    engine_mock.warmup = WarmupMethod.PRELOAD_INDEXES
+    engine_mock._database_name = database_mock.name
+    engine_mock.spec = mock.MagicMock()
+    engine_mock.spec.name = "B2"
+    engine_mock.scale = 2
 
     result = CliRunner(mix_stderr=False).invoke(
         describe, ["to_describe_engine", "--json"]
     )
 
+    assert result.stderr == ""
+    assert result.exit_code == 0
+
     engine_description = json.loads(result.stdout)
 
     for param in [
         "name",
-        "description",
+        "status",
         "auto_stop",
+        "type",
         "warm_up",
         "attached_to_database",
         "instance_type",
-        "preset",
         "scale",
-        "status",
     ]:
         assert param in engine_description
 
     assert engine_description["name"] == "to_describe_engine"
-    assert engine_description["description"] == "engine description"
-    assert engine_description["preset"] == "ENGINE_SETTINGS_PRESET_GENERAL_PURPOSE"
-    assert engine_description["warm_up"] == "index"
+    assert engine_description["status"] == "RUNNING"
     assert engine_description["auto_stop"] == "1:20:00"
+    assert engine_description["type"] == "Data Analytics"
+    assert engine_description["warm_up"] == "Preload Indexes"
     assert engine_description["attached_to_database"] == database_mock.name
-    assert engine_description["status"] == "ENGINE_STATUS_SUMMARY_RUNNING"
-
-    assert result.stderr == ""
-    assert result.exit_code == 0
+    assert engine_description["instance_type"] == "B2"
+    assert engine_description["scale"] == 2
 
 
 def test_engine_describe_not_found(configure_resource_manager: Sequence) -> None:
     """ """
     rm, _, _ = configure_resource_manager
-    rm.engines.get_by_name.side_effect = FireboltError("engine not found")
+    rm.engines.get.side_effect = FireboltError("engine not found")
 
     result = CliRunner(mix_stderr=False).invoke(describe, ["to_describe_engine"])
 
@@ -849,18 +800,19 @@ def test_engine_get_instance_types(configure_resource_manager: Sequence) -> None
 
     _InstanceType = namedtuple(
         "InstanceType",
-        "name, cpu_virtual_cores_count, memory_size_bytes, storage_size_bytes",
+        "name, cpu_virtual_cores_count, memory_size_bytes, storage_size_bytes, price_per_hour_cents",
     )
-    rm.instance_types.get_instance_types_per_region.return_value = [
-        _InstanceType("B1", 2, 123, 321)
+    rm.instance_types.instance_types = [
+        _InstanceType("B1", 2, 123, 321, 10)
     ]
 
     result = CliRunner(mix_stderr=False).invoke(
-        get_instance_types, ["--region", "us-east-1", "--json"]
+        get_instance_types, ["--json"],
     )
+
+    assert result.stderr == ""
+    assert result.exit_code == 0
 
     output = json.loads(result.stdout)
     assert len(output) == 1
 
-    assert result.stderr == ""
-    assert result.exit_code == 0

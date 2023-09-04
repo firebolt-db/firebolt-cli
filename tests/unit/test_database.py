@@ -69,7 +69,6 @@ def test_database_create_json_output(configure_resource_manager: Sequence) -> No
             "--region",
             "us-west-1",
         ],
-        catch_exceptions=False,
     )
 
     rm.databases.create.assert_called_once_with(
@@ -101,9 +100,9 @@ def databases_list_generic_workflow(
 
     cli_runner = CliRunner(mix_stderr=False)
     if short_version:
-        result = cli_runner.invoke(main, ["db", "ls"] + additional_parameters, catch_exceptions=False)
+        result = cli_runner.invoke(main, ["db", "ls"] + additional_parameters)
     else:
-        result = cli_runner.invoke(list, additional_parameters, catch_exceptions=False)
+        result = cli_runner.invoke(list, additional_parameters)
 
     rm.databases.get_many.assert_called_once_with(
         name_contains=name_contains

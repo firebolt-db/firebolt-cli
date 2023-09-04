@@ -70,13 +70,14 @@ def start_stop_generic(
             )
         )
 
+
     if action == "start":
-        engine.start()
+        engine = engine.start()
     elif action == "stop":
-        engine.stop()
+        engine = engine.stop()
     elif action == "restart":
-        engine.stop()
-        engine.start()
+        engine = engine.stop()
+        engine = engine.start()
     else:
         assert False, "not available action"
 
@@ -186,6 +187,14 @@ def engine_properties_options(create_mode: bool = True) -> Callable:
             required=False,
         ),
         option(
+            "--type",
+            help='Engine type: "rw" for general purpose '
+            'and "ro" for data analytics.',
+            type=Choice(list(ENGINE_TYPES.keys()), case_sensitive=False),
+            default="ro" if create_mode else None,
+            required=False,
+        ),
+        option(
             "--scale",
             help="The number of engine nodes. Value entered must be between 1 and 128.",
             type=IntRange(1, 128, clamp=False),
@@ -216,15 +225,6 @@ def engine_properties_options(create_mode: bool = True) -> Callable:
             show_default=True,
         ),
     ]
-    if create_mode:
-        _ENGINE_OPTIONS.append(option(
-            "--type",
-            help='Engine type: "rw" for general purpose '
-            'and "ro" for data analytics.',
-            type=Choice(list(ENGINE_TYPES.keys()), case_sensitive=False),
-            default="ro" if create_mode else None,
-            required=False,
-        ))
 
     def _engine_properties_options_inner(command: Callable) -> Callable:
         for add_option in reversed(_ENGINE_OPTIONS):
@@ -252,13 +252,17 @@ def echo_engine_information(
         """
         return str(timedelta(seconds=auto_stop)) if auto_stop else "ALWAYS ON"
 
+    def to_display(camel_case: str) -> str:
+        return camel_case.lower().replace("_", " ").title()
+
     echo(
         prepare_execution_result_line(
             data=[
                 engine.name,
                 engine.current_status.name if engine.current_status else "-",
                 _format_auto_stop(engine.auto_stop),
-                engine.warmup.name,
+                to_display(engine.type.name),
+                to_display(engine.warmup.name),
                 engine._database_name,
                 engine.spec.name if engine.spec else "",
                 engine.scale,
@@ -267,6 +271,7 @@ def echo_engine_information(
                 "name",
                 "status",
                 "auto_stop",
+                "type",
                 "warm_up",
                 "attached_to_database",
                 "instance_type",
@@ -312,6 +317,7 @@ def restart(**raw_config_options: str) -> None:
             EngineStatus.STOPPING,
             EngineStatus.STARTED,
             EngineStatus.STARTING,
+            EngineStatus.FAILED,
         },
         accepted_final_states={EngineStatus.RUNNING},
         wrong_initial_state_error="Engine {name} is not in a running or failed state."
@@ -387,6 +393,7 @@ def update(
             for param in [
                 "spec",
                 "warmup",
+                "type",
             ]
         )
         or scale is not None
@@ -404,6 +411,7 @@ def update(
     engine = engine.update(
         name=raw_config_options["new_engine_name"],
         spec=raw_config_options["spec"],
+        engine_type=ENGINE_TYPES.get(raw_config_options["type"], None),
         scale=scale,
         auto_stop=auto_stop,
         warmup=WARMUP_METHODS.get(raw_config_options["warmup"], None),

@@ -196,7 +196,7 @@ def test_engine_restart_stopped(
     """
     Test restart engine, which is stopped should succeed
     """
-    result = cli_runner.invoke(main, f"engine restart {stopped_engine_name}".split(), catch_exceptions=False)
+    result = cli_runner.invoke(main, f"engine restart {stopped_engine_name}".split())
 
     assert result.stderr == ""
     assert result.exit_code == 0, result.stderr
