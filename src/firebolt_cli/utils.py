@@ -207,9 +207,9 @@ def read_config() -> Dict[str, str]:
             config_dict = dict((k, v) for k, v in config[config_section].items())
 
     try:
-        value = keyring.get_password("firebolt-cli", "password")
+        value = keyring.get_password("firebolt-cli", "client_secret")
         if value and len(value) != 0:
-            config_dict["password"] = value
+            config_dict["client_secret"] = value
     except KeyringError:
         pass
 
@@ -243,6 +243,14 @@ def update_config(**kwargs: str) -> None:
     :param kwargs:
     :return:
     """
+
+    # Try to update client_secret in keyring first, and only if failed in config
+    if (
+        "client_secret" in kwargs
+        and kwargs["client_secret"] is not None
+        and set_keyring_param("client_secret", kwargs["client_secret"])
+    ):
+        del kwargs["client_secret"]
 
     if len(kwargs):
         config = ConfigParser(interpolation=None)
