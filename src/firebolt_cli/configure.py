@@ -16,7 +16,7 @@ from firebolt_cli.utils import (
 @option(
     "-s",
     "--client-secret",
-    help="The client secret user for connecting to Firebolt.",
+    help="The client secret used for connecting to Firebolt.",
 )
 @option("--account-name", help="The name of the Firebolt account.")
 @option(
