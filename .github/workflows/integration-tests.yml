@@ -2,15 +2,33 @@ name: Integration tests
 
 on:
   workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to run the tests against'
+        type: choice
+        required: true
+        default: 'dev'
+        options:
+          - dev
+          - staging
   workflow_call:
+    inputs:
+      environment:
+        default: 'staging'
+        required: false
+        type: string
+      branch:
+        required: false
+        type: string
+        description: 'Branch to run on'
     secrets:
-      FIREBOLT_USERNAME:
+      FIREBOLT_CLIENT_ID_STG_NEW_IDN:
         required: true
-      FIREBOLT_PASSWORD:
+      FIREBOLT_CLIENT_SECRET_STG_NEW_IDN:
         required: true
-      SERVICE_ID:
+      FIREBOLT_CLIENT_ID_DEV_NEW_IDN:
         required: true
-      SERVICE_SECRET:
+      FIREBOLT_CLIENT_SECRET_DEV_NEW_IDN:
         required: true
 
 jobs:
@@ -19,6 +37,8 @@ jobs:
     steps:
       - name: Check out code
         uses: actions/checkout@v2
+        with:
+          ref: ${{ inputs.branch }}
 
       - name: Set up Python 3.7
         uses: actions/setup-python@v2
@@ -30,28 +50,33 @@ jobs:
           python -m pip install --upgrade pip
           pip install ".[dev]"
 
+      - name: Determine env variables
+        run: |
+          if [ "${{ inputs.environment }}" == 'staging' ]; then
+             echo "CLIENT_ID=${{ secrets.FIREBOLT_CLIENT_ID_STG_NEW_IDN }}" >> "$GITHUB_ENV"
+             echo "CLIENT_SECRET=${{ secrets.FIREBOLT_CLIENT_SECRET_STG_NEW_IDN }}" >> "$GITHUB_ENV"
+          else
+             echo "CLIENT_ID=${{ secrets.FIREBOLT_CLIENT_ID_DEV_NEW_IDN }}" >> "$GITHUB_ENV"
+             echo "CLIENT_SECRET=${{ secrets.FIREBOLT_CLIENT_SECRET_DEV_NEW_IDN }}" >> "$GITHUB_ENV"
+          fi
+
       - name: Setup database and engine
         id: setup
-        uses: firebolt-db/integration-testing-setup@master
+        uses: firebolt-db/integration-testing-setup@v2
         with:
-          firebolt-username: ${{ secrets.FIREBOLT_USERNAME }}
-          firebolt-password: ${{ secrets.FIREBOLT_PASSWORD }}
-          api-endpoint: "api.dev.firebolt.io"
-          region: "us-east-1"
-          instance-type: "B2"
+          firebolt-client-id: ${{ env.CLIENT_ID }}
+          firebolt-client-secret: ${{ env.CLIENT_SECRET }}
+          account: ${{ vars.FIREBOLT_ACCOUNT }}
+          api-endpoint: "api.${{ inputs.environment }}.firebolt.io"
 
       - name: Run integration tests
         env:
-          USER_NAME: ${{ secrets.FIREBOLT_USERNAME }}
-          PASSWORD: ${{ secrets.FIREBOLT_PASSWORD }}
-          SERVICE_ID: ${{ secrets.SERVICE_ID }}
-          SERVICE_SECRET: ${{ secrets.SERVICE_SECRET }}
+          SERVICE_ID: ${{ env.CLIENT_ID }}
+          SERVICE_SECRET: ${{ env.CLIENT_SECRET }}
           DATABASE_NAME: ${{ steps.setup.outputs.database_name }}
           ENGINE_NAME: ${{ steps.setup.outputs.engine_name }}
-          ENGINE_URL: ${{ steps.setup.outputs.engine_url }}
           STOPPED_ENGINE_NAME: ${{ steps.setup.outputs.stopped_engine_name }}
-          STOPPED_ENGINE_URL: ${{ steps.setup.outputs.stopped_engine_url }}
-          API_ENDPOINT: "api.dev.firebolt.io"
-          ACCOUNT_NAME: "firebolt"
+          API_ENDPOINT: "api.${{ inputs.environment }}.firebolt.io"
+          ACCOUNT_NAME: ${{ vars.FIREBOLT_ACCOUNT }}
         run: |
           pytest -m "not slow" -o log_cli=false -o log_cli_level=INFO tests/integration
