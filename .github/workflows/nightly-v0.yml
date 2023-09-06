@@ -31,6 +31,8 @@ jobs:
 
       - name: Check out code
         uses: actions/checkout@v2
+        with:
+          ref: 0.x
     
       - name: Set up Python 
         uses: actions/setup-python@v2
@@ -44,22 +46,28 @@ jobs:
 
       - name: Setup database and engine
         id: setup
-        uses: firebolt-db/integration-testing-setup@v2
+        uses: firebolt-db/integration-testing-setup@master
         with:
-          firebolt-client-id: ${{ secrets.FIREBOLT_CLIENT_ID_STG_NEW_IDN }}
-          firebolt-client-secret: ${{ secrets.FIREBOLT_CLIENT_SECRET_STG_NEW_IDN }}
-          account: ${{ vars.FIREBOLT_ACCOUNT }}
-          api-endpoint: "api.staging.firebolt.io"
+          firebolt-username: ${{ secrets.FIREBOLT_USERNAME }}
+          firebolt-password: ${{ secrets.FIREBOLT_PASSWORD }}
+          api-endpoint: "api.dev.firebolt.io"
+          region: "us-east-1"
+          instance-type: "B2"
+          db_suffix: ${{ format('{0}_{1}', matrix.os, matrix.python-version) }}
 
       - name: Run integration tests
         env:
-          SERVICE_ID: ${{ secrets.FIREBOLT_CLIENT_ID_STG_NEW_IDN }}
-          SERVICE_SECRET: ${{ secrets.FIREBOLT_CLIENT_SECRET_STG_NEW_IDN }}
+          USER_NAME: ${{ secrets.FIREBOLT_USERNAME }}
+          PASSWORD: ${{ secrets.FIREBOLT_PASSWORD }}
+          SERVICE_ID: ${{ secrets.SERVICE_ID }}
+          SERVICE_SECRET: ${{ secrets.SERVICE_SECRET }}
           DATABASE_NAME: ${{ steps.setup.outputs.database_name }}
           ENGINE_NAME: ${{ steps.setup.outputs.engine_name }}
+          ENGINE_URL: ${{ steps.setup.outputs.engine_url }}
           STOPPED_ENGINE_NAME: ${{ steps.setup.outputs.stopped_engine_name }}
-          API_ENDPOINT: "api.staging.firebolt.io"
-          ACCOUNT_NAME: ${{ vars.FIREBOLT_ACCOUNT }}
+          STOPPED_ENGINE_URL: ${{ steps.setup.outputs.stopped_engine_url }}
+          ACCOUNT_NAME: "firebolt"
+          API_ENDPOINT: "api.dev.firebolt.io"
         run: |
           pytest -m "not slow" -o log_cli=false -o log_cli_level=INFO --junit-xml=report/junit.xml tests/integration
 
