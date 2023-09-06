@@ -147,19 +147,22 @@ def test_ingest_mode(
         f"--file table_config.yaml "
         f"--s3-url {s3_url}".split(),
     )
+    assert result.stderr == ""
     assert result.exit_code == 0
 
     result = cli_runner.invoke(
         main,
         f"table create-fact " f"--file table_config.yaml --add-file-metadata".split(),
     )
+    assert result.stderr == ""
     assert result.exit_code == 0
 
     result = cli_runner.invoke(
         main,
         f"ingest " f"--file table_config.yaml " f"--mode {mode}".split(),
     )
-    assert result.exit_code == 0, result.stderr
+    assert result.stderr == ""
+    assert result.exit_code == 0
 
     fact_table_name, external_table_name = (
         mock_table_config["table_name"],

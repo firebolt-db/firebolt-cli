@@ -3,6 +3,7 @@ import time
 from collections import namedtuple
 
 import pytest
+from _pytest.capture import CaptureFixture
 from click.testing import CliRunner
 
 from firebolt_cli.main import main
@@ -150,7 +151,7 @@ def test_engine_update_single_parameter(database_name: str, cli_runner: CliRunne
         "scale": _ParamValue(2, 2, "scale"),
         "spec": _ParamValue("S1", "S1", "instance_type"),
         "auto-stop": _ParamValue("1233", "20:33:00", "auto_stop"),
-        "warmup": _ParamValue("all", "PRELOAD_ALL_DATA", "warm_up"),
+        "warmup": _ParamValue("all", "Preload All Data", "warm_up"),
     }
 
     for param, value in ENGINE_UPDATE_PARAMS.items():
@@ -168,23 +169,25 @@ def test_engine_update_single_parameter(database_name: str, cli_runner: CliRunne
     assert result.exit_code == 0, result.stderr
 
 
-def test_engine_update_auto_stop(stopped_engine_name: str, cli_runner: CliRunner) -> None:
+def test_engine_update_auto_stop(stopped_engine_name: str, cli_runner: CliRunner, capsys: CaptureFixture) -> None:
     """
     test engine update --auto_stop, set to zero means it is always on
     """
     runner = cli_runner
 
-    result = runner.invoke(
-        main,
-        f"engine update --name {stopped_engine_name} --auto-stop 0".split(),
-    )
+    with capsys.disabled():
+        result = runner.invoke(
+            main,
+            f"engine update --name {stopped_engine_name} --auto-stop 0".split(),
+        )
     assert result.exit_code == 0, result.stderr
     assert "ALWAYS ON" in result.stdout
 
-    result = runner.invoke(
-        main,
-        f"engine update --name {stopped_engine_name} --auto-stop 313".split(),
-    )
+    with capsys.disabled():    
+        result = runner.invoke(
+            main,
+            f"engine update --name {stopped_engine_name} --auto-stop 313".split(),
+        )
     assert result.exit_code == 0, result.stderr
     assert "5:13:00" in result.stdout
 

@@ -187,9 +187,9 @@ def test_database_update(database_name: str, configure_cli: None, cli_runner: Cl
             new_database_description,
         ],
     )
-    assert result.exit_code == 0
     assert result.stderr == ""
     assert result.stdout != ""
+    assert result.exit_code == 0
 
     result = cli_runner.invoke(
         main,
