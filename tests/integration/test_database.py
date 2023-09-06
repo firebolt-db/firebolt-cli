@@ -175,7 +175,7 @@ def test_database_update(database_name: str, configure_cli: None, cli_runner: Cl
     Test updating the database description and
     then check the description with the describe command
     """
-    new_database_description = f"{database_name} new database description for the test"
+    new_database_description = f"new database description for the test"
     result = cli_runner.invoke(
         main,
         [
