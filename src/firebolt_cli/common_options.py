@@ -26,6 +26,26 @@ def default_from_config_file(
     return inner
 
 
+def client_secret_from_config_file(
+    ctx: Context, param: Parameter, value: bool
+) -> Optional[str]:
+    # type check
+    assert param.name
+
+    # user asked to prompt for client secret
+    if value:
+        return prompt("Client Secret", type=str, hide_input=True)
+    
+    envvar=""
+    cs_value = environ.get("FIREBOLT_CLIENT_SECRET") or read_config().get("client_secret", None)
+    if not cs_value:
+        raise MissingParameter(
+            ctx=ctx, param=param, param_hint="--{}".format(param.name.replace("_", "-"))
+        )
+
+    return cs_value
+
+
 _common_options: List[Callable] = [
     option(
         "-c",
@@ -37,9 +57,9 @@ _common_options: List[Callable] = [
     option(
         "-s",
         "--client-secret",
-        envvar="FIREBOLT_CLIENT_SECRET",        
-        callback=default_from_config_file(required=True),
-        help=" The client secret used for connecting to Firebolt.",
+        is_flag=True,
+        callback=client_secret_from_config_file,
+        help="The client secret used for connecting to Firebolt.",
     ),
     option(
         "--account-name",
