@@ -1,4 +1,5 @@
 import click
+import yaml
 from click import command, echo, group, option
 from firebolt_ingest.aws_settings import AWSSettings
 from firebolt_ingest.table_model import Table
@@ -97,7 +98,14 @@ def create_fact(**raw_config_options: str) -> None:
     """
     Create fact table
     """
-    table = Table.parse_yaml(read_from_file(raw_config_options["file"]))
+    table_obj = yaml.load(read_from_file(raw_config_options["file"]), Loader=yaml.Loader)
+
+    # Add fields, that can be missing for fact table, but are required
+    for param, default in (("file_type", "JSON"), ("object_pattern", ["*"])):
+        if param not in table_obj:
+            table_obj[param] = default
+
+    table = Table.parse_obj(table_obj)
 
     with create_connection(**raw_config_options) as connection:
         TableService(table, connection).create_internal_table(
