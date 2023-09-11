@@ -181,7 +181,7 @@ def test_engine_update_auto_stop(stopped_engine_name: str, cli_runner: CliRunner
             f"engine update --name {stopped_engine_name} --auto-stop 0".split(),
         )
     assert result.exit_code == 0, result.stderr
-    assert "ALWAYS ON" in result.stdout
+    assert "ALWAYS ON" in result.stdout, result.stdout
 
     with capsys.disabled():    
         result = runner.invoke(
