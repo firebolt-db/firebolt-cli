@@ -4,7 +4,16 @@ import re
 import sys
 from configparser import ConfigParser
 from functools import lru_cache, wraps
-from typing import Callable, Dict, List, Optional, Sequence, Tuple, Type
+from typing import (
+    Callable,
+    Dict,
+    List,
+    Mapping,
+    Optional,
+    Sequence,
+    Tuple,
+    Type,
+)
 
 import keyring
 import sqlparse  # type: ignore
