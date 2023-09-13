@@ -26,44 +26,46 @@ def default_from_config_file(
     return inner
 
 
-def password_from_config_file(
+def client_secret_from_config_file(
     ctx: Context, param: Parameter, value: bool
 ) -> Optional[str]:
     # type check
     assert param.name
 
-    # user asked to prompt for password
+    # user asked to prompt for client secret
     if value:
-        return prompt("Password", type=str, hide_input=True)
+        return prompt("Client Secret", type=str, hide_input=True)
 
-    pw_value = environ.get("FIREBOLT_PASSWORD") or read_config().get("password", None)
-    if not pw_value:
+    cs_value = environ.get("FIREBOLT_CLIENT_SECRET") or read_config().get(
+        "client_secret", None
+    )
+    if not cs_value:
         raise MissingParameter(
             ctx=ctx, param=param, param_hint="--{}".format(param.name.replace("_", "-"))
         )
 
-    return pw_value
+    return cs_value
 
 
 _common_options: List[Callable] = [
     option(
-        "-u",
-        "--username",
-        envvar="FIREBOLT_USERNAME",
+        "-c",
+        "--client-id",
+        envvar="FIREBOLT_CLIENT_ID",
         callback=default_from_config_file(required=True),
-        help="The username used for connecting to Firebolt.",
+        help="The client id used for connecting to Firebolt.",
     ),
     option(
-        "-p",
-        "--password",
+        "-s",
+        "--client-secret",
         is_flag=True,
-        callback=password_from_config_file,
-        help=" The password used for connecting to Firebolt.",
+        callback=client_secret_from_config_file,
+        help="The client secret used for connecting to Firebolt.",
     ),
     option(
         "--account-name",
         envvar="FIREBOLT_ACCOUNT_NAME",
-        callback=default_from_config_file(required=False),
+        callback=default_from_config_file(required=True),
         help="The name of the Firebolt account.",
     ),
     option(
@@ -71,13 +73,6 @@ _common_options: List[Callable] = [
         envvar="FIREBOLT_API_ENDPOINT",
         callback=default_from_config_file(DEFAULT_API_URL, required=False),
         hidden=True,
-    ),
-    option(
-        "--access-token",
-        envvar="FIREBOLT_ACCESS_TOKEN",
-        help="Firebolt token for authentication. "
-        "If the access-token fails, the username/password will be used instead.",
-        required=False,
     ),
 ]
 

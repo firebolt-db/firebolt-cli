@@ -7,7 +7,7 @@ from firebolt_cli.main import main
 
 
 def test_database_create_drop(
-    configure_cli: None, database_name: str, default_region: str
+    configure_cli: None, database_name: str, default_region: str, cli_runner: CliRunner
 ):
     """
     1. Create the database with json output
@@ -19,7 +19,7 @@ def test_database_create_drop(
 
     database_name = f"{database_name}_create_test3"
     # Creating a test database
-    result = CliRunner(mix_stderr=False).invoke(
+    result = cli_runner.invoke(
         main,
         f"database create --name {database_name} "
         f"--description database_description --region {default_region} --json".split(),
@@ -34,7 +34,7 @@ def test_database_create_drop(
     assert output["description"] == "database_description"
 
     # Getting the description of the database
-    result = CliRunner(mix_stderr=False).invoke(
+    result = cli_runner.invoke(
         main,
         f"database describe {database_name} --json".split(),
     )
@@ -54,7 +54,7 @@ def test_database_create_drop(
     assert database_description["region"] == default_region
 
     # Trying to create a database with the same name
-    result = CliRunner(mix_stderr=False).invoke(
+    result = cli_runner.invoke(
         main,
         f"database create --region {default_region} "
         f"--name {database_name} --json".split(),
@@ -62,17 +62,17 @@ def test_database_create_drop(
     assert result.exit_code != 0
 
     # Dropping the created database
-    result = CliRunner(mix_stderr=False).invoke(
-        main, f"database drop {database_name} --yes".split()
-    )
+    result = cli_runner.invoke(main, f"database drop {database_name} --yes".split())
     assert result.exit_code == 0
 
 
-def test_database_description_not_existing(configure_cli: None, database_name: str):
+def test_database_description_not_existing(
+    configure_cli: None, database_name: str, cli_runner: CliRunner
+):
     """
     database describe should fail if database_name doesn't exist
     """
-    result = CliRunner(mix_stderr=False).invoke(
+    result = cli_runner.invoke(
         main,
         f"database describe {database_name}_not_existing --json".split(),
     )
@@ -80,11 +80,11 @@ def test_database_description_not_existing(configure_cli: None, database_name: s
     assert result.exit_code != 0
 
 
-def test_database_drop_non_existing(configure_cli: None):
+def test_database_drop_non_existing(configure_cli: None, cli_runner: CliRunner):
     """
     Trying to drop non-existing database
     """
-    result = CliRunner(mix_stderr=False).invoke(
+    result = cli_runner.invoke(
         main, "database drop non_existing_test_database --yes".split()
     )
 
@@ -93,15 +93,17 @@ def test_database_drop_non_existing(configure_cli: None):
 
 
 @pytest.fixture()
-def test_database_list_setup(database_name: str, default_region: str) -> None:
+def test_database_list_setup(
+    database_name: str, default_region: str, cli_runner: CliRunner
+) -> None:
     # Setup the test
-    CliRunner(mix_stderr=False).invoke(
+    cli_runner.invoke(
         main,
         f"database create --region {default_region} "
         f"--name {database_name}_list_integration_test1 --json".split(),
     )
 
-    CliRunner(mix_stderr=False).invoke(
+    cli_runner.invoke(
         main,
         f"database create --region {default_region} "
         f"--name {database_name}_list_integration_test2 --json".split(),
@@ -110,19 +112,22 @@ def test_database_list_setup(database_name: str, default_region: str) -> None:
     yield
 
     # Clean up the test
-    CliRunner(mix_stderr=False).invoke(
+    cli_runner.invoke(
         main,
         f"database drop {database_name}_list_integration_test1 --yes".split(),
     )
 
-    CliRunner(mix_stderr=False).invoke(
+    cli_runner.invoke(
         main,
         f"database drop {database_name}_list_integration_test2 --yes".split(),
     )
 
 
 def test_database_list(
-    database_name: str, configure_cli: None, test_database_list_setup: None
+    database_name: str,
+    configure_cli: None,
+    test_database_list_setup: None,
+    cli_runner: CliRunner,
 ):
     """
     Test database list command with:
@@ -134,11 +139,11 @@ def test_database_list(
         return [item["name"] for item in json.loads(output)]
 
     # Test returning simply the list of databases
-    result = CliRunner(mix_stderr=False).invoke(main, "database list".split())
+    result = cli_runner.invoke(main, "database list".split())
     assert result.exit_code == 0, ""
 
     # Test return the list of databases in json format
-    result = CliRunner(mix_stderr=False).invoke(main, "database list --json".split())
+    result = cli_runner.invoke(main, "database list --json".split())
     assert result.exit_code == 0, ""
 
     output = set(json_to_name_list(result.stdout))
@@ -146,7 +151,7 @@ def test_database_list(
     assert database_name + "_list_integration_test2" in output
 
     # Test name contains
-    result = CliRunner(mix_stderr=False).invoke(
+    result = cli_runner.invoke(
         main,
         f"database list --json "
         f"--name-contains {database_name}_list_integration_test".split(),
@@ -154,7 +159,7 @@ def test_database_list(
     assert len(json_to_name_list(result.stdout)) == 2
 
     # Test name contains exact name
-    result = CliRunner(mix_stderr=False).invoke(
+    result = cli_runner.invoke(
         main,
         f"database list --json "
         f"--name-contains {database_name}_list_integration_test1".split(),
@@ -162,7 +167,7 @@ def test_database_list(
     assert len(json_to_name_list(result.stdout)) == 1
 
     # Test name contains non existing
-    result = CliRunner(mix_stderr=False).invoke(
+    result = cli_runner.invoke(
         main,
         f"database list --json "
         f"--name-contains {database_name}_non_existing_database".split(),
@@ -170,13 +175,15 @@ def test_database_list(
     assert len(json_to_name_list(result.stdout)) == 0
 
 
-def test_database_update(database_name: str, configure_cli: None):
+def test_database_update(
+    database_name: str, configure_cli: None, cli_runner: CliRunner
+):
     """
     Test updating the database description and
     then check the description with the describe command
     """
-    new_database_description = f"{database_name} new database description for the test"
-    result = CliRunner(mix_stderr=False).invoke(
+    new_database_description = "new database description for the test"
+    result = cli_runner.invoke(
         main,
         [
             "database",
@@ -187,11 +194,11 @@ def test_database_update(database_name: str, configure_cli: None):
             new_database_description,
         ],
     )
-    assert result.exit_code == 0
     assert result.stderr == ""
     assert result.stdout != ""
+    assert result.exit_code == 0
 
-    result = CliRunner(mix_stderr=False).invoke(
+    result = cli_runner.invoke(
         main,
         f"database describe {database_name} --json".split(),
     )
@@ -206,11 +213,13 @@ def test_database_update(database_name: str, configure_cli: None):
     assert result.exit_code == 0
 
 
-def test_database_update_not_exist(database_name: str, configure_cli: None):
+def test_database_update_not_exist(
+    database_name: str, configure_cli: None, cli_runner: CliRunner
+):
     """
     Test database update of not existing database should fail
     """
-    result = CliRunner(mix_stderr=False).invoke(
+    result = cli_runner.invoke(
         main,
         f"database update --description new_description "
         f"--name {database_name}_non_existing_database".split(),

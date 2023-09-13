@@ -4,33 +4,21 @@ import re
 import sys
 from configparser import ConfigParser
 from functools import lru_cache, wraps
-from typing import (
-    Callable,
-    Dict,
-    List,
-    Mapping,
-    Optional,
-    Sequence,
-    Tuple,
-    Type,
-)
+from typing import Callable, Dict, List, Optional, Sequence, Type
 
 import keyring
 import sqlparse  # type: ignore
 from appdirs import user_config_dir
 from click import Command, Context, Group, echo
-from firebolt.client.auth import Auth, ServiceAccount, Token, UsernamePassword
-from firebolt.common import Settings
+from firebolt.client.auth import ClientCredentials
 from firebolt.common.exception import FireboltError
 from firebolt.db.connection import Connection, connect
-from firebolt.model.engine import Engine
 from firebolt.service.manager import ResourceManager
 from firebolt_ingest.aws_settings import (
     AWSCredentials,
     AWSCredentialsKeySecret,
     AWSCredentialsRole,
 )
-from httpx import HTTPStatusError
 from keyring.errors import KeyringError
 from tabulate import tabulate
 
@@ -122,52 +110,17 @@ def prepare_execution_result_table(
         return tabulate(data, headers=header, tablefmt="grid")
 
 
-def get_auth_from_creds(id: str, secret: str) -> Auth:
-    auth: Auth
-    if "@" in id:
-        auth = UsernamePassword(id, secret)
-    else:
-        # Assume programmatic access
-        auth = ServiceAccount(id, secret)
-    return auth
-
-
 def construct_resource_manager(**raw_config_options: str) -> ResourceManager:
     """
     Propagate raw_config_options to the settings and construct a resource manager
     :rtype: object
     """
-    account_name = raw_config_options.get("account_name", None)
-    if account_name is not None:
-        account_name = account_name.lower()
-
-    settings_dict: Mapping[str, Optional[str]] = {
-        "server": raw_config_options["api_endpoint"],
-        "default_region": raw_config_options.get("region", ""),
-        "account_name": account_name,
-        "user": None,
-        "password": None,
-    }
-
-    if raw_config_options["access_token"] is not None:
-        try:
-            return ResourceManager(
-                Settings(
-                    **settings_dict,
-                    auth=Token(raw_config_options["access_token"]),
-                )
-            )
-        except HTTPStatusError:
-            pass
-
-    username = raw_config_options["username"]
-    password = raw_config_options["password"]
-
     return ResourceManager(
-        Settings(
-            **settings_dict,
-            auth=get_auth_from_creds(username, password),
-        )
+        auth=ClientCredentials(
+            raw_config_options["client_id"], raw_config_options["client_secret"]
+        ),
+        account_name=raw_config_options["account_name"].lower(),
+        api_endpoint=raw_config_options["api_endpoint"],
     )
 
 
@@ -206,6 +159,10 @@ def convert_bytes(num: Optional[float]) -> str:
     return to_human_readable(
         num, step_unit=1024, labels=["KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"]
     )
+
+
+def convert_price_per_hour(cents: Optional[float]) -> str:
+    return f"{cents:.2f}$/hour" if cents else "-"
 
 
 def convert_num_human_readable(num: Optional[float]) -> str:
@@ -250,9 +207,9 @@ def read_config() -> Dict[str, str]:
             config_dict = dict((k, v) for k, v in config[config_section].items())
 
     try:
-        value = keyring.get_password("firebolt-cli", "password")
+        value = keyring.get_password("firebolt-cli", "client_secret")
         if value and len(value) != 0:
-            config_dict["password"] = value
+            config_dict["client_secret"] = value
     except KeyringError:
         pass
 
@@ -287,13 +244,13 @@ def update_config(**kwargs: str) -> None:
     :return:
     """
 
-    # Try to update password in keyring first, and only if failed in config
+    # Try to update client_secret in keyring first, and only if failed in config
     if (
-        "password" in kwargs
-        and kwargs["password"] is not None
-        and set_keyring_param("password", kwargs["password"])
+        "client_secret" in kwargs
+        and kwargs["client_secret"] is not None
+        and set_keyring_param("client_secret", kwargs["client_secret"])
     ):
-        del kwargs["password"]
+        del kwargs["client_secret"]
 
     if len(kwargs):
         config = ConfigParser(interpolation=None)
@@ -327,70 +284,27 @@ def exit_on_firebolt_exception(func: Callable) -> Callable:
     return decorator
 
 
-def get_default_database_engine(rm: ResourceManager, database_name: str) -> Engine:
-    """
-    Get the default engine of the database. If the default engine doesn't exists
-    raise FireboltError
-    """
-
-    database = rm.databases.get_by_name(name=database_name)
-    bindings = rm.bindings.get_many(database_id=database.database_id)
-
-    if len(bindings) == 0:
-        raise FireboltError("No engines attached to the database")
-
-    for binding in bindings:
-        if binding.is_default_engine:
-            return rm.engines.get(binding.engine_id)
-
-    raise FireboltError("No default engine is found.")
-
-
-def extract_engine_name_url(
-    engine_name_url: str,
-) -> Tuple[Optional[str], Optional[str]]:
-    """
-    Returns a tuple engine_name, engine_url
-    """
-    if "." in engine_name_url:
-        return None, engine_name_url
-    else:
-        return engine_name_url, None
-
-
 def create_connection(
-    engine_name: str,
+    engine_name: Optional[str],
     database_name: str,
-    username: str,
-    password: str,
-    access_token: Optional[str],
+    client_id: str,
+    client_secret: str,
     api_endpoint: str,
     account_name: Optional[str],
     **kwargs: str,
 ) -> Connection:
     """
-    Create connection based on access_token if provided,
-    in case of failure use username/password
+    Create connection based on client id and secret provided
     """
-    if account_name is not None:
-        account_name = account_name.lower()
 
-    params: Dict[str, Optional[str]] = {
-        "database": database_name,
-        "api_endpoint": api_endpoint,
-        "account_name": account_name,
-    }
-
-    # decide what to propagate engine_name or url
-    params["engine_name"], params["engine_url"] = extract_engine_name_url(engine_name)
-
-    if access_token:
-        try:
-            return connect(**params, auth=Token(access_token))  # type: ignore [arg-type] # noqa: E501
-        except FireboltError:
-            pass
-
-    return connect(**params, auth=get_auth_from_creds(username, password))  # type: ignore [arg-type] # noqa: E501
+    account_name = account_name.lower() if account_name is not None else None
+    return connect(
+        auth=ClientCredentials(client_id, client_secret),
+        database=database_name,
+        account_name=account_name,
+        engine_name=engine_name,
+        api_endpoint=api_endpoint,
+    )
 
 
 def create_aws_key_secret_creds_from_environ() -> Optional[AWSCredentialsKeySecret]:

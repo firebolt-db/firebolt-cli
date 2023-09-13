@@ -11,7 +11,7 @@ from pyfakefs.fake_filesystem import FakeFilesystem
 from firebolt_cli.database import create, describe, drop, list, update
 from firebolt_cli.main import main
 
-Database = namedtuple("Database", "name compute_region_key description")
+Database = namedtuple("Database", "name region description")
 
 
 @pytest.fixture(autouse=True)
@@ -74,7 +74,7 @@ def test_database_create_json_output(configure_resource_manager: Sequence) -> No
     rm.databases.create.assert_called_once_with(
         name="test_database", description="test_description", region=mock.ANY
     )
-    assert result.exit_code == 0, "non-zero exit code"
+    assert result.exit_code == 0, "non-zero exit code" + result.stderr
 
     try:
         json.loads(result.stdout)
@@ -104,9 +104,7 @@ def databases_list_generic_workflow(
     else:
         result = cli_runner.invoke(list, additional_parameters)
 
-    rm.databases.get_many.assert_called_once_with(
-        name_contains=name_contains, order_by="DATABASE_ORDER_NAME_ASC"
-    )
+    rm.databases.get_many.assert_called_once_with(name_contains=name_contains)
 
     output_validator(result.stdout)
     assert result.stderr == ""
@@ -236,7 +234,7 @@ def database_drop_generic_workflow(
         input=input,
     )
 
-    rm.databases.get_by_name.assert_called_once_with(name="to_drop_database_name")
+    rm.databases.get.assert_called_once_with("to_drop_database_name")
     if delete_should_be_called:
         database_mock.delete.assert_called_once_with()
 
@@ -284,14 +282,14 @@ def test_database_drop_not_found(configure_resource_manager: Sequence) -> None:
     Trying to drop the database, if the database is not found by name
     """
     rm, database_mock, _ = configure_resource_manager
-    rm.databases.get_by_name.side_effect = RuntimeError("database not found")
+    rm.databases.get.side_effect = RuntimeError("database not found")
 
     result = CliRunner(mix_stderr=False).invoke(
         drop,
         ["to_drop_database_name"],
     )
 
-    rm.databases.get_by_name.assert_called_once_with(name="to_drop_database_name")
+    rm.databases.get.assert_called_once_with("to_drop_database_name")
 
     assert result.stderr != "", "cli should fail with an error message in stderr"
     assert result.exit_code != 0, "non-zero exit code"
@@ -311,7 +309,7 @@ def test_database_drop_wrong_state(configure_resource_manager: Sequence) -> None
         drop, ["to_drop_database_name", "--yes"]
     )
 
-    rm.databases.get_by_name.assert_called_once_with(name="to_drop_database_name")
+    rm.databases.get.assert_called_once_with("to_drop_database_name")
     database_mock.delete.assert_called_once_with()
 
     assert result.stderr != "", "cli should fail with an error message in stderr"
@@ -339,6 +337,7 @@ def test_database_describe_json(configure_resource_manager: Sequence) -> None:
     result = CliRunner(mix_stderr=False).invoke(
         describe, ["to_describe_database", "--json"]
     )
+    assert result.exit_code == 0, result.stderr
     database_description = json.loads(result.stdout)
     assert "name" in database_description
     assert "description" in database_description
@@ -356,7 +355,7 @@ def test_database_describe_json(configure_resource_manager: Sequence) -> None:
 def test_database_describe_not_found(configure_resource_manager: Sequence) -> None:
     """ """
     rm, database_mock, _ = configure_resource_manager
-    rm.databases.get_by_name.side_effect = FireboltError("db not found")
+    rm.databases.get.side_effect = FireboltError("db not found")
 
     result = CliRunner(mix_stderr=False).invoke(describe, ["to_describe_database"])
 
@@ -380,7 +379,7 @@ def test_database_update_happy_path(configure_resource_manager: Sequence):
     assert database_description["name"] == "db_name"
     assert database_description["description"] == "new description"
 
-    rm.databases.get_by_name.assert_called_once_with(name="db_name")
+    rm.databases.get.assert_called_once_with("db_name")
     database_mock.update.assert_called_once_with(description="new description")
 
     assert result.stderr == ""
@@ -392,7 +391,7 @@ def test_database_update_not_found(configure_resource_manager: Sequence):
     test database update command, if database doesn't exist
     """
     rm, database_mock, _ = configure_resource_manager
-    rm.databases.get_by_name.side_effect = FireboltError("db not found")
+    rm.databases.get.side_effect = FireboltError("db not found")
 
     result = CliRunner(mix_stderr=False).invoke(
         update, ["--name", "dn_name", "--description", "db_description"]

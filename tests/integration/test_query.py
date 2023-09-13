@@ -5,13 +5,13 @@ import pytest
 from click.testing import CliRunner
 
 from firebolt_cli.main import main
-from firebolt_cli.utils import construct_resource_manager
 
 
 def query_simple_generic(
     additional_parameters: Sequence[str],
     input_type: str,
     query: str,
+    cli_runner: CliRunner,
     check_result: bool = True,
 ):
     """
@@ -28,7 +28,7 @@ def query_simple_generic(
         with open("query.sql", "w") as f:
             f.write(query)
 
-    result = CliRunner(mix_stderr=False).invoke(
+    result = cli_runner.invoke(
         main,
         [
             "query",
@@ -37,15 +37,13 @@ def query_simple_generic(
         input=stdin_query,
     )
 
-    assert result.exit_code == 0 or not check_result
+    assert result.exit_code == 0 or not check_result, result.stderr
 
     return result
 
 
 @pytest.mark.parametrize("input_type", ["stdin", "cli", "file"])
-def test_query_inputs(
-    configure_cli: None, engine_name: str, engine_url: str, input_type: str
-):
+def test_query_inputs(cli_runner: CliRunner, engine_name: str, input_type: str):
     """
     Execute simple from either stdin or file using both engine-name and engine-url
     """
@@ -53,29 +51,27 @@ def test_query_inputs(
         additional_parameters=["--engine-name", engine_name],
         input_type=input_type,
         query="SELECT 1;",
-    )
-
-    query_simple_generic(
-        additional_parameters=["--engine-name", engine_url],
-        input_type=input_type,
-        query="SELECT 1;",
+        cli_runner=cli_runner,
     )
 
 
 @pytest.mark.parametrize("input_type", ["stdin", "cli", "file"])
-def test_query_inputs_multiline(configure_cli: None, engine_url: str, input_type: str):
+def test_query_inputs_multiline(
+    cli_runner: CliRunner, engine_name: str, input_type: str
+):
     """
     Execute a multiline query
     """
     query_simple_generic(
-        additional_parameters=["--engine-name", engine_url],
+        additional_parameters=["--engine-name", engine_name],
         input_type=input_type,
         query="SELECT\n1;",
+        cli_runner=cli_runner,
     )
 
 
 @pytest.fixture()
-def query_select_csv_table_configuration(engine_url: str):
+def query_select_csv_table_configuration(cli_runner: CliRunner, engine_name: str):
     """
     Fixture create a table and drops it after execution
     """
@@ -83,25 +79,26 @@ def query_select_csv_table_configuration(engine_url: str):
     table_name = "test_table_query_select"
 
     query_simple_generic(
-        additional_parameters=["--engine-name", engine_url],
+        additional_parameters=["--engine-name", engine_name],
         input_type="cli",
         query=f"CREATE FACT TABLE {table_name} "
         "(c_id INT, c_name INT) PRIMARY INDEX c_id;",
+        cli_runner=cli_runner,
     )
 
     yield
 
     query_simple_generic(
-        additional_parameters=["--engine-name", engine_url],
+        additional_parameters=["--engine-name", engine_name],
         input_type="stdin",
         query=f"DROP TABLE {table_name};",
+        cli_runner=cli_runner,
     )
 
 
 def test_query_select_csv(
-    configure_cli: None,
+    cli_runner: CliRunner,
     engine_name: str,
-    engine_url: str,
     query_select_csv_table_configuration: None,
 ):
     """
@@ -112,21 +109,24 @@ def test_query_select_csv(
     table_name = "test_table_query_select"
 
     query_simple_generic(
-        additional_parameters=["--engine-name", engine_url],
+        additional_parameters=["--engine-name", engine_name],
         input_type="file",
         query=f"INSERT INTO {table_name} (c_id, c_name) VALUES (1, 213);",
+        cli_runner=cli_runner,
     )
 
     query_simple_generic(
         additional_parameters=["--engine-name", engine_name],
         input_type="cli",
         query=f"INSERT INTO {table_name} (c_id, c_name) VALUES (2, 123);",
+        cli_runner=cli_runner,
     )
 
     result = query_simple_generic(
         additional_parameters=["--engine-name", engine_name, "--csv"],
         input_type="stdin",
         query=f"SELECT c_id, c_name FROM {table_name} ORDER BY c_id;",
+        cli_runner=cli_runner,
     )
 
     output = list(csv.reader(result.stdout.splitlines(), delimiter=","))
@@ -138,40 +138,41 @@ def test_query_select_csv(
 
 
 @pytest.mark.parametrize("input_type", ["stdin", "cli", "file"])
-def test_query_incorrect(configure_cli: None, engine_url: str, input_type: str):
+def test_query_incorrect(cli_runner: CliRunner, engine_name: str, input_type: str):
     """
     Test incorrect query
     """
     result = query_simple_generic(
-        additional_parameters=["--engine-name", engine_url],
+        additional_parameters=["--engine-name", engine_name],
         input_type=input_type,
         query="SELECT select;",
         check_result=False,
+        cli_runner=cli_runner,
     )
 
     assert result.stderr != ""
     assert result.exit_code != 0
 
 
-def test_incorrect_credentials(configure_cli: None, engine_name: str):
+def test_incorrect_credentials(cli_runner: CliRunner, engine_name: str):
     """
     Test incorrect credentials on query
     """
 
-    result = CliRunner(mix_stderr=False).invoke(
+    result = cli_runner.invoke(
         main,
         f"query --engine-name {engine_name}".split(),
         input="SELECT 1;",
-        env={"FIREBOLT_PASSWORD": "incorrect_password"},
+        env={"FIREBOLT_CLIENT_SECRET": "incorrect_secret"},
     )
 
-    assert "403 Forbidden" in result.stderr
+    assert "401 Unauthorized" in result.stderr
     assert "Traceback" not in result.stderr
 
     assert result.exit_code != 0
 
 
-def test_query_account_name(configure_cli: None, engine_name: str, account_name: str):
+def test_query_happy_path(cli_runner: CliRunner, engine_name: str, account_name: str):
     """
     Test account name correct/incorrect
     """
@@ -180,12 +181,11 @@ def test_query_account_name(configure_cli: None, engine_name: str, account_name:
         additional_parameters=[
             "--engine-name",
             engine_name,
-            "--account-name",
-            account_name,
         ],
         input_type="stdin",
         query="SELECT 1;",
         check_result=True,
+        cli_runner=cli_runner,
     )
 
     result = query_simple_generic(
@@ -198,67 +198,10 @@ def test_query_account_name(configure_cli: None, engine_name: str, account_name:
         input_type="cli",
         query="SELECT 1;",
         check_result=False,
+        cli_runner=cli_runner,
     )
     assert "Account" in result.stderr
     assert "does not exist" in result.stderr
     assert "firebolt_non_existing" in result.stderr
 
     assert result.exit_code != 0
-
-
-def test_query_with_access_token(
-    username: str, password: str, account_name: str, api_endpoint: str, engine_name: str
-):
-    """ """
-    access_token = construct_resource_manager(
-        username=username,
-        password=password,
-        account_name=account_name,
-        api_endpoint=api_endpoint,
-        access_token=None,
-    ).client.auth._token
-
-    query_simple_generic(
-        additional_parameters=[
-            "--engine-name",
-            engine_name,
-            "--account-name",
-            account_name,
-            "--access-token",
-            access_token,
-        ],
-        input_type="file",
-        query="SELECT 1;",
-        check_result=True,
-    )
-
-
-def test_query_with_service_account(
-    service_id: str,
-    service_secret: str,
-    account_name: str,
-    api_endpoint: str,
-    engine_name: str,
-):
-    """ """
-    access_token = construct_resource_manager(
-        username=service_id,
-        password=service_secret,
-        account_name=account_name,
-        api_endpoint=api_endpoint,
-        access_token=None,
-    ).client.auth._token
-
-    query_simple_generic(
-        additional_parameters=[
-            "--engine-name",
-            engine_name,
-            "--account-name",
-            account_name,
-            "--access-token",
-            access_token,
-        ],
-        input_type="stdin",
-        query="SELECT 1;",
-        check_result=True,
-    )

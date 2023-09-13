@@ -1,7 +1,7 @@
 import os
 import sys
 from datetime import timedelta
-from typing import Callable, Optional
+from typing import Callable
 
 from click import (
     Choice,
@@ -16,11 +16,7 @@ from click import (
 from firebolt.common.exception import FireboltError
 from firebolt.model.engine import Engine
 from firebolt.service.manager import ResourceManager
-from firebolt.service.types import (
-    EngineStatusSummary,
-    EngineType,
-    WarmupMethod,
-)
+from firebolt.service.types import EngineStatus, EngineType, WarmupMethod
 
 from firebolt_cli.common_options import (
     common_options,
@@ -31,8 +27,8 @@ from firebolt_cli.utils import (
     construct_resource_manager,
     construct_shortcuts,
     convert_bytes,
+    convert_price_per_hour,
     exit_on_firebolt_exception,
-    get_default_database_engine,
     prepare_execution_result_line,
     prepare_execution_result_table,
 )
@@ -52,88 +48,50 @@ def engine() -> None:
     """
 
 
-def get_engine_from_name_or_default(
-    rm: ResourceManager, engine_name: Optional[str], database_name: Optional[str]
-) -> Engine:
-    """
-    Returns engine either from its name, or a default engine deducted
-    from database_name. At least one engine_name or database_name should
-    be provided, raises an Error otherwise.
-    """
-    if engine_name is not None:
-        return rm.engines.get_by_name(name=engine_name)
-    elif database_name is not None:
-        return get_default_database_engine(rm, database_name)
-    else:
-        raise FireboltError("Either engine name or database name has to be specified")
-
-
 def start_stop_generic(
     engine: Engine,
     action: str,
     accepted_initial_states: set,
     accepted_final_states: set,
-    accepted_final_nowait_states: set,
     wrong_initial_state_error: str,
     failure_message: str,
     success_message: str,
-    success_message_nowait: str,
-    **raw_config_options: str,
 ) -> None:
 
-    current_status_name = (
-        engine.current_status_summary.name
-        if engine.current_status_summary
-        else EngineStatusSummary.ENGINE_STATUS_SUMMARY_UNSPECIFIED.name
-    )
-
-    if engine.current_status_summary not in accepted_initial_states:
+    if engine.current_status not in accepted_initial_states:
         raise FireboltError(
             wrong_initial_state_error.format(
                 name=engine.name,
-                state=current_status_name,
+                state=engine.current_status.name,
             )
         )
 
     if action == "start":
-        engine = engine.start(wait_for_startup=raw_config_options["wait"])
+        engine = engine.start()
     elif action == "stop":
-        engine = engine.stop(wait_for_stop=raw_config_options["wait"])
+        engine = engine.stop()
     elif action == "restart":
-        engine = engine.restart(wait_for_startup=raw_config_options["wait"])
+        engine = engine.stop()
+        engine = engine.start()
     else:
         assert False, "not available action"
 
-    if (
-        engine.current_status_summary in accepted_final_nowait_states
-        and not raw_config_options["wait"]
-    ):
-        echo(success_message_nowait.format(name=engine.name))
-    elif engine.current_status_summary in accepted_final_states:
+    if engine.current_status in accepted_final_states:
         echo(success_message.format(name=engine.name))
     else:
         raise FireboltError(
-            failure_message.format(name=engine.name, status=current_status_name)
+            failure_message.format(name=engine.name, status=engine.current_status.name)
         )
 
 
 @command()
 @common_options
-@option(
-    "--database-name",
-    envvar="FIREBOLT_DATABASE_NAME",
-    help="Alternatively to engine name, database name could be specified, "
-    "its default engine will be used",
-    hidden=True,
-    callback=default_from_config_file(required=False),
+@argument(
+    "engine_name",
+    type=str,
+    required=False,
+    callback=default_from_config_file(required=True),
 )
-@option(
-    "--wait/--no-wait",
-    help="Wait until the engine is started.",
-    is_flag=True,
-    default=False,
-)
-@argument("engine_name", type=str, required=False)
 @exit_on_firebolt_exception
 def start(**raw_config_options: str) -> None:
     """
@@ -142,57 +100,36 @@ def start(**raw_config_options: str) -> None:
     """
 
     rm = construct_resource_manager(**raw_config_options)
-    engine = get_engine_from_name_or_default(
-        rm, raw_config_options["engine_name"], raw_config_options["database_name"]
-    )
+    engine = rm.engines.get(raw_config_options["engine_name"])
 
-    if (
-        engine.current_status_summary
-        == EngineStatusSummary.ENGINE_STATUS_SUMMARY_FAILED
-    ):
-        raise FireboltError(
-            f"Engine {engine.name} is in a failed state.\n"
-            f"You need to restart an engine first:\n"
-            f"$ firebolt engine restart {engine.name}"
-        )
+    if engine.current_status in (EngineStatus.STARTED, EngineStatus.RUNNING):
+        echo(f"Engine {engine.name} is already running")
+        return
 
     start_stop_generic(
         engine=engine,
         action="start",
         accepted_initial_states={
-            EngineStatusSummary.ENGINE_STATUS_SUMMARY_STOPPED,
-            EngineStatusSummary.ENGINE_STATUS_SUMMARY_STOPPING,
+            EngineStatus.STOPPED,
+            EngineStatus.STOPPING,
+            EngineStatus.STARTING,
         },
-        accepted_final_states={EngineStatusSummary.ENGINE_STATUS_SUMMARY_RUNNING},
-        accepted_final_nowait_states={
-            EngineStatusSummary.ENGINE_STATUS_SUMMARY_STARTING
-        },
+        accepted_final_states={EngineStatus.RUNNING},
         wrong_initial_state_error="Engine {name} is not in a stopped state."
         "The current engine state is {state}.",
-        success_message="Engine {name} is successfully started.",
-        success_message_nowait="Start request for engine {name} is successfully sent.",
+        success_message="Engine {name} was successfully started.",
         failure_message="Engine {name} failed to start. Engine status: {status}.",
-        **raw_config_options,
     )
 
 
 @command()
 @common_options
-@option(
-    "--database-name",
-    envvar="FIREBOLT_DATABASE_NAME",
-    help="Alternatively to engine name, database name could be specified, "
-    "its default engine will be used",
-    hidden=True,
-    callback=default_from_config_file(required=False),
+@argument(
+    "engine_name",
+    type=str,
+    required=False,
+    callback=default_from_config_file(required=True),
 )
-@option(
-    "--wait/--no-wait",
-    help="Wait until the engine is stopped.",
-    is_flag=True,
-    default=False,
-)
-@argument("engine_name", type=str, required=False)
 @exit_on_firebolt_exception
 def stop(**raw_config_options: str) -> None:
     """
@@ -201,28 +138,26 @@ def stop(**raw_config_options: str) -> None:
     """
 
     rm = construct_resource_manager(**raw_config_options)
-    engine = get_engine_from_name_or_default(
-        rm, raw_config_options["engine_name"], raw_config_options["database_name"]
-    )
+    engine = rm.engines.get(raw_config_options["engine_name"])
+
+    if engine.current_status == EngineStatus.STOPPED:
+        echo(f"Engine {engine.name} is already stopped")
+        return
 
     start_stop_generic(
         engine=engine,
         action="stop",
         accepted_initial_states={
-            EngineStatusSummary.ENGINE_STATUS_SUMMARY_RUNNING,
-            EngineStatusSummary.ENGINE_STATUS_SUMMARY_STARTING_INITIALIZING,
+            EngineStatus.RUNNING,
+            EngineStatus.STARTED,
+            EngineStatus.STARTING,
+            EngineStatus.STOPPING,
         },
-        accepted_final_states={EngineStatusSummary.ENGINE_STATUS_SUMMARY_STOPPED},
-        accepted_final_nowait_states={
-            EngineStatusSummary.ENGINE_STATUS_SUMMARY_STOPPING,
-            EngineStatusSummary.ENGINE_STATUS_SUMMARY_STOPPED,
-        },
+        accepted_final_states={EngineStatus.STOPPED, EngineStatus.STOPPING},
         wrong_initial_state_error="Engine {name} is not in a "
         "running or initializing state. The current engine state is {state}.",
-        success_message="Engine {name} is successfully stopped.",
-        success_message_nowait="Stop request for engine {name} is successfully sent.",
+        success_message="Engine {name} was successfully stopped.",
         failure_message="Engine {name} failed to stop. Engine status: {status}.",
-        **raw_config_options,
     )
 
 
@@ -244,13 +179,6 @@ def engine_properties_options(create_mode: bool = True) -> Callable:
             help="Engine spec. Run 'firebolt engine get-instance-types' "
             "to get a list of available spec",
             type=str,
-            required=create_mode,
-        ),
-        option(
-            "--description",
-            help="Engine description (max: 64 characters).",
-            type=str,
-            default="" if create_mode else None,
             required=False,
         ),
         option(
@@ -269,13 +197,6 @@ def engine_properties_options(create_mode: bool = True) -> Callable:
             required=False,
             show_default=True,
             metavar="INTEGER",
-        ),
-        option(
-            "--use-spot/--no-use-spot",
-            help="Use spot instances",
-            is_flag=True,
-            default=None,
-            required=False,
         ),
         option(
             "--auto-stop",
@@ -319,60 +240,34 @@ def echo_engine_information(
     :return:
     """
 
-    revision = None
-    instance_type = None
-    if engine.latest_revision_key:
-        revision = rm.engine_revisions.get_by_key(engine.latest_revision_key)
-        instance_type = rm.instance_types.instance_types_by_key[
-            revision.specification.db_compute_instances_type_key
-        ]
-
-    def _format_auto_stop(auto_stop: str) -> str:
+    def _format_auto_stop(auto_stop: int) -> str:
         """
-        auto_stop could be set either 0 or to a value with ending with m or s
-        if it is the case then we print its timedelta or "ALWAYS ON"
-        if not the original auto_stop parameter is returned
+        auto_stop could be set either 0 or to a integer seconds value
+        we print its timedelta or "ALWAYS ON"
         """
-        val = int(auto_stop[:-1])
+        return str(timedelta(seconds=auto_stop)) if auto_stop else "ALWAYS ON"
 
-        if val == 0:
-            return "ALWAYS ON"
-
-        if auto_stop[-1] == "m":
-            return str(timedelta(minutes=val))
-        elif auto_stop[-1] == "s":
-            return str(timedelta(seconds=val))
-        else:
-            return auto_stop
+    def to_display(camel_case: str) -> str:
+        return camel_case.lower().replace("_", " ").title()
 
     echo(
         prepare_execution_result_line(
             data=[
                 engine.name,
-                engine.description,
-                engine.current_status_summary.name
-                if engine.current_status_summary
-                else None,
-                _format_auto_stop(engine.settings.auto_stop_delay_duration),
-                revision.specification.db_compute_instances_use_spot
-                if revision
-                else "",
-                engine.settings.preset,
-                engine.settings.warm_up,
-                str(engine.create_time),
-                engine.database.name if engine.database else None,
-                instance_type.name if instance_type else "",
-                revision.specification.db_compute_instances_count if revision else "",
+                engine.current_status.name if engine.current_status else "-",
+                _format_auto_stop(engine.auto_stop),
+                to_display(engine.type.name),
+                to_display(engine.warmup.name),
+                engine._database_name,
+                engine.spec.name if engine.spec else "",
+                engine.scale,
             ],
             header=[
                 "name",
-                "description",
                 "status",
                 "auto_stop",
-                "is_spot_instance",
-                "preset",
+                "type",
                 "warm_up",
-                "create_time",
                 "attached_to_database",
                 "instance_type",
                 "scale",
@@ -392,21 +287,12 @@ WARMUP_METHODS = {
 
 @command()
 @common_options
-@option(
-    "--database-name",
-    envvar="FIREBOLT_DATABASE_NAME",
-    help="Alternatively to engine name, database name could be specified, "
-    "its default engine will be used",
-    hidden=True,
-    callback=default_from_config_file(required=False),
+@argument(
+    "engine_name",
+    type=str,
+    required=False,
+    callback=default_from_config_file(required=True),
 )
-@option(
-    "--wait/--no-wait",
-    help="Wait until the engine is restarted.",
-    is_flag=True,
-    default=False,
-)
-@argument("engine_name", type=str, required=False)
 @exit_on_firebolt_exception
 def restart(**raw_config_options: str) -> None:
     """
@@ -415,29 +301,24 @@ def restart(**raw_config_options: str) -> None:
     """
 
     rm = construct_resource_manager(**raw_config_options)
-    engine = get_engine_from_name_or_default(
-        rm, raw_config_options["engine_name"], raw_config_options["database_name"]
-    )
+    engine = rm.engines.get(raw_config_options["engine_name"])
 
     start_stop_generic(
         engine=engine,
         action="restart",
         accepted_initial_states={
-            EngineStatusSummary.ENGINE_STATUS_SUMMARY_RUNNING,
-            EngineStatusSummary.ENGINE_STATUS_SUMMARY_FAILED,
+            EngineStatus.RUNNING,
+            EngineStatus.STOPPED,
+            EngineStatus.STOPPING,
+            EngineStatus.STARTED,
+            EngineStatus.STARTING,
+            EngineStatus.FAILED,
         },
-        accepted_final_states={EngineStatusSummary.ENGINE_STATUS_SUMMARY_RUNNING},
-        accepted_final_nowait_states={
-            EngineStatusSummary.ENGINE_STATUS_SUMMARY_STOPPING,
-            EngineStatusSummary.ENGINE_STATUS_SUMMARY_STARTING,
-        },
+        accepted_final_states={EngineStatus.RUNNING},
         wrong_initial_state_error="Engine {name} is not in a running or failed state."
         " The current engine state is {state}.",
-        success_message="Engine {name} is successfully restarted.",
-        success_message_nowait="Restart request for engine {name} "
-        "is successfully sent.",
+        success_message="Engine {name} was successfully restarted.",
         failure_message="Engine {name} failed to restart. Engine status: {status}.",
-        **raw_config_options,
     )
 
 
@@ -458,34 +339,26 @@ def create(**raw_config_options: str) -> None:
     """
     rm = construct_resource_manager(**raw_config_options)
 
-    database = rm.databases.get_by_name(name=raw_config_options["database_name"])
-    region = rm.regions.get_by_key(database.compute_region_key)
-
+    database = rm.databases.get(raw_config_options["database_name"])
     engine = rm.engines.create(
         name=raw_config_options["name"],
         spec=raw_config_options["spec"],
-        region=region.name,
+        region=database.region,
         engine_type=ENGINE_TYPES[raw_config_options["type"]],
         scale=int(raw_config_options["scale"]),
         auto_stop=int(raw_config_options["auto_stop"]),
         warmup=WARMUP_METHODS[raw_config_options["warmup"]],
-        description=raw_config_options["description"],
-        revision_spec_kwargs={
-            "db_compute_instances_use_spot": True
-            if raw_config_options["use_spot"]
-            else False
-        },
     )
 
     try:
-        database.attach_to_engine(engine=engine, is_default_engine=True)
+        engine.attach_to_database(database)
     except (FireboltError, RuntimeError) as err:
         engine.delete()
         raise err
 
     if not raw_config_options["json"]:
         echo(
-            f"Engine {engine.name} is successfully created "
+            f"Engine {engine.name} was successfully created "
             f"and attached to the {database.name}."
         )
 
@@ -503,9 +376,7 @@ def create(**raw_config_options: str) -> None:
 )
 @json_option
 @exit_on_firebolt_exception
-def update(
-    use_spot: Optional[bool], auto_stop: int, scale: int, **raw_config_options: str
-) -> None:
+def update(auto_stop: int, scale: int, **raw_config_options: str) -> None:
     """
     Update engine parameters. Engine should be stopped before updating.
     """
@@ -514,13 +385,11 @@ def update(
             raw_config_options[param] is not None
             for param in [
                 "spec",
-                "type",
                 "warmup",
-                "description",
+                "type",
             ]
         )
         or scale is not None
-        or use_spot is not None
         or auto_stop is not None
     )
 
@@ -530,7 +399,7 @@ def update(
 
     rm = construct_resource_manager(**raw_config_options)
 
-    engine = rm.engines.get_by_name(name=raw_config_options["name"])
+    engine = rm.engines.get(raw_config_options["name"])
 
     engine = engine.update(
         name=raw_config_options["new_engine_name"],
@@ -539,27 +408,22 @@ def update(
         scale=scale,
         auto_stop=auto_stop,
         warmup=WARMUP_METHODS.get(raw_config_options["warmup"], None),
-        description=raw_config_options["description"],
-        use_spot=use_spot,
     )
 
     if not raw_config_options["json"]:
-        echo(f"Engine {engine.name} is successfully updated.")
+        echo(f"Engine {engine.name} was successfully updated.")
 
     echo_engine_information(rm, engine, bool(raw_config_options["json"]))
 
 
 @command()
 @common_options
-@option(
-    "--database-name",
-    envvar="FIREBOLT_DATABASE_NAME",
-    help="Alternatively to engine name, database name could be specified, "
-    "its default engine will be used",
-    hidden=True,
-    callback=default_from_config_file(required=False),
+@argument(
+    "engine_name",
+    type=str,
+    required=False,
+    callback=default_from_config_file(required=True),
 )
-@argument("engine_name", type=str, required=False)
 @exit_on_firebolt_exception
 def status(**raw_config_options: str) -> None:
     """
@@ -568,13 +432,9 @@ def status(**raw_config_options: str) -> None:
     """
 
     rm = construct_resource_manager(**raw_config_options)
-    engine = get_engine_from_name_or_default(
-        rm, raw_config_options["engine_name"], raw_config_options["database_name"]
-    )
+    engine = rm.engines.get(raw_config_options["engine_name"])
 
-    current_status_name = (
-        engine.current_status_summary.name if engine.current_status_summary else ""
-    )
+    current_status_name = engine.current_status.name if engine.current_status else "-"
     echo(f"Engine {engine.name} current status is: {current_status_name}")
 
 
@@ -593,6 +453,24 @@ def status(**raw_config_options: str) -> None:
     default=None,
     type=str,
 )
+@option(
+    "--region",
+    help="Only list engines in this region",
+    default=None,
+    type=str,
+)
+@option(
+    "--current-status",
+    help="Only list engines with this status",
+    default=None,
+    type=Choice([e.name.lower() for e in EngineStatus], case_sensitive=False),
+)
+@option(
+    "--current-status-not",
+    help="Omit engines with this status",
+    default=None,
+    type=Choice([e.name.lower() for e in EngineStatus], case_sensitive=False),
+)
 @json_option
 @exit_on_firebolt_exception
 def list(**raw_config_options: str) -> None:
@@ -602,27 +480,24 @@ def list(**raw_config_options: str) -> None:
 
     rm = construct_resource_manager(**raw_config_options)
 
-    if raw_config_options["database"]:
-        database = rm.databases.get_by_name(raw_config_options["database"])
-        engines = rm.bindings.get_engines_bound_to_database(database)
+    current_status_eq = (
+        raw_config_options["current_status"].lower().capitalize()
+        if raw_config_options["current_status"]
+        else None
+    )
+    current_status_not_eq = (
+        raw_config_options["current_status_not"].lower().capitalize()
+        if raw_config_options["current_status_not"]
+        else None
+    )
 
-        # Filter engines by name
-        if raw_config_options["name_contains"]:
-            name_contains = raw_config_options["name_contains"].lower()
-            engines = [
-                engine
-                for engine in engines
-                if engine.name
-                if name_contains in engine.name.lower()
-            ]
-
-        # Sort engines in alphabetical order
-        engines = sorted(engines, key=lambda x: x.name)
-    else:
-        engines = rm.engines.get_many(
-            name_contains=raw_config_options["name_contains"],
-            order_by="ENGINE_ORDER_NAME_ASC",
-        )
+    engines = rm.engines.get_many(
+        name_contains=raw_config_options["name_contains"],
+        database_name=raw_config_options["database"],
+        current_status_eq=current_status_eq,
+        current_status_not_eq=current_status_not_eq,
+        region_eq=raw_config_options["region"],
+    )
 
     if not raw_config_options["json"]:
         echo("Found {num_engines} engines".format(num_engines=len(engines)))
@@ -633,10 +508,8 @@ def list(**raw_config_options: str) -> None:
                 data=[
                     [
                         engine.name,
-                        engine.current_status_summary.name
-                        if engine.current_status_summary
-                        else EngineStatusSummary.ENGINE_STATUS_SUMMARY_UNSPECIFIED,
-                        rm.regions.get_by_key(engine.compute_region_key).name,
+                        engine.current_status.name if engine.current_status else "-",
+                        engine.region,
                     ]
                     for engine in engines
                 ],
@@ -663,13 +536,13 @@ def drop(**raw_config_options: str) -> None:
     Drop an existing engine
     """
     rm = construct_resource_manager(**raw_config_options)
-    engine = rm.engines.get_by_name(name=raw_config_options["engine_name"])
+    engine = rm.engines.get(raw_config_options["engine_name"])
 
     if raw_config_options["yes"] or confirm(
         f"Do you really want to drop the engine {engine.name}?"
     ):
         engine.delete()
-        echo(f"Drop request for engine {engine.name} is successfully sent")
+        echo(f"Engine {engine.name} was successfully dropped")
     else:
         echo("Drop request is aborted")
 
@@ -679,6 +552,8 @@ def drop(**raw_config_options: str) -> None:
 @argument(
     "engine_name",
     type=str,
+    required=False,
+    callback=default_from_config_file(required=True),
 )
 @json_option
 @exit_on_firebolt_exception
@@ -687,18 +562,12 @@ def describe(**raw_config_options: str) -> None:
     Describe specified engine
     """
     rm = construct_resource_manager(**raw_config_options)
-    engine = rm.engines.get_by_name(name=raw_config_options["engine_name"])
+    engine = rm.engines.get(raw_config_options["engine_name"])
     echo_engine_information(rm, engine, bool(raw_config_options["json"]))
 
 
 @command()
 @common_options
-@option(
-    "--region",
-    help="Instances information relevant to this region.",
-    required=True,
-    type=str,
-)
 @json_option
 @exit_on_firebolt_exception
 def get_instance_types(**raw_config_options: str) -> None:
@@ -706,13 +575,6 @@ def get_instance_types(**raw_config_options: str) -> None:
     Get instance types (spec) available for your account
     """
     rm = construct_resource_manager(**raw_config_options)
-    if not raw_config_options["region"] in rm.regions.regions_by_name:
-        raise FireboltError(
-            f"Unknown region: {raw_config_options['region']}. "
-            f"Available regions: {', '.join(rm.regions.regions_by_name.keys())}"
-        )
-
-    region = rm.regions.get_by_name(name=raw_config_options["region"])
 
     echo(
         prepare_execution_result_table(
@@ -720,15 +582,16 @@ def get_instance_types(**raw_config_options: str) -> None:
                 [
                     spec.name,
                     spec.cpu_virtual_cores_count,
-                    convert_bytes(spec.memory_size_bytes),
-                    convert_bytes(spec.storage_size_bytes),
+                    convert_bytes(int(spec.memory_size_bytes)),
+                    convert_bytes(int(spec.storage_size_bytes)),
+                    convert_price_per_hour(spec.price_per_hour_cents),
                 ]
                 for spec in sorted(
-                    rm.instance_types.get_instance_types_per_region(region),
-                    key=lambda x: (x.name[0], x.cpu_virtual_cores_count),
+                    rm.instance_types.instance_types,
+                    key=lambda x: (x.name[0], int(x.cpu_virtual_cores_count)),
                 )
             ],
-            header=["name", "cpu", "memory", "storage"],
+            header=["name", "cpu", "memory", "storage", "price"],
             use_json=bool(raw_config_options["json"]),
         )
     )

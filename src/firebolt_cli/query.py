@@ -25,13 +25,11 @@ from firebolt_cli.common_options import (
 )
 from firebolt_cli.completer import FireboltAutoCompleter
 from firebolt_cli.utils import (
-    construct_resource_manager,
     convert_bytes,
     convert_num_human_readable,
     create_connection,
     exit_on_firebolt_exception,
     format_short_statement,
-    get_default_database_engine,
     read_from_file,
     read_from_stdin_buffer,
 )
@@ -281,9 +279,15 @@ def enter_interactive_session(connection: Connection, use_csv: bool) -> None:
 @common_options
 @option(
     "--engine-name",
-    help="Name or url of the engine to use for SQL queries",
+    help="Name of the engine to use for SQL queries",
     envvar="FIREBOLT_ENGINE_NAME",
     callback=default_from_config_file(required=False),
+)
+@option(
+    "--no-engine",
+    help="Don't connect to a specific engine",
+    is_flag=True,
+    default=False,
 )
 @option(
     "--csv", help="Provide query output in CSV format.", is_flag=True, default=False
@@ -292,7 +296,7 @@ def enter_interactive_session(connection: Connection, use_csv: bool) -> None:
     "--database-name",
     envvar="FIREBOLT_DATABASE_NAME",
     help="Database name to use for SQL queries.",
-    callback=default_from_config_file(),
+    callback=default_from_config_file(required=False),
 )
 @option(
     "--file",
@@ -302,7 +306,7 @@ def enter_interactive_session(connection: Connection, use_csv: bool) -> None:
 )
 @option("--sql", help="SQL statement, that will be executed", required=False)
 @exit_on_firebolt_exception
-def query(**raw_config_options: str) -> None:
+def query(**raw_config_options: Optional[str]) -> None:
     """
     Execute SQL queries.
     """
@@ -320,14 +324,10 @@ def query(**raw_config_options: str) -> None:
 
     sql_query = stdin_query or file_query or args_query
 
-    # if engine_name is not set, use default engine
-    if raw_config_options["engine_name"] is None:
-        rm = construct_resource_manager(**raw_config_options)
-        raw_config_options["engine_name"] = get_default_database_engine(
-            rm, raw_config_options["database_name"]
-        ).endpoint
+    if raw_config_options.pop("no_engine"):
+        raw_config_options["engine_name"] = None
 
-    with create_connection(**raw_config_options) as connection:
+    with create_connection(**raw_config_options) as connection:  # type: ignore
 
         if sql_query:
             # if query is available, then execute, print result and exit
