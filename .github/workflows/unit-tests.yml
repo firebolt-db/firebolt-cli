@@ -8,6 +8,8 @@ on:
     secrets:
       GIST_PAT:
         required: false
+  push:
+    branches: [ main, 0.x ]
 
 jobs:
   unit-tests:

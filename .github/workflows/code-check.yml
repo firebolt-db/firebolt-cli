@@ -2,6 +2,8 @@ name: Code quality checks
 
 on:
   workflow_call:
+  push:
+    branches: [ main, 0.x ]
 
 jobs:
   check-code:
