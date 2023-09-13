@@ -3,7 +3,7 @@ from contextlib import contextmanager
 from io import StringIO
 from json import dumps, loads
 from os import environ
-from typing import Callable, List, Tuple
+from typing import Callable, List, Optional, Tuple
 from unittest import mock
 
 from click import MissingParameter, command, echo
@@ -12,7 +12,12 @@ from firebolt.client import DEFAULT_API_URL
 from pyfakefs.fake_filesystem import FakeFilesystem
 
 from firebolt_cli.common_options import _common_options
-from firebolt_cli.utils import config_file, config_section, read_config
+from firebolt_cli.utils import (
+    config_file,
+    config_section,
+    read_config,
+    update_config,
+)
 
 
 @contextmanager
@@ -85,9 +90,57 @@ def test_client_id_priority(fs: FakeFilesystem):
 
 def test_client_secret_priority(fs: FakeFilesystem):
     """client_secret is processed in correct proirity from different sources"""
-    generic_test_parameter_priority(
-        fs, "client_secret", ["-s", "--client-secret"], _common_options[1]
-    )
+    opt = _common_options[1]  # client secret option
+
+    SPECIAL_CHARACTERS = " !\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~"
+
+    # helper command, dumps all options it received
+    @command()
+    @opt
+    def test(**kwargs):
+        echo(dumps(kwargs))
+
+    def validate_command(
+        command: Tuple, input: Optional[str], expected_value: str, err_msg: str
+    ):
+        result = CliRunner().invoke(*command, input=input)
+        if result.exit_code != 0:
+            print(result.__dict__)
+        assert result.exit_code == 0, "non-zero exit code for "
+        prompt = "Client Secret: \n"
+        if result.output.startswith(prompt):
+            config = loads(result.output[len(prompt) :])
+        else:
+            config = loads(result.output)
+        assert "client_secret" in config, "missing password command option"
+        assert config["client_secret"] == expected_value, err_msg
+
+    with create_config_file(fs, {}):
+        update_config(client_secret="cs_config" + SPECIAL_CHARACTERS)
+        # client_secret is provided as option and in config file,
+        # option should be chosen
+        validate_command(
+            (test, ["--client-secret"]),
+            "cs_option" + SPECIAL_CHARACTERS,
+            "cs_option" + SPECIAL_CHARACTERS,
+            "invalid client_secret from option",
+        )
+
+        validate_command(
+            (test, ["-s"]),
+            "cs_option" + SPECIAL_CHARACTERS,
+            "cs_option" + SPECIAL_CHARACTERS,
+            "invalid client_secret from option",
+        )
+
+        # client_secret is provided in config file,
+        # config file should be chosen
+        validate_command(
+            (test,),
+            None,
+            "cs_config" + SPECIAL_CHARACTERS,
+            "invalid client_secret from config file",
+        )
 
 
 def test_account_name_priority(fs: FakeFilesystem):
