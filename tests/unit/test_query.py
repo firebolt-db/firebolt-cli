@@ -1,6 +1,5 @@
 import csv
 import unittest.mock
-from collections import namedtuple
 from typing import Callable, Optional, Sequence
 from unittest import mock
 

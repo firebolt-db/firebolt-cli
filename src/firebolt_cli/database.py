@@ -1,6 +1,5 @@
 from click import argument, command, confirm, echo, group, option
 from firebolt.model.database import Database
-from firebolt.service.manager import ResourceManager
 
 from firebolt_cli.common_options import common_options, json_option
 from firebolt_cli.utils import (
@@ -13,9 +12,7 @@ from firebolt_cli.utils import (
 )
 
 
-def print_db_full_information(
-    database: Database, use_json: bool
-) -> None:
+def print_db_full_information(database: Database, use_json: bool) -> None:
     attached_engines = database.get_attached_engines()
     attached_engine_names = [str(engine.name) for engine in attached_engines]
 

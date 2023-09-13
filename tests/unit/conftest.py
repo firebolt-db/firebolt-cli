@@ -1,5 +1,4 @@
 import unittest
-from collections import namedtuple
 from unittest.mock import MagicMock
 
 import pytest
@@ -70,7 +69,7 @@ def configure_resource_manager(mocker: MockerFixture) -> ResourceManager:
 
     engine_mock = unittest.mock.MagicMock()
     engine_mock.auto_stop = 100
-    engine_mock.region="mock_region"
+    engine_mock.region = "mock_region"
     rm.engines.create.return_value = engine_mock
     rm.engines.get.return_value = engine_mock
 

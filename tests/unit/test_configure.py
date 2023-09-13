@@ -85,7 +85,13 @@ def test_configure_prompt(fs: FakeFilesystem) -> None:
         configure,
         [],
         input="\n".join(
-            ["client_id", "client_secret", "account_name", "database_name", "engine_name"]
+            [
+                "client_id",
+                "client_secret",
+                "account_name",
+                "database_name",
+                "engine_name",
+            ]
         ),
     )
     assert result.exit_code == 0, "non-zero exit code for configure"

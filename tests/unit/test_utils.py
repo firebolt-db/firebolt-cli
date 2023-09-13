@@ -1,7 +1,5 @@
 import json
 import os
-from collections import namedtuple
-from typing import Dict, Sequence
 from unittest import mock
 from unittest.mock import ANY
 
@@ -9,10 +7,8 @@ import pytest
 from appdirs import user_config_dir
 from click.testing import CliRunner
 from firebolt.client.auth import ClientCredentials
-from firebolt.common import Settings
 from firebolt.common.exception import FireboltError
 from firebolt.service.manager import ResourceManager
-from httpx import HTTPStatusError
 from pyfakefs.fake_filesystem import FakeFilesystem
 from pytest_mock import MockerFixture
 
@@ -205,9 +201,7 @@ def test_construct_resource_manager(mocker: MockerFixture):
     sa_mock.assert_called_once_with("client_id", "client_secret")
 
 
-def test_create_connection(
-    mock_connection_params: dict, mocker: MockerFixture
-):
+def test_create_connection(mock_connection_params: dict, mocker: MockerFixture):
     """
     Check create_connection with engine name and access_token
     """
@@ -228,6 +222,7 @@ def test_create_connection(
         mock_connection_params["client_id"],
         mock_connection_params["client_secret"],
     )
+
 
 def test_create_aws_creds_from_environ_happy_path():
     """

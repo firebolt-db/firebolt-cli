@@ -2,17 +2,11 @@ import json
 from collections import namedtuple
 from typing import Callable, Optional, Sequence
 from unittest import mock
-from unittest.mock import ANY
 
 import pytest
 from click.testing import CliRunner, Result
 from firebolt.common.exception import FireboltError
-from firebolt.service.types import (
-    EngineStatus,
-    EngineType,
-    WarmupMethod,
-)
-from pytest_mock import MockerFixture
+from firebolt.service.types import EngineStatus, EngineType, WarmupMethod
 
 from firebolt_cli.engine import (
     create,
@@ -86,13 +80,9 @@ def engine_start_stop_generic(
     engine_mock.start.return_value = engine_mock_after_call
     engine_mock.stop.return_value = engine_mock_after_call
     engine_mock_after_call.start.return_value = engine_mock_after_call
-    engine_mock_after_call.stop.return_value = engine_mock_after_call    
+    engine_mock_after_call.stop.return_value = engine_mock_after_call
 
-
-    result = CliRunner(mix_stderr=False).invoke(
-        command,
-        ["engine_name"]
-    )
+    result = CliRunner(mix_stderr=False).invoke(command, ["engine_name"])
 
     rm.engines.get.assert_called_once_with("engine_name")
 
@@ -447,16 +437,12 @@ def test_engine_list(configure_resource_manager: Sequence, list_command: str) ->
 
     engine_mock1 = mock.MagicMock()
     engine_mock1.name = "engine_mock1"
-    engine_mock1.current_status = (
-        EngineStatus.RUNNING
-    )
+    engine_mock1.current_status = EngineStatus.RUNNING
     engine_mock1.region = "mock_region"
 
     engine_mock2 = mock.MagicMock()
     engine_mock2.name = "engine_mock2"
-    engine_mock2.current_status = (
-        EngineStatus.STOPPED
-    )
+    engine_mock2.current_status = EngineStatus.STOPPED
     engine_mock2.region = "mock_region"
 
     rm.engines.get_many.return_value = [engine_mock1, engine_mock2]
@@ -479,7 +465,7 @@ def test_engine_list(configure_resource_manager: Sequence, list_command: str) ->
         current_status_not_eq=None,
         database_name=None,
         name_contains="engine_name",
-        region_eq=None
+        region_eq=None,
     )
 
 
@@ -491,16 +477,12 @@ def test_engine_list_filter(configure_resource_manager: Sequence) -> None:
 
     engine_mock1 = mock.MagicMock()
     engine_mock1.name = "engine_mock1"
-    engine_mock1.current_status = (
-        EngineStatus.RUNNING
-    )
+    engine_mock1.current_status = EngineStatus.RUNNING
     engine_mock1.region = "mock_region"
 
     engine_mock2 = mock.MagicMock()
     engine_mock2.name = "engine_mock2"
-    engine_mock2.current_status = (
-        EngineStatus.STOPPED
-    )
+    engine_mock2.current_status = EngineStatus.STOPPED
     engine_mock2.region = "mock_region"
 
     rm.engines.get_many.return_value = [
@@ -509,7 +491,10 @@ def test_engine_list_filter(configure_resource_manager: Sequence) -> None:
     ]
 
     result = CliRunner(mix_stderr=False).invoke(
-        main, f"engine list --database db_name --name-contains mock1 --current-status running --current-status-not stopped --region us-east-1 --json".split()
+        main,
+        "engine list --database db_name --name-contains mock1 "
+        "--current-status running --current-status-not stopped "
+        "--region us-east-1 --json".split(),
     )
     assert result.stderr == ""
     assert result.exit_code == 0
@@ -525,7 +510,7 @@ def test_engine_list_filter(configure_resource_manager: Sequence) -> None:
         current_status_not_eq="Stopped",
         database_name="db_name",
         name_contains="mock1",
-        region_eq="us-east-1"
+        region_eq="us-east-1",
     )
 
 
@@ -738,9 +723,7 @@ def test_engine_describe_json(configure_resource_manager: Sequence) -> None:
     rm, database_mock, engine_mock = configure_resource_manager
 
     engine_mock.name = "to_describe_engine"
-    engine_mock.current_status = (
-        EngineStatus.RUNNING
-    )
+    engine_mock.current_status = EngineStatus.RUNNING
     engine_mock.auto_stop = 4800
     engine_mock.type = EngineType.DATA_ANALYTICS
     engine_mock.warmup = WarmupMethod.PRELOAD_INDEXES
@@ -800,14 +783,14 @@ def test_engine_get_instance_types(configure_resource_manager: Sequence) -> None
 
     _InstanceType = namedtuple(
         "InstanceType",
-        "name, cpu_virtual_cores_count, memory_size_bytes, storage_size_bytes, price_per_hour_cents",
+        "name, cpu_virtual_cores_count, memory_size_bytes, "
+        "storage_size_bytes, price_per_hour_cents",
     )
-    rm.instance_types.instance_types = [
-        _InstanceType("B1", 2, 123, 321, 10)
-    ]
+    rm.instance_types.instance_types = [_InstanceType("B1", 2, 123, 321, 10)]
 
     result = CliRunner(mix_stderr=False).invoke(
-        get_instance_types, ["--json"],
+        get_instance_types,
+        ["--json"],
     )
 
     assert result.stderr == ""
@@ -815,4 +798,3 @@ def test_engine_get_instance_types(configure_resource_manager: Sequence) -> None
 
     output = json.loads(result.stdout)
     assert len(output) == 1
-

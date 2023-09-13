@@ -62,13 +62,13 @@ def test_database_create_drop(
     assert result.exit_code != 0
 
     # Dropping the created database
-    result = cli_runner.invoke(
-        main, f"database drop {database_name} --yes".split()
-    )
+    result = cli_runner.invoke(main, f"database drop {database_name} --yes".split())
     assert result.exit_code == 0
 
 
-def test_database_description_not_existing(configure_cli: None, database_name: str, cli_runner: CliRunner):
+def test_database_description_not_existing(
+    configure_cli: None, database_name: str, cli_runner: CliRunner
+):
     """
     database describe should fail if database_name doesn't exist
     """
@@ -85,7 +85,7 @@ def test_database_drop_non_existing(configure_cli: None, cli_runner: CliRunner):
     Trying to drop non-existing database
     """
     result = cli_runner.invoke(
-        main, f"database drop non_existing_test_database --yes".split()
+        main, "database drop non_existing_test_database --yes".split()
     )
 
     assert result.exit_code != 0, ""
@@ -93,7 +93,9 @@ def test_database_drop_non_existing(configure_cli: None, cli_runner: CliRunner):
 
 
 @pytest.fixture()
-def test_database_list_setup(database_name: str, default_region: str, cli_runner: CliRunner) -> None:
+def test_database_list_setup(
+    database_name: str, default_region: str, cli_runner: CliRunner
+) -> None:
     # Setup the test
     cli_runner.invoke(
         main,
@@ -122,7 +124,10 @@ def test_database_list_setup(database_name: str, default_region: str, cli_runner
 
 
 def test_database_list(
-    database_name: str, configure_cli: None, test_database_list_setup: None, cli_runner: CliRunner
+    database_name: str,
+    configure_cli: None,
+    test_database_list_setup: None,
+    cli_runner: CliRunner,
 ):
     """
     Test database list command with:
@@ -170,12 +175,14 @@ def test_database_list(
     assert len(json_to_name_list(result.stdout)) == 0
 
 
-def test_database_update(database_name: str, configure_cli: None, cli_runner: CliRunner):
+def test_database_update(
+    database_name: str, configure_cli: None, cli_runner: CliRunner
+):
     """
     Test updating the database description and
     then check the description with the describe command
     """
-    new_database_description = f"new database description for the test"
+    new_database_description = "new database description for the test"
     result = cli_runner.invoke(
         main,
         [
@@ -206,7 +213,9 @@ def test_database_update(database_name: str, configure_cli: None, cli_runner: Cl
     assert result.exit_code == 0
 
 
-def test_database_update_not_exist(database_name: str, configure_cli: None, cli_runner: CliRunner):
+def test_database_update_not_exist(
+    database_name: str, configure_cli: None, cli_runner: CliRunner
+):
     """
     Test database update of not existing database should fail
     """

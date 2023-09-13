@@ -5,7 +5,6 @@ import pytest
 from click.testing import CliRunner
 
 from firebolt_cli.main import main
-from firebolt_cli.utils import construct_resource_manager
 
 
 def query_simple_generic(
@@ -44,9 +43,7 @@ def query_simple_generic(
 
 
 @pytest.mark.parametrize("input_type", ["stdin", "cli", "file"])
-def test_query_inputs(
-    cli_runner: CliRunner, engine_name: str, input_type: str
-):
+def test_query_inputs(cli_runner: CliRunner, engine_name: str, input_type: str):
     """
     Execute simple from either stdin or file using both engine-name and engine-url
     """
@@ -54,18 +51,19 @@ def test_query_inputs(
         additional_parameters=["--engine-name", engine_name],
         input_type=input_type,
         query="SELECT 1;",
-        cli_runner=cli_runner
+        cli_runner=cli_runner,
     )
 
 
 @pytest.mark.parametrize("input_type", ["stdin", "cli", "file"])
-def test_query_inputs_multiline(cli_runner: CliRunner, engine_name: str, input_type: str):
+def test_query_inputs_multiline(
+    cli_runner: CliRunner, engine_name: str, input_type: str
+):
     """
     Execute a multiline query
     """
     query_simple_generic(
-        additional_parameters=
-        ["--engine-name", engine_name],
+        additional_parameters=["--engine-name", engine_name],
         input_type=input_type,
         query="SELECT\n1;",
         cli_runner=cli_runner,
@@ -187,7 +185,7 @@ def test_query_happy_path(cli_runner: CliRunner, engine_name: str, account_name:
         input_type="stdin",
         query="SELECT 1;",
         check_result=True,
-        cli_runner=cli_runner
+        cli_runner=cli_runner,
     )
 
     result = query_simple_generic(
@@ -200,7 +198,7 @@ def test_query_happy_path(cli_runner: CliRunner, engine_name: str, account_name:
         input_type="cli",
         query="SELECT 1;",
         check_result=False,
-        cli_runner=cli_runner
+        cli_runner=cli_runner,
     )
     assert "Account" in result.stderr
     assert "does not exist" in result.stderr

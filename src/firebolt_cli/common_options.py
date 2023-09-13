@@ -35,9 +35,10 @@ def client_secret_from_config_file(
     # user asked to prompt for client secret
     if value:
         return prompt("Client Secret", type=str, hide_input=True)
-    
-    envvar=""
-    cs_value = environ.get("FIREBOLT_CLIENT_SECRET") or read_config().get("client_secret", None)
+
+    cs_value = environ.get("FIREBOLT_CLIENT_SECRET") or read_config().get(
+        "client_secret", None
+    )
     if not cs_value:
         raise MissingParameter(
             ctx=ctx, param=param, param_hint="--{}".format(param.name.replace("_", "-"))

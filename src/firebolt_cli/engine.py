@@ -1,7 +1,7 @@
 import os
 import sys
 from datetime import timedelta
-from typing import Callable, Optional
+from typing import Callable
 
 from click import (
     Choice,
@@ -16,11 +16,7 @@ from click import (
 from firebolt.common.exception import FireboltError
 from firebolt.model.engine import Engine
 from firebolt.service.manager import ResourceManager
-from firebolt.service.types import (
-    EngineStatus,
-    EngineType,
-    WarmupMethod,
-)
+from firebolt.service.types import EngineStatus, EngineType, WarmupMethod
 
 from firebolt_cli.common_options import (
     common_options,
@@ -70,7 +66,6 @@ def start_stop_generic(
             )
         )
 
-
     if action == "start":
         engine = engine.start()
     elif action == "stop":
@@ -95,7 +90,7 @@ def start_stop_generic(
     "engine_name",
     type=str,
     required=False,
-    callback=default_from_config_file(required=True)
+    callback=default_from_config_file(required=True),
 )
 @exit_on_firebolt_exception
 def start(**raw_config_options: str) -> None:
@@ -123,7 +118,7 @@ def start(**raw_config_options: str) -> None:
         wrong_initial_state_error="Engine {name} is not in a stopped state."
         "The current engine state is {state}.",
         success_message="Engine {name} was successfully started.",
-        failure_message="Engine {name} failed to start. Engine status: {status}."
+        failure_message="Engine {name} failed to start. Engine status: {status}.",
     )
 
 
@@ -133,7 +128,7 @@ def start(**raw_config_options: str) -> None:
     "engine_name",
     type=str,
     required=False,
-    callback=default_from_config_file(required=True)
+    callback=default_from_config_file(required=True),
 )
 @exit_on_firebolt_exception
 def stop(**raw_config_options: str) -> None:
@@ -296,7 +291,7 @@ WARMUP_METHODS = {
     "engine_name",
     type=str,
     required=False,
-    callback=default_from_config_file(required=True)
+    callback=default_from_config_file(required=True),
 )
 @exit_on_firebolt_exception
 def restart(**raw_config_options: str) -> None:
@@ -381,9 +376,7 @@ def create(**raw_config_options: str) -> None:
 )
 @json_option
 @exit_on_firebolt_exception
-def update(
-    auto_stop: int, scale: int, **raw_config_options: str
-) -> None:
+def update(auto_stop: int, scale: int, **raw_config_options: str) -> None:
     """
     Update engine parameters. Engine should be stopped before updating.
     """
@@ -429,7 +422,7 @@ def update(
     "engine_name",
     type=str,
     required=False,
-    callback=default_from_config_file(required=True)
+    callback=default_from_config_file(required=True),
 )
 @exit_on_firebolt_exception
 def status(**raw_config_options: str) -> None:
@@ -441,9 +434,7 @@ def status(**raw_config_options: str) -> None:
     rm = construct_resource_manager(**raw_config_options)
     engine = rm.engines.get(raw_config_options["engine_name"])
 
-    current_status_name = (
-        engine.current_status.name if engine.current_status else "-"
-    )
+    current_status_name = engine.current_status.name if engine.current_status else "-"
     echo(f"Engine {engine.name} current status is: {current_status_name}")
 
 
@@ -491,11 +482,13 @@ def list(**raw_config_options: str) -> None:
 
     current_status_eq = (
         raw_config_options["current_status"].lower().capitalize()
-        if raw_config_options["current_status"] else None
+        if raw_config_options["current_status"]
+        else None
     )
     current_status_not_eq = (
         raw_config_options["current_status_not"].lower().capitalize()
-        if raw_config_options["current_status_not"] else None
+        if raw_config_options["current_status_not"]
+        else None
     )
 
     engines = rm.engines.get_many(
@@ -503,7 +496,7 @@ def list(**raw_config_options: str) -> None:
         database_name=raw_config_options["database"],
         current_status_eq=current_status_eq,
         current_status_not_eq=current_status_not_eq,
-        region_eq=raw_config_options["region"]
+        region_eq=raw_config_options["region"],
     )
 
     if not raw_config_options["json"]:
@@ -560,7 +553,7 @@ def drop(**raw_config_options: str) -> None:
     "engine_name",
     type=str,
     required=False,
-    callback=default_from_config_file(required=True)
+    callback=default_from_config_file(required=True),
 )
 @json_option
 @exit_on_firebolt_exception

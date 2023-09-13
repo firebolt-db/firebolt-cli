@@ -1,10 +1,10 @@
 from logging import getLogger
 from os import environ, makedirs
-from appdirs import user_config_dir
 
 import pytest
-from pyfakefs.fake_filesystem_unittest import Patcher
+from appdirs import user_config_dir
 from click.testing import CliRunner
+from pyfakefs.fake_filesystem_unittest import Patcher
 from pytest import fixture
 
 from firebolt_cli.configure import configure
@@ -84,7 +84,8 @@ def configure_cli(
     result = cli_runner.invoke(
         configure,
         [],
-        input=f"{service_id}\n{service_secret}\n{account_name}\n{database_name}\n{engine_name}\n"
+        input=f"{service_id}\n{service_secret}\n{account_name}"
+        f"\n{database_name}\n{engine_name}\n",
     )
     assert result.exit_code == 0, result.stderr
 

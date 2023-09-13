@@ -4,33 +4,21 @@ import re
 import sys
 from configparser import ConfigParser
 from functools import lru_cache, wraps
-from typing import (
-    Callable,
-    Dict,
-    List,
-    Mapping,
-    Optional,
-    Sequence,
-    Tuple,
-    Type,
-)
+from typing import Callable, Dict, List, Optional, Sequence, Type
 
 import keyring
 import sqlparse  # type: ignore
 from appdirs import user_config_dir
 from click import Command, Context, Group, echo
-from firebolt.client.auth import Auth, ClientCredentials
-from firebolt.common import Settings
+from firebolt.client.auth import ClientCredentials
 from firebolt.common.exception import FireboltError
 from firebolt.db.connection import Connection, connect
-from firebolt.model.engine import Engine
 from firebolt.service.manager import ResourceManager
 from firebolt_ingest.aws_settings import (
     AWSCredentials,
     AWSCredentialsKeySecret,
     AWSCredentialsRole,
 )
-from httpx import HTTPStatusError
 from keyring.errors import KeyringError
 from tabulate import tabulate
 
@@ -128,7 +116,9 @@ def construct_resource_manager(**raw_config_options: str) -> ResourceManager:
     :rtype: object
     """
     return ResourceManager(
-        auth=ClientCredentials(raw_config_options["client_id"], raw_config_options["client_secret"]),
+        auth=ClientCredentials(
+            raw_config_options["client_id"], raw_config_options["client_secret"]
+        ),
         account_name=raw_config_options["account_name"].lower(),
         api_endpoint=raw_config_options["api_endpoint"],
     )
@@ -169,6 +159,7 @@ def convert_bytes(num: Optional[float]) -> str:
     return to_human_readable(
         num, step_unit=1024, labels=["KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"]
     )
+
 
 def convert_price_per_hour(cents: Optional[float]) -> str:
     return f"{cents:.2f}$/hour" if cents else "-"
@@ -312,7 +303,7 @@ def create_connection(
         database=database_name,
         account_name=account_name,
         engine_name=engine_name,
-        api_endpoint=api_endpoint
+        api_endpoint=api_endpoint,
     )
 
 

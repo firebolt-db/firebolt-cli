@@ -25,7 +25,6 @@ from firebolt_cli.common_options import (
 )
 from firebolt_cli.completer import FireboltAutoCompleter
 from firebolt_cli.utils import (
-    construct_resource_manager,
     convert_bytes,
     convert_num_human_readable,
     create_connection,
@@ -307,7 +306,7 @@ def enter_interactive_session(connection: Connection, use_csv: bool) -> None:
 )
 @option("--sql", help="SQL statement, that will be executed", required=False)
 @exit_on_firebolt_exception
-def query(**raw_config_options: str) -> None:
+def query(**raw_config_options: Optional[str]) -> None:
     """
     Execute SQL queries.
     """
@@ -328,7 +327,7 @@ def query(**raw_config_options: str) -> None:
     if raw_config_options.pop("no_engine"):
         raw_config_options["engine_name"] = None
 
-    with create_connection(**raw_config_options) as connection:
+    with create_connection(**raw_config_options) as connection:  # type: ignore
 
         if sql_query:
             # if query is available, then execute, print result and exit

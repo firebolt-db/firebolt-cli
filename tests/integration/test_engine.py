@@ -9,13 +9,15 @@ from click.testing import CliRunner
 from firebolt_cli.main import main
 
 
-def test_engine_list(engine_name: str, stopped_engine_name: str, cli_runner: CliRunner) -> None:
+def test_engine_list(
+    engine_name: str, stopped_engine_name: str, cli_runner: CliRunner
+) -> None:
     """
     Test engine list with and without filter
     """
 
     # Test without filter
-    result = cli_runner.invoke(main, f"engine list --json".split())
+    result = cli_runner.invoke(main, "engine list --json".split())
     assert result.exit_code == 0, result.stderr
     assert result.stderr == ""
 
@@ -37,7 +39,10 @@ def test_engine_list(engine_name: str, stopped_engine_name: str, cli_runner: Cli
 
 
 def test_engine_list_database(
-    engine_name: str, stopped_engine_name: str, database_name: str, cli_runner: CliRunner
+    engine_name: str,
+    stopped_engine_name: str,
+    database_name: str,
+    cli_runner: CliRunner,
 ) -> None:
     """
     test engine list with filter by database
@@ -90,18 +95,14 @@ def test_engine_start_stop(stopped_engine_name: str, cli_runner: CliRunner) -> N
     Test engine start/stop happy path
     """
 
-    result = cli_runner.invoke(
-        main, f"engine start {stopped_engine_name}".split()
-    )
+    result = cli_runner.invoke(main, f"engine start {stopped_engine_name}".split())
     assert result.exit_code == 0, result.stderr
 
     result = cli_runner.invoke(main, f"engine status {stopped_engine_name}".split())
     assert result.exit_code == 0, result.stderr
     assert "running" in result.stdout.lower()
 
-    result = cli_runner.invoke(
-        main, f"engine stop {stopped_engine_name}".split()
-    )
+    result = cli_runner.invoke(main, f"engine stop {stopped_engine_name}".split())
     assert result.exit_code == 0, result.stderr
 
     result = cli_runner.invoke(main, f"engine status {stopped_engine_name}".split())
@@ -109,7 +110,9 @@ def test_engine_start_stop(stopped_engine_name: str, cli_runner: CliRunner) -> N
     assert "stopped" in result.stdout.lower()
 
 
-def test_engine_status(engine_name: str, stopped_engine_name: str, cli_runner: CliRunner) -> None:
+def test_engine_status(
+    engine_name: str, stopped_engine_name: str, cli_runner: CliRunner
+) -> None:
     """
     Check status of running engine is running
     Check status of stopped engine is stopped
@@ -132,7 +135,9 @@ def test_engine_status(engine_name: str, stopped_engine_name: str, cli_runner: C
     assert result.stderr != ""
 
 
-def test_engine_update_single_parameter(database_name: str, cli_runner: CliRunner) -> None:
+def test_engine_update_single_parameter(
+    database_name: str, cli_runner: CliRunner
+) -> None:
     """
     Test updating single parameter one by one
     """
@@ -169,7 +174,9 @@ def test_engine_update_single_parameter(database_name: str, cli_runner: CliRunne
     assert result.exit_code == 0, result.stderr
 
 
-def test_engine_update_auto_stop(stopped_engine_name: str, cli_runner: CliRunner, capsys: CaptureFixture) -> None:
+def test_engine_update_auto_stop(
+    stopped_engine_name: str, cli_runner: CliRunner, capsys: CaptureFixture
+) -> None:
     """
     test engine update --auto_stop, set to zero means it is always on
     """
@@ -183,7 +190,7 @@ def test_engine_update_auto_stop(stopped_engine_name: str, cli_runner: CliRunner
     assert result.exit_code == 0, result.stderr
     assert "ALWAYS ON" in result.stdout, result.stdout
 
-    with capsys.disabled():    
+    with capsys.disabled():
         result = runner.invoke(
             main,
             f"engine update --name {stopped_engine_name} --auto-stop 313".split(),
@@ -205,19 +212,15 @@ def test_engine_restart_stopped(
     assert result.exit_code == 0, result.stderr
 
     # Check that engine actually running after restart
-    result = cli_runner.invoke(
-        main, f"engine status {stopped_engine_name}".split()
-    )
+    result = cli_runner.invoke(main, f"engine status {stopped_engine_name}".split())
 
     assert result.exit_code == 0, result.stderr
     assert "running" in result.stdout.lower()
 
-    result = cli_runner.invoke(
-        main, f"engine stop {stopped_engine_name}".split()
-    )
+    result = cli_runner.invoke(main, f"engine stop {stopped_engine_name}".split())
 
     assert result.exit_code == 0, result.stderr
-    
+
 
 @pytest.mark.slow
 def test_engine_restart_running(engine_name: str, cli_runner: CliRunner) -> None:
@@ -231,9 +234,7 @@ def test_engine_restart_running(engine_name: str, cli_runner: CliRunner) -> None
     assert result.exit_code == 0, result.stderr
 
     # Check that engine actually running after restart
-    result = cli_runner.invoke(
-        main, f"engine status {engine_name}".split()
-    )
+    result = cli_runner.invoke(main, f"engine status {engine_name}".split())
     assert result.exit_code == 0, result.stderr
     assert "running" in result.stdout.lower()
 
@@ -246,7 +247,7 @@ def test_engine_create_minimal(
     """
     result = cli_runner.invoke(
         main,
-        f"engine get-instance-types --json ".split(),
+        "engine get-instance-types --json ".split(),
     )
     assert result.exit_code == 0, result.stderr
     instance_list = json.loads(result.stdout)
@@ -274,13 +275,13 @@ def test_engine_create_minimal(
     describe_output = json.loads(result.stdout)
     assert describe_output == create_output
 
-    result = cli_runner.invoke(
-        main, f"engine drop {engine_name} --yes".split()
-    )
+    result = cli_runner.invoke(main, f"engine drop {engine_name} --yes".split())
     assert result.exit_code == 0, result.stderr
 
 
-def test_engine_create_existing(engine_name: str, database_name: str, cli_runner: CliRunner):
+def test_engine_create_existing(
+    engine_name: str, database_name: str, cli_runner: CliRunner
+):
     """
     Test engine create, if the name of engine is already taken
     """

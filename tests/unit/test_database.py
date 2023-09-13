@@ -104,9 +104,7 @@ def databases_list_generic_workflow(
     else:
         result = cli_runner.invoke(list, additional_parameters)
 
-    rm.databases.get_many.assert_called_once_with(
-        name_contains=name_contains
-    )
+    rm.databases.get_many.assert_called_once_with(name_contains=name_contains)
 
     output_validator(result.stdout)
     assert result.stderr == ""

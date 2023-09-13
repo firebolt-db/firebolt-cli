@@ -98,7 +98,9 @@ def create_fact(**raw_config_options: str) -> None:
     """
     Create fact table
     """
-    table_obj = yaml.load(read_from_file(raw_config_options["file"]), Loader=yaml.Loader)
+    table_obj = yaml.load(
+        read_from_file(raw_config_options["file"]), Loader=yaml.Loader
+    )
 
     # Add fields, that can be missing for fact table, but are required
     for param, default in (("file_type", "JSON"), ("object_pattern", ["*"])):

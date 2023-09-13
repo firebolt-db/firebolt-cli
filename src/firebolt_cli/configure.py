@@ -81,6 +81,10 @@ def reset() -> None:
     Reset all previously set configurations.
     """
     update_config(
-        client_id="", client_secret="", account_name="", database_name="", engine_name=""
+        client_id="",
+        client_secret="",
+        account_name="",
+        database_name="",
+        engine_name="",
     )
     echo("Successfully reset firebolt-cli configuration")

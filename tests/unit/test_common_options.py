@@ -3,7 +3,7 @@ from contextlib import contextmanager
 from io import StringIO
 from json import dumps, loads
 from os import environ
-from typing import Callable, List, Optional, Tuple
+from typing import Callable, List, Tuple
 from unittest import mock
 
 from click import MissingParameter, command, echo
@@ -12,12 +12,7 @@ from firebolt.client import DEFAULT_API_URL
 from pyfakefs.fake_filesystem import FakeFilesystem
 
 from firebolt_cli.common_options import _common_options
-from firebolt_cli.utils import (
-    config_file,
-    config_section,
-    read_config,
-    update_config,
-)
+from firebolt_cli.utils import config_file, config_section, read_config
 
 
 @contextmanager
@@ -82,16 +77,17 @@ def generic_test_parameter_priority(
 
 
 def test_client_id_priority(fs: FakeFilesystem):
-    """client_id is processed correctly, in correct proirity from different sources"""
+    """client_id is processed in correct proirity from different sources"""
     generic_test_parameter_priority(
         fs, "client_id", ["-c", "--client-id"], _common_options[0]
     )
 
+
 def test_client_secret_priority(fs: FakeFilesystem):
-    """client_secret is processed correctly, in correct proirity from different sources"""
+    """client_secret is processed in correct proirity from different sources"""
     generic_test_parameter_priority(
         fs, "client_secret", ["-s", "--client-secret"], _common_options[1]
-    )    
+    )
 
 
 def test_account_name_priority(fs: FakeFilesystem):
