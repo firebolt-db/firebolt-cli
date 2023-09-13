@@ -8,6 +8,8 @@ from pyfakefs.fake_filesystem_unittest import Patcher
 from pytest import fixture
 
 from firebolt_cli.configure import configure
+from firebolt_cli.utils import construct_resource_manager
+from firebolt.service.manager import ResourceManager
 
 LOGGER = getLogger(__name__)
 
@@ -135,3 +137,15 @@ def mock_table_config() -> dict:
         "object_pattern": ["*.parquet"],
         "primary_index": ["l_orderkey", "l_linenumber"],
     }
+
+
+@fixture
+def resource_manager(
+    service_id: str, service_secret: str, account_name: str, api_endpoint: str
+) -> ResourceManager:
+    return construct_resource_manager(
+        client_id=service_id,
+        client_secret=service_secret,
+        account_name=account_name,
+        api_endpoint=api_endpoint,
+    )

@@ -7,6 +7,7 @@ from _pytest.capture import CaptureFixture
 from click.testing import CliRunner
 
 from firebolt_cli.main import main
+from firebolt.service.manager import ResourceManager
 
 
 def test_engine_list(
@@ -175,26 +176,28 @@ def test_engine_update_single_parameter(
 
 
 def test_engine_update_auto_stop(
-    stopped_engine_name: str, cli_runner: CliRunner, capsys: CaptureFixture
+    stopped_engine_name: str, cli_runner: CliRunner, resource_manager: ResourceManager
 ) -> None:
     """
     test engine update --auto_stop, set to zero means it is always on
     """
     runner = cli_runner
 
-    with capsys.disabled():
-        result = runner.invoke(
-            main,
-            f"engine update --name {stopped_engine_name} --auto-stop 0".split(),
-        )
+    # Set auto_stop to 10 minutes initially
+    e = resource_manager.engines.get(stopped_engine_name)
+    e.update(auto_stop=600)
+
+    result = runner.invoke(
+        main,
+        f"engine update --name {stopped_engine_name} --auto-stop 0".split(),
+    )
     assert result.exit_code == 0, result.stderr
     assert "ALWAYS ON" in result.stdout, result.stdout
 
-    with capsys.disabled():
-        result = runner.invoke(
-            main,
-            f"engine update --name {stopped_engine_name} --auto-stop 313".split(),
-        )
+    result = runner.invoke(
+        main,
+        f"engine update --name {stopped_engine_name} --auto-stop 313".split(),
+    )
     assert result.exit_code == 0, result.stderr
     assert "5:13:00" in result.stdout
 
