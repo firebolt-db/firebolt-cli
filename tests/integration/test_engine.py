@@ -3,11 +3,10 @@ import time
 from collections import namedtuple
 
 import pytest
-from _pytest.capture import CaptureFixture
 from click.testing import CliRunner
+from firebolt.service.manager import ResourceManager
 
 from firebolt_cli.main import main
-from firebolt.service.manager import ResourceManager
 
 
 def test_engine_list(

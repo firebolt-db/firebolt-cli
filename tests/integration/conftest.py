@@ -4,12 +4,12 @@ from os import environ, makedirs
 import pytest
 from appdirs import user_config_dir
 from click.testing import CliRunner
+from firebolt.service.manager import ResourceManager
 from pyfakefs.fake_filesystem_unittest import Patcher
 from pytest import fixture
 
 from firebolt_cli.configure import configure
 from firebolt_cli.utils import construct_resource_manager
-from firebolt.service.manager import ResourceManager
 
 LOGGER = getLogger(__name__)
 
