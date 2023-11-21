@@ -264,7 +264,6 @@ SET_PARAMETERS = [
     "format_csv_delimiter",
     "max_partitions_per_insert_block",
     "input_format_skip_unknown_fields",
-    "firebolt_dont_wait_for_upload_to_s3",
     "firebolt_optimization_enable_exact_count_distinct",
     "firebolt_optimization_deep_filter_depth",
     "firebolt_optimization_deep_filter_dimension_via_dimension_allow",

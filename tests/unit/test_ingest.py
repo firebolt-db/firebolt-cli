@@ -53,13 +53,11 @@ def test_ingest_happy_path(
     ts.assert_called_once()
     if mode == "overwrite":
         ts_ingest_full.assert_called_once_with(
-            firebolt_dont_wait_for_upload_to_s3=False,
             advanced_mode=False,
             use_short_column_path_parquet=False,
         )
     else:
         ts_ingest_append.assert_called_once_with(
-            firebolt_dont_wait_for_upload_to_s3=False,
             advanced_mode=False,
             use_short_column_path_parquet=False,
         )
@@ -95,7 +93,6 @@ def test_ingest_verify_failed(
     connect_function_mock.assert_called_once()
     ts.assert_called_once()
     ts_ingest_full.assert_called_once_with(
-        firebolt_dont_wait_for_upload_to_s3=False,
         advanced_mode=False,
         use_short_column_path_parquet=False,
     )
