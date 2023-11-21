@@ -49,13 +49,6 @@ from firebolt_cli.utils import (
     type=Choice(["append", "overwrite"], case_sensitive=False),
 )
 @option(
-    "--firebolt_dont_wait_for_upload_to_s3",
-    help="Don't wait for upload part to S3 on insert query finish. ",
-    is_flag=True,
-    required=False,
-    default=False,
-)
-@option(
     "--advanced_mode",
     help="execute set advanced_mode=1",
     is_flag=True,
@@ -82,9 +75,6 @@ def ingest(**raw_config_options: str) -> None:
         ts = TableService(table, connection)
 
         params: Dict[str, bool] = {
-            "firebolt_dont_wait_for_upload_to_s3": bool(
-                raw_config_options["firebolt_dont_wait_for_upload_to_s3"]
-            ),
             "advanced_mode": bool(raw_config_options["advanced_mode"]),
             "use_short_column_path_parquet": bool(
                 raw_config_options["use_short_column_path_parquet"]
