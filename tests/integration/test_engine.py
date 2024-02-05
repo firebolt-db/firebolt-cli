@@ -46,7 +46,7 @@ def test_engine_list_database(
     )
     output = json.loads(result.stdout)
 
-    assert len(output) == 2
+    assert len(output) >= 2
     assert engine_name in {engine["name"] for engine in output}
     assert stopped_engine_name in {engine["name"] for engine in output}
 

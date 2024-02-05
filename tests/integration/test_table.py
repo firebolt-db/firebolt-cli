@@ -126,6 +126,7 @@ def test_create_external_table(
     )
 
 
+@pytest.mark.skip(reason="Ingest functionality is broken right now on backend")
 @pytest.mark.parametrize("mode", ["append", "overwrite"])
 def test_ingest_mode(
     configure_cli: None,
