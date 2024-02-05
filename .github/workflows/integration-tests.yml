@@ -28,16 +28,6 @@ jobs:
           python -m pip install --upgrade pip
           pip install ".[dev]"
 
-      - name: Determine env variables
-        run: |
-          if [ "${{ inputs.environment }}" == 'staging' ]; then
-             echo "CLIENT_ID=${{ secrets.FIREBOLT_CLIENT_ID_STG_NEW_IDN }}" >> "$GITHUB_ENV"
-             echo "CLIENT_SECRET=${{ secrets.FIREBOLT_CLIENT_SECRET_STG_NEW_IDN }}" >> "$GITHUB_ENV"
-          else
-             echo "CLIENT_ID=${{ secrets.FIREBOLT_CLIENT_ID_DEV_NEW_IDN }}" >> "$GITHUB_ENV"
-             echo "CLIENT_SECRET=${{ secrets.FIREBOLT_CLIENT_SECRET_DEV_NEW_IDN }}" >> "$GITHUB_ENV"
-          fi
-
       - name: Setup database and engine
         id: setup
         uses: firebolt-db/integration-testing-setup@v2
