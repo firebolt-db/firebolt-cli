@@ -32,8 +32,8 @@ jobs:
         id: setup
         uses: firebolt-db/integration-testing-setup@v2
         with:
-          firebolt-client-id: ${{ secrets.FIREBOLT_CLIENT_ID_STG_NEW_IDN}}
-          firebolt-client-secret: ${{ secrets.FIREBOLT_CLIENT_SECRET_STG_NEW_IDN}} }}
+          firebolt-client-id: ${{ secrets.FIREBOLT_CLIENT_ID_STG_NEW_IDN }}
+          firebolt-client-secret: ${{ secrets.FIREBOLT_CLIENT_SECRET_STG_NEW_IDN }}
           account: ${{ vars.FIREBOLT_ACCOUNT }}
           api-endpoint: "api.staging.firebolt.io"
 
