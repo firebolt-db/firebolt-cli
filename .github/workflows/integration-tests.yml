@@ -4,13 +4,13 @@ on:
   workflow_dispatch:
   workflow_call:
     secrets:
-      FIREBOLT_USERNAME:
+      FIREBOLT_STG_USERNAME:
         required: true
-      FIREBOLT_PASSWORD:
+      FIREBOLT_STG_PASSWORD:
         required: true
-      SERVICE_ID:
+      SERVICE_ID_STG:
         required: true
-      SERVICE_SECRET:
+      SERVICE_SECRET_STG:
         required: true
 
 jobs:
@@ -34,9 +34,9 @@ jobs:
         id: setup
         uses: firebolt-db/integration-testing-setup@v1
         with:
-          firebolt-username: ${{ secrets.FIREBOLT_USERNAME }}
-          firebolt-password: ${{ secrets.FIREBOLT_PASSWORD }}
-          api-endpoint: "api.dev.firebolt.io"
+          firebolt-username: ${{ secrets.FIREBOLT_STG_USERNAME }}
+          firebolt-password: ${{ secrets.FIREBOLT_STG_PASSWORD }}
+          api-endpoint: "api.staging.firebolt.io"
           region: "us-east-1"
           instance-type: "B2"
 
@@ -47,19 +47,19 @@ jobs:
           path: |
             .pytest_cache/v/cache/lastfailed
           key: ${{ runner.os }}-pytest-restore-failed-${{ github.ref }}-${{ github.sha }}
-      
+
       - name: Run integration tests
         env:
-          USER_NAME: ${{ secrets.FIREBOLT_USERNAME }}
-          PASSWORD: ${{ secrets.FIREBOLT_PASSWORD }}
-          SERVICE_ID: ${{ secrets.SERVICE_ID }}
-          SERVICE_SECRET: ${{ secrets.SERVICE_SECRET }}
+          USER_NAME: ${{ secrets.FIREBOLT_STG_USERNAME }}
+          PASSWORD: ${{ secrets.FIREBOLT_STG_PASSWORD }}
+          SERVICE_ID: ${{ secrets.SERVICE_ID_STG }}
+          SERVICE_SECRET: ${{ secrets.SERVICE_SECRET_STG }}
           DATABASE_NAME: ${{ steps.setup.outputs.database_name }}
           ENGINE_NAME: ${{ steps.setup.outputs.engine_name }}
           ENGINE_URL: ${{ steps.setup.outputs.engine_url }}
           STOPPED_ENGINE_NAME: ${{ steps.setup.outputs.stopped_engine_name }}
           STOPPED_ENGINE_URL: ${{ steps.setup.outputs.stopped_engine_url }}
-          API_ENDPOINT: "api.dev.firebolt.io"
+          API_ENDPOINT: "api.staging.firebolt.io"
           ACCOUNT_NAME: "firebolt"
         run: |
           pytest --last-failed -m "not slow" -o log_cli=false -o log_cli_level=INFO tests/integration
