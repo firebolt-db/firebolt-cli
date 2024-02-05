@@ -12,7 +12,7 @@ on:
 
 jobs:
   integration-tests:
-    uses: firebolt-db/firebolt-cli/.github/workflows/integration-tests.yml
+    uses: firebolt-db/firebolt-cli/.github/workflows/integration-tests.yml@0.x
     secrets: inherit
 
   publish:
@@ -38,4 +38,4 @@ jobs:
   
   docker-push:
     needs: publish
-    uses: firebolt-db/firebolt-cli/.github/workflows/docker-build.yml
+    uses: firebolt-db/firebolt-cli/.github/workflows/docker-build.yml@0.x
