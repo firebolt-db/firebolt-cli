@@ -15,7 +15,7 @@ For detailed installation and usage instructions, see [Using the CLI](https://do
 
 ### Prerequisites
 
-* `python>=3.7` and `pip` are required. See the [Python web page](https://www.python.org/downloads/).
+* `python>=3.8` and `pip` are required. See the [Python web page](https://www.python.org/downloads/).
 
 * Running commands requires an active Firebolt account and a user with privileges to perform operations. For more information, see [Subscribing to Firebolt and creating an account](https://docs.firebolt.io/managing-your-account/creating-an-account.html).
 
