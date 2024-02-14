@@ -23,7 +23,7 @@ jobs:
       max-parallel: 2
       matrix:
         os: ['windows-latest', 'ubuntu-latest', 'macos-latest']
-        python-version: ['3.7', '3.8', '3.9', '3.10']
+        python-version: ['3.8', '3.9', '3.10', '3.11']
     steps:
       - name: Collect Workflow Telemetry
         uses: runforesight/foresight-workflow-kit-action@v1
