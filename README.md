@@ -9,6 +9,11 @@
 
 Firebolt cli is a tool for connecting to firebolt, managing firebolt resources, and executing queries from the command line.
 
+## ⚠️ Legacy Notice
+
+This repository is retained for legacy purposes only. It is **not compatible** with the latest Firebolt version and is intended solely for users of Firebolt 1.0.
+New users should not use this tool. This repository is no longer actively maintained.
+
 ## Quickstart
 
 For detailed installation and usage instructions, see [Using the CLI](https://docs.firebolt.io/using-the-cli.html) in Firebolt documentation.
